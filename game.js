@@ -3,7 +3,8 @@ export const PATTERNS = [
   ...Array.from({length:5},(_,c)=>Array.from({length:5},(_,r)=>r*5+c+1)),
   [1,7,13,19,25],[5,9,13,17,21]
 ];
-export const targetFor = stage => stage * 10;
+export const STAGE_TARGETS = [5,10,20,40,100,200,500,1000,5000,10000];
+export const targetFor = stage => STAGE_TARGETS[stage-1];
 export function newStage(stage=1,money=5) {
   return {stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
 }

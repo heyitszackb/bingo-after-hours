@@ -4,7 +4,7 @@ const browser=await chromium.launch({channel:'chrome'});
 for(const touch of [true,false]){
  const page=await browser.newPage({viewport:touch?{width:375,height:667}:{width:1280,height:800},isMobile:touch,hasTouch:touch});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto(process.env.GAME_URL||'http://localhost:5173');await page.locator('#balls .ball:not([disabled])').first().waitFor();
+ await page.goto(process.env.GAME_URL||'http://localhost:5173');await page.locator('#play-button').click();await page.locator('#balls .ball:not([disabled])').first().waitFor();
  const cdp=await page.context().newCDPSession(page);
  const order=()=>page.locator('#balls .face').allTextContents();
  const initial=await order();

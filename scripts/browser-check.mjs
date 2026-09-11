@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const page=await browser.newPage({viewport:{width:375,height:667},isMobile:true,hasTouch:true,reducedMotion:'reduce'});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
-await page.goto(process.env.GAME_URL||'http://localhost:5173');
+await page.goto(process.env.GAME_URL||'http://localhost:5173');await page.locator('#play-button').click();
 const ready=()=>page.locator('#balls .ball:not([disabled])').first().waitFor();
 await ready();
 for(const [width,height] of [[320,568],[375,667],[390,844],[430,932],[667,375],[1280,800]]){
