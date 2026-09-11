@@ -4,3 +4,9 @@
 @media(orientation:landscape) and (max-height:500px){#stage-dialog{width:min(94vw,650px)}#stage-grid{grid-template-columns:repeat(5,1fr)}.stage-node{padding:0 10px}#bag-grid{gap:9px}#bag-grid .ball{--size:clamp(28px,9dvh,43px)}#bag-grid .face{font-size:20px}#ball-detail .ball{--size:110px}#ball-detail .face{font-size:56px}#ball-dialog{padding:44px 22px 22px}}
 
 button.cell{border:0;padding:0;min-width:0;font-family:inherit}#space-dialog{width:min(80vw,310px);padding:56px 25px 26px;text-align:center}#space-number{width:120px;height:120px;margin:0 auto;font-size:64px}#space-number.stamped:before{z-index:-1}#space-dialog p{margin:22px 0 0;color:var(--cream);font-size:25px}
+
+.cell.charged{background:linear-gradient(135deg,#fff0b8,#f3cd76)}
+.cell.activating{z-index:6;outline:3px solid #ffe39b;outline-offset:-2px;box-shadow:0 0 20px #ffc76e90,3px 5px 0 #001a2260}
+.activation-point{position:absolute;z-index:2;font:38px 'VT323',monospace;color:#fff0ba;text-shadow:2px 2px 0 #3b291b,-2px -2px 0 #3b291b,0 0 12px #f4c66c;pointer-events:none;white-space:nowrap}
+.cell.clearing:before{animation:stamp-clear .25s ease-out forwards}
+@keyframes stamp-clear{from{opacity:1;transform:scale(1) rotate(-12deg)}to{opacity:0;transform:scale(1.28) rotate(8deg)}}

@@ -18,12 +18,14 @@ export function choose(state,number) {
   state.stamps.add(number);state.bag.delete(number);state.played[number]++;state.calls--;
   const patterns=PATTERNS.filter(p=>p.every(n=>state.stamps.has(n)));
   const cleared=[...new Set(patterns.flat())];
-  state.score+=patterns.length*10;
+  const activations=patterns.flatMap(pattern=>pattern.map(number=>({number,points:1})));
+  const points=activations.reduce((total,activation)=>total+activation.points,0);
+  state.score+=points;
   cleared.forEach(n=>state.stamps.delete(n));
   state.offer=[];
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0)state.status='over';
-  return {duplicate,patterns,cleared,points:patterns.length*10};
+  return {duplicate,patterns,cleared,activations,points};
 }
 export function redraw(state,random=Math.random) {
   if(state.status!=='playing'||state.redraws===0)return false;

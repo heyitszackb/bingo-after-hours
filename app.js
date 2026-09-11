@@ -3,7 +3,7 @@ const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-mot
 let state=newStage(),busy=false,money=0,drag=null,audio;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
 const animate=(el,frames,options)=>el.animate(frames,{...options,duration:reduced?1:options.duration}).finished.catch(()=>{});
-function sound(kind){if(!navigator.userActivation?.hasBeenActive)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const t=audio.currentTime;const o=audio.createOscillator(),g=audio.createGain();o.type=kind==='score'?'triangle':'square';o.frequency.setValueAtTime(kind==='score'?660:kind==='roll'?180:110,t);o.frequency.exponentialRampToValueAtTime(kind==='score'?1320:40,t+.12);g.gain.setValueAtTime(.035,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);o.connect(g).connect(audio.destination);o.start(t);o.stop(t+.17);}catch{}}
+function sound(kind,step=0){if(!navigator.userActivation?.hasBeenActive)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const t=audio.currentTime;const o=audio.createOscillator(),g=audio.createGain();o.type=kind==='score'?'triangle':'square';o.frequency.setValueAtTime(kind==='activate'?330*2**(Math.min(step,12)/12):kind==='score'?660:kind==='roll'?180:110,t);o.frequency.exponentialRampToValueAtTime(kind==='activate'?220*2**(Math.min(step,12)/12):kind==='score'?1320:40,t+.12);g.gain.setValueAtTime(.035,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);o.connect(g).connect(audio.destination);o.start(t);o.stop(t+.17);}catch{}}
 function burst(rect,scoring=false){if(reduced)return;for(let i=0;i<(scoring?28:12);i++){const p=document.createElement('i');p.className='particle';p.style.left=`${rect.left+rect.width/2}px`;p.style.top=`${rect.top+rect.height/2}px`;p.style.background=scoring?'#f4c66c':i%2?'#f37868':'#f7dfaf';$('effects').append(p);const angle=Math.random()*Math.PI*2,d=25+Math.random()*(scoring?150:65);animate(p,[{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+25}px) scale(0)`,opacity:0}],{duration:450+Math.random()*250,easing:'cubic-bezier(.1,.7,.3,1)'}).then(()=>p.remove());}}
 for(let n=1;n<=25;n++){const c=document.createElement('button');c.type='button';c.id=`cell-${n}`;c.className='cell';c.innerHTML=`<span>${n}</span>`;c.onclick=()=>{if(!busy&&!drag)inspectSpace(n);};$('board').append(c);}
 function render(){for(const k of ['score','target','calls','stage'])$(k).textContent=state[k];$('money').textContent=money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw-count').textContent=state.redraws;$('redraw').disabled=busy||!state.redraws||state.status!=='playing';$('call-dots').innerHTML=Array.from({length:12},(_,i)=>`<i class="${i>=state.calls?'used':''}"></i>`).join('');document.querySelector('.call-meter').setAttribute('aria-label',`${state.calls} calls remaining`);for(let n=1;n<=25;n++){const c=$(`cell-${n}`);c.className=`cell${state.stamps.has(n)?' stamped':''}${state.offer.includes(n)?' offered':''}`;c.setAttribute('aria-label',`${n}${state.stamps.has(n)?', stamped':''}`);}}
@@ -20,7 +20,46 @@ function moveDrag(e){if(!drag||e.pointerId!==drag.id)return;const d=drag;if(!d.m
 function cleanDrag(d){d.b.classList.remove('held');document.querySelector('.board-frame').classList.remove('drag-over');$(`cell-${d.n}`).classList.remove('destination');}
 async function endDrag(e){if(!drag||e.pointerId!==drag.id)return;const d=drag;drag=null;cleanDrag(d);if(!d.moved){inspect(d.n);return;}const r=$('board').getBoundingClientRect();if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom){await play(d.n,d.b,d.ghost);}else{busy=true;const end=d.b.getBoundingClientRect();await animate(d.ghost,[{transform:d.ghost.style.transform},{transform:`translate(${end.left}px,${end.top}px) rotate(0deg) scale(1)`}],{duration:240,easing:'cubic-bezier(.2,.8,.3,1)'});d.ghost.remove();busy=false;}}
 function cancelDrag(){if(!drag)return;const d=drag;drag=null;cleanDrag(d);d.ghost?.remove();}
-async function play(n,b,ghost){if(busy){ghost?.remove();return;}lock();const result=choose(state,n);if(!result){ghost?.remove();unlock();return;}const cell=$(`cell-${n}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.className='ball leave';});if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}cell.classList.add('stamped','just-stamped');sound('stamp');navigator.vibrate?.(18);burst(r);animate(document.querySelector('.board-frame'),[{transform:'translate(0,0)'},{transform:'translate(0,3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});$('announcer').textContent=result.duplicate?`${n} already stamped. One call used.`:`Stamped ${n}.`;await wait(370);if(result.points){result.cleared.forEach(v=>$(`cell-${v}`).classList.add('scoring'));$('celebration').innerHTML=`<strong>+${result.points}</strong>`;sound('score');burst($('board').getBoundingClientRect(),true);$('announcer').textContent=`${result.points} points. Completed stamps cleared.`;await wait(800);$('celebration').replaceChildren();}await wait(120);render();refreshBag();if(state.status!=='playing'){showResult();return;}await nextDraw();}
+async function activateSpaces(result){
+  let displayedScore=state.score-result.points;
+  for(const [index,activation] of result.activations.entries()){
+    const cell=$(`cell-${activation.number}`);
+    cell.classList.add('activating','charged');
+    sound('activate',index);
+    navigator.vibrate?.(8);
+    animate(cell,[{transform:'scale(1)'},{transform:'translateY(-4px) scale(1.1)',offset:.3},{transform:'scale(.98)',offset:.65},{transform:'scale(1)'}],{duration:250,easing:'cubic-bezier(.2,.8,.3,1)'});
+    const r=cell.getBoundingClientRect();
+    burst(r);
+    const point=document.createElement('span');
+    point.className='activation-point';
+    point.textContent=`+${activation.points}`;
+    point.style.left=`${r.left+r.width/2}px`;
+    point.style.top=`${r.top+r.height/2}px`;
+    $('effects').append(point);
+    const scoreRect=$('score').getBoundingClientRect();
+    const dx=scoreRect.left+scoreRect.width/2-r.left-r.width/2;
+    const dy=scoreRect.top+scoreRect.height/2-r.top-r.height/2;
+    await animate(point,[
+      {transform:'translate(-50%,-35%) scale(.65)',opacity:0},
+      {transform:'translate(-50%,-90%) scale(1.15)',opacity:1,offset:.25},
+      {transform:'translate(-50%,-100%) scale(1)',opacity:1,offset:.55},
+      {transform:`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.45)`,opacity:0}
+    ],{duration:330,easing:'cubic-bezier(.2,.7,.35,1)'});
+    point.remove();
+    displayedScore+=activation.points;
+    $('score').textContent=displayedScore;
+    $('progress').style.width=`${Math.min(100,displayedScore/state.target*100)}%`;
+    animate($('score'),[{transform:'scale(1.3)',color:'#fff5d5'},{transform:'scale(1)',color:'#f4c66c'}],{duration:150});
+    cell.classList.remove('activating');
+    await wait(35);
+  }
+  sound('score');
+  $('announcer').textContent=`${result.activations.length} spaces activated for ${result.points} points.`;
+  await wait(160);
+  result.cleared.forEach(n=>$(`cell-${n}`).classList.add('clearing'));
+  await wait(250);
+}
+async function play(n,b,ghost){if(busy){ghost?.remove();return;}lock();const result=choose(state,n);if(!result){ghost?.remove();unlock();return;}$('calls').textContent=state.calls;$('bag-count').textContent=state.bag.size;$('call-dots').children[state.calls]?.classList.add('used');document.querySelector('.call-meter').setAttribute('aria-label',`${state.calls} calls remaining`);$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);const cell=$(`cell-${n}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.className='ball leave';});if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}cell.classList.add('stamped','just-stamped');sound('stamp');navigator.vibrate?.(18);burst(r);animate(document.querySelector('.board-frame'),[{transform:'translate(0,0)'},{transform:'translate(0,3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});$('announcer').textContent=result.duplicate?`${n} already stamped. One call used.`:`Stamped ${n}.`;await wait(370);if(result.points)await activateSpaces(result);await wait(120);render();refreshBag();if(state.status!=='playing'){showResult();return;}await nextDraw();}
 function showStages(){$('stage-grid').innerHTML=Array.from({length:10},(_,i)=>{const n=i+1,current=n===state.stage,done=n<state.stage;return `<div class="stage-node ${current?'current':done?'complete':'locked'}" ${current?'aria-current="step"':''} aria-label="Stage ${n}, ${current?'current':done?'completed':'locked'}"><span>${n}</span>${current?'<span>◆</span>':done?'<span>✓</span>':'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'}</div>`;}).join('');$('stage-dialog').showModal();}
 function showResult(){const passed=state.status==='passed',finished=passed&&state.stage===10;$('result-icon').textContent=finished?'♛':passed?'✦':'↻';$('result-score').textContent=`${state.score}/${state.target} pts`;$('continue').textContent=passed&&!finished?'→':'↻';$('continue').setAttribute('aria-label',passed&&!finished?'Next stage':'New run');$('result-dialog').setAttribute('aria-label',finished?'All ten stages complete':passed?'Stage complete':'Run ended');$('result-dialog').showModal();}
 $('continue').onclick=async()=>{const next=state.status==='passed'&&state.stage<10?state.stage+1:1;if(next===1)money=0;state=newStage(next);$('result-dialog').close();await nextDraw();};
