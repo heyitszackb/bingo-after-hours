@@ -3,16 +3,17 @@ export const PATTERNS = [
   ...Array.from({length:5},(_,c)=>Array.from({length:5},(_,r)=>r*5+c+1)),
   [1,7,13,19,25],[5,9,13,17,21]
 ];
-export const STAGE_TARGETS = [40,70,100,140,190,250,325,425,550,700];
+export const STAGE_TARGETS = [5,10,15,20,30,40,55,70,90,120];
 export const targetFor = stage => STAGE_TARGETS[stage-1];
-export function shuffleBoard(random=Math.random){
-  const board=Array.from({length:25},(_,i)=>i+1);
-  for(let i=board.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[board[i],board[j]]=[board[j],board[i]];}
-  return board;
+export function newStage(stage=1,money=5,paints={}) {
+  return {rulesVersion:2,stampBalls:{},destinations:{},paints:{...paints},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
 }
-export const boardPatterns=board=>PATTERNS.map(pattern=>pattern.map(position=>board[position-1]));
-export function newStage(stage=1,money=5,paints={},random=Math.random) {
-  return {board:shuffleBoard(random),paints:{...paints},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
+export function deal(state,random=Math.random,count=3){
+  const empty=Array.from({length:25},(_,i)=>i+1).filter(tile=>!state.stamps.has(tile));
+  state.offer=draw(state,random,Math.min(count,empty.length));
+  for(let i=empty.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[empty[i],empty[j]]=[empty[j],empty[i]];}
+  state.destinations=Object.fromEntries(state.offer.map((number,i)=>[number,empty[i]]));
+  return state.offer;
 }
 export function draw(state=newStage(),random=Math.random,count=3) {
   const bag=[...state.bag];
@@ -20,26 +21,29 @@ export function draw(state=newStage(),random=Math.random,count=3) {
   return bag.slice(0,Math.min(count,25));
 }
 export function choose(state,number) {
-  if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)) return null;
-  const duplicate=state.stamps.has(number);
-  state.stamps.add(number);state.bag.delete(number);state.played[number]++;state.calls--;
-  const patterns=boardPatterns(state.board).filter(p=>p.every(n=>state.stamps.has(n)));
+  const tile=state.destinations[number];
+  if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||tile<1||tile>25||state.stamps.has(tile)) return null;
+  state.stamps.add(tile);state.stampBalls[tile]=number;state.bag.delete(number);state.played[number]++;state.calls--;
+  const patterns=PATTERNS.filter(p=>p.every(n=>state.stamps.has(n)));
   const cleared=[...new Set(patterns.flat())];
-  const multipliers=patterns.map(pattern=>2**pattern.filter(n=>state.paints[n]==='red').length);
-  const activations=patterns.flatMap((pattern,i)=>pattern.map((number,j)=>({number,points:number*multipliers[i],gold:state.paints[number]==='gold'?1:0,draws:state.paints[number]==='blue'?3:0,patternMultiplier:j===0?multipliers[i]:1,pattern:j===0?pattern:null})));
+  const multipliers=patterns.map(pattern=>2**pattern.filter(tile=>state.paints[state.stampBalls[tile]]==='red').length);
+  const activations=patterns.flatMap((pattern,i)=>pattern.map((tile,j)=>{
+    const number=state.stampBalls[tile],color=state.paints[number];
+    return {tile,number,points:multipliers[i],gold:color==='gold'?1:0,draws:color==='blue'?3:0,patternMultiplier:j===0?multipliers[i]:1,pattern:j===0?pattern:null};
+  }));
   const points=activations.reduce((total,activation)=>total+activation.points,0);
   const gold=activations.reduce((sum,a)=>sum+a.gold,0),bonusDraws=activations.reduce((sum,a)=>sum+a.draws,0);
   state.money+=gold;state.calls+=bonusDraws;state.callCapacity+=bonusDraws;
   state.score+=points;
-  cleared.forEach(n=>state.stamps.delete(n));
-  state.offer=[];
+  cleared.forEach(tile=>{state.stamps.delete(tile);delete state.stampBalls[tile];});
+  state.offer=[];state.destinations={};
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0)state.status='over';
-  return {duplicate,patterns,cleared,activations,points,gold,bonusDraws};
+  return {tile,patterns,cleared,activations,points,gold,bonusDraws};
 }
 export function redraw(state,random=Math.random) {
   if(state.status!=='playing'||state.money<1)return false;
-  state.money--;state.offer=draw(state,random);return true;
+  state.money--;deal(state,random);return true;
 }
 
 export function settleStage(state){

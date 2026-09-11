@@ -1,16 +1,20 @@
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,draw,choose,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS} from './game.js?v=a06c01b70cb3';
+import {newStage,deal,choose,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS} from './game.js?v=ac1bad60ff1d';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,muted=false,paintDrag=null,selectedPaint=null,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
 const animate=(el,frames,options)=>el.animate(frames,{...options,duration:reduced?1:options.duration}).finished.catch(()=>{});
 function sound(kind,step=0){if(muted)return;if(!navigator.userActivation?.hasBeenActive)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const t=audio.currentTime;const o=audio.createOscillator(),g=audio.createGain();o.type=kind==='score'?'triangle':'square';o.frequency.setValueAtTime(kind==='activate'?330*2**(Math.min(step,12)/12):kind==='score'?660:kind==='roll'?180:110,t);o.frequency.exponentialRampToValueAtTime(kind==='activate'?220*2**(Math.min(step,12)/12):kind==='score'?1320:40,t+.12);g.gain.setValueAtTime(.035,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);o.connect(g).connect(audio.destination);o.start(t);o.stop(t+.17);}catch{}}
 function burst(rect,scoring=false){if(reduced)return;for(let i=0;i<(scoring?28:12);i++){const p=document.createElement('i');p.className='particle';p.style.left=`${rect.left+rect.width/2}px`;p.style.top=`${rect.top+rect.height/2}px`;p.style.background=scoring?'#f4c66c':i%2?'#a9b7b8':'#e4e9dd';$('effects').append(p);const angle=Math.random()*Math.PI*2,d=25+Math.random()*(scoring?150:65);animate(p,[{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+25}px) scale(0)`,opacity:0}],{duration:450+Math.random()*250,easing:'cubic-bezier(.1,.7,.3,1)'}).then(()=>p.remove());}}
-for(let n=1;n<=25;n++){const c=document.createElement('button');c.type='button';c.id=`cell-${n}`;c.className='cell';c.innerHTML=`<span>${n}</span>`;c.onclick=()=>{if(!busy&&!drag)inspectSpace(n);};$('board').append(c);}
+for(let n=1;n<=25;n++){const c=document.createElement('button');c.type='button';c.id=`cell-${n}`;c.className='cell';c.innerHTML='<span></span>';c.onclick=()=>{if(!busy&&!drag)inspectSpace(n);};$('board').append(c);}
 function render(){
-  const boardKey=state.board.join(',');
-  if($('board').dataset.layout!==boardKey){$('board').append(...state.board.map(n=>$(`cell-${n}`)));$('board').dataset.layout=boardKey;}
-  $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);for(const k of ['score','target','calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw').disabled=busy||state.money<1||state.status!=='playing';$('redraw').setAttribute('aria-label',state.money<1?'Reroll costs $1; not enough money':'Reroll for $1 without using a call');renderCalls(state.calls);for(let n=1;n<=25;n++){const c=$(`cell-${n}`);c.className=`cell paint-${state.paints[n]||'grey'}${state.stamps.has(n)?' stamped':''}${state.offer.includes(n)?' offered':''}`;c.setAttribute('aria-label',`${n}${state.stamps.has(n)?', stamped':''}`);}}
+  $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);for(const k of ['score','target','calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw').disabled=busy||state.money<1||state.status!=='playing';$('redraw').setAttribute('aria-label',state.money<1?'Reroll costs $1; not enough money':'Reroll for $1 without using a call');renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
+    const c=$(`cell-${tile}`),offered=state.offer.find(n=>state.destinations[n]===tile),number=state.stampBalls[tile]??offered;
+    c.className=`cell paint-${state.paints[number]||'grey'}${state.stamps.has(tile)?' stamped':''}${offered!==undefined?' offered':''}`;
+    c.querySelector('span').textContent=offered??'';
+    c.setAttribute('aria-label',`Row ${Math.floor((tile-1)/5)+1}, column ${(tile-1)%5+1}${state.stamps.has(tile)?', stamped':offered!==undefined?`, destination for ball ${offered}`:', empty'}. Base score 1 point.`);
+  }}
+
 function ball(n){const b=document.createElement('button');b.className=`ball paint-${state.paints[n]||'grey'}`;b.dataset.number=n;b.innerHTML=`<span class="face">${n}</span>`;b.setAttribute('aria-label',`Inspect ball ${n}`);return b;}
 function hideTooltip(){
   const tip=$('inspect-tooltip');
@@ -40,7 +44,7 @@ function showTooltip(n,anchor,space=false){
   hideTooltip();sound('roll');
   const tip=$('inspect-tooltip');
   (anchor.closest('dialog')||document.body).append(tip);
-  $('tooltip-number').textContent=n;
+  $('tooltip-number').textContent=space?'1 pt':n;
   const color=state.paints[n];
   $('tooltip-effect').textContent=color==='gold'?'+$1 when scored':color==='red'?'×2 to any scoring bingo · stacks':color==='blue'?'+3 draws when scored':space?'Nothing special':'';
   $('tooltip-effect').hidden=!space&&!color;
@@ -53,7 +57,7 @@ function showTooltip(n,anchor,space=false){
   positionTooltip();
   animate(tip,[{opacity:0,transform:'translateY(5px) scale(.94)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:150,easing:'cubic-bezier(.2,.8,.25,1)'});
 }
-function inspectSpace(n){showTooltip(n,$(`cell-${n}`),true);}
+function inspectSpace(tile){const n=state.stampBalls[tile]??state.offer.find(n=>state.destinations[n]===tile);showTooltip(n,$(`cell-${tile}`),true);}
 function inspect(n,anchor){showTooltip(n,anchor);}
 document.addEventListener('pointerdown',e=>{if(tooltipAnchor&&!tooltipAnchor.contains(e.target)&&!$('inspect-tooltip').contains(e.target))hideTooltip();},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&tooltipAnchor){e.preventDefault();e.stopPropagation();hideTooltip();}},true);
@@ -74,12 +78,12 @@ function refreshBag(){
 function lock(){hideTooltip();busy=true;render();document.querySelectorAll('#balls .ball').forEach(b=>b.disabled=true);}
 function unlock(){busy=false;saveRun();render();document.querySelectorAll('#balls .ball').forEach(b=>{b.disabled=false;b.classList.remove('enter');});}
 function showBalls(){$('balls').replaceChildren();state.offer.forEach((n,i)=>{const b=ball(n);b.classList.add('enter');b.style.setProperty('--i',i);b.disabled=true;b.setAttribute('aria-label',`Ball ${n}. Tap to inspect. Drag along the track to reorder, or to the card to play. Keyboard: Enter to inspect, Space to play.`);b.addEventListener('pointerdown',e=>startDrag(e,n,b));b.addEventListener('pointermove',moveDrag);b.addEventListener('pointerup',endDrag);b.addEventListener('pointercancel',cancelDrag);b.addEventListener('lostpointercapture',()=>{if(drag)cancelDrag();});b.onclick=e=>{if(e.detail===0&&!busy)inspect(n,b);};b.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();if(!busy&&!drag)play(n,b);} };$('balls').append(b);});refreshBag();}
-async function nextDraw(){resetResultUI();lock();state.offer=draw(state);render();showBalls();await wait(770);sound('roll');unlock();}
+async function nextDraw(){resetResultUI();lock();deal(state);render();showBalls();await wait(770);sound('roll');unlock();}
 function startDrag(e,n,b){
   if(busy||drag||e.button!==0)return;
   e.preventDefault();sound('roll');b.setPointerCapture(e.pointerId);
   const nodes=[...$('balls').children];
-  drag={n,b,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,ghost:null,
+  drag={n,tile:state.destinations[n],b,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,ghost:null,
     original:[...state.offer],order:[...state.offer],nodes,
     slots:nodes.map(node=>{const r=node.getBoundingClientRect();return r.left+r.width/2;}),
     scrollLeft:$('balls').scrollLeft};
@@ -112,7 +116,7 @@ function moveDrag(e){
   const over=isOnBoard(e.clientX,e.clientY),onTrack=!over&&isOnTrack(e.clientX,e.clientY);
   document.querySelector('.board-frame').classList.toggle('drag-over',over);
   $('balls').classList.toggle('reordering',onTrack);
-  $(`cell-${d.n}`).classList.toggle('destination',over);
+  $(`cell-${d.tile}`).classList.toggle('destination',over);
   if(onTrack){
     const x=e.clientX+$('balls').scrollLeft-d.scrollLeft;
     let index=0;
@@ -122,7 +126,7 @@ function moveDrag(e){
 }
 function cleanDrag(d){
   d.b.classList.remove('held');$('balls').classList.remove('reordering');
-  document.querySelector('.board-frame').classList.remove('drag-over');$(`cell-${d.n}`).classList.remove('destination');
+  document.querySelector('.board-frame').classList.remove('drag-over');$(`cell-${d.tile}`).classList.remove('destination');
 }
 function commitOrder(d){
   for(const n of state.offer){const node=d.nodes.find(node=>Number(node.dataset.number)===n);$('balls').append(node);node.style.order='';node.style.setProperty('--i',state.offer.indexOf(n));}
@@ -165,7 +169,7 @@ async function awardDraws(cell,count,before){
 async function activateSpaces(result){
   let displayedScore=state.score-result.points,displayedMoney=state.money-result.gold,displayedCalls=state.calls-result.bonusDraws;
   for(const [index,activation] of result.activations.entries()){
-    const cell=$(`cell-${activation.number}`);
+    const cell=$(`cell-${activation.tile}`);
     if(activation.patternMultiplier>1){
       const line=activation.pattern.map(n=>$(`cell-${n}`));
       line.forEach(c=>c.classList.add('multiplied'));
@@ -212,7 +216,7 @@ async function activateSpaces(result){
   result.cleared.forEach(n=>$(`cell-${n}`).classList.add('clearing'));
   await wait(250);
 }
-async function play(n,b,ghost){if(busy){ghost?.remove();return;}lock();const result=choose(state,n);if(!result){ghost?.remove();unlock();return;}saveRun();renderCalls(state.calls-result.bonusDraws);$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);const cell=$(`cell-${n}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.classList.add('leave');});if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}cell.classList.add('stamped','just-stamped');pulseBackground();sound('stamp');navigator.vibrate?.(18);burst(r);animate(document.querySelector('.board-frame'),[{transform:'translate(0,0)'},{transform:'translate(0,3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});$('announcer').textContent=result.duplicate?`${n} already stamped. One call used.`:`Stamped ${n}.`;await wait(370);if(result.points)await activateSpaces(result);await wait(120);render();refreshBag();if(state.status!=='playing'){showResult();return;}await nextDraw();}
+async function play(n,b,ghost){if(busy){ghost?.remove();return;}lock();const result=choose(state,n);if(!result){ghost?.remove();unlock();return;}saveRun();renderCalls(state.calls-result.bonusDraws);$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);const cell=$(`cell-${result.tile}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.classList.add('leave');});if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}document.querySelectorAll('.cell.offered').forEach(c=>{c.className='cell paint-grey';c.querySelector('span').textContent='';});cell.className=`cell paint-${state.paints[n]||'grey'} stamped just-stamped`;pulseBackground();sound('stamp');navigator.vibrate?.(18);burst(r);animate(document.querySelector('.board-frame'),[{transform:'translate(0,0)'},{transform:'translate(0,3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});$('announcer').textContent=`Played ball ${n}. One call used.`;await wait(370);if(result.points)await activateSpaces(result);await wait(120);render();refreshBag();if(state.status!=='playing'){showResult();return;}await nextDraw();}
 function showStages(){hideTooltip();$('stage-grid').innerHTML=Array.from({length:10},(_,i)=>{const n=i+1,current=n===state.stage,done=n<state.stage;return `<div class="stage-node ${current?'current':done?'complete':'locked'}" ${current?'aria-current="step"':''} aria-label="Stage ${n}, ${current?'current':done?'completed':'locked'}"><span>${n}<small>${STAGE_TARGETS[i].toLocaleString()} pts</small></span>${current?'<span>◆</span>':done?'<span>✓</span>':'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'}</div>`;}).join('');$('stage-dialog').showModal();}
 function resetResultUI(){
   $('stage-result').hidden=true;
@@ -410,14 +414,22 @@ function loadRun(){
     const numbers=a=>Array.isArray(a)&&a.every(n=>Number.isInteger(n)&&n>=1&&n<=25)&&new Set(a).size===a.length;
     if(!Number.isInteger(saved.stage)||saved.stage<1||saved.stage>10||!numbers(saved.stamps)||!numbers(saved.bag)||!numbers(saved.offer)||!saved.offer.every(n=>saved.bag.includes(n))||!Number.isInteger(saved.calls)||saved.calls<0||saved.calls>192||!Number.isInteger(saved.money)||saved.money<0||!Number.isInteger(saved.score)||saved.score<0||!['playing','passed','over'].includes(saved.status)||!Array.isArray(saved.played)||saved.played.length!==26)throw new Error('Invalid save');
     if(saved.paints&&typeof saved.paints==='object'){for(const n of Object.keys(saved.paints))if(saved.paints[n]==='orange')saved.paints[n]='red';}
-    saved.board??=Array.from({length:25},(_,i)=>i+1);
-    if(!numbers(saved.board)||saved.board.length!==25)throw new Error('Invalid board');
     delete saved.goldSeals;
     saved.callCapacity??=Math.max(12,saved.calls);
     if(!Number.isInteger(saved.callCapacity)||saved.callCapacity<12||saved.callCapacity>192||saved.calls>saved.callCapacity)throw new Error('Invalid call capacity');
     if(saved.paints!==undefined&&(!saved.paints||Array.isArray(saved.paints)||typeof saved.paints!=='object'||!Object.entries(saved.paints).every(([n,c])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&['gold','red','blue'].includes(c))))throw new Error('Invalid paint');
     if(saved.shopOffer!=null&&(!numbers(saved.shopOffer)||saved.shopOffer.length!==3||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
-    state={...newStage(saved.stage,saved.money),...saved,target:STAGE_TARGETS[saved.stage-1],stamps:new Set(saved.stamps),bag:new Set(saved.bag)};
+    if(saved.rulesVersion!==2){
+      // Keep the collection and wallet; old numbered layouts cannot represent the new rules.
+      state=newStage(saved.stage,saved.money,saved.paints);
+      if(saved.status==='passed'){state.status='passed';state.bonusPaid=saved.bonusPaid;state.calls=saved.calls;state.callCapacity=saved.callCapacity;state.shopOffer=saved.shopOffer;state.score=state.target;}
+    }else{
+      const stampBalls=saved.stampBalls,destinations=saved.destinations;
+      if(!stampBalls||typeof stampBalls!=='object'||Array.isArray(stampBalls)||!destinations||typeof destinations!=='object'||Array.isArray(destinations))throw new Error('Invalid placements');
+      if(Object.keys(stampBalls).length!==saved.stamps.length||!numbers(Object.values(stampBalls))||!saved.stamps.every(tile=>stampBalls[tile]&&!saved.bag.includes(stampBalls[tile])))throw new Error('Invalid stamps');
+      if(Object.keys(destinations).length!==saved.offer.length||!numbers(Object.values(destinations))||!saved.offer.every(n=>destinations[n]&&!saved.stamps.includes(destinations[n])))throw new Error('Invalid destinations');
+      state={...newStage(saved.stage,saved.money),...saved,target:STAGE_TARGETS[saved.stage-1],stamps:new Set(saved.stamps),bag:new Set(saved.bag)};
+    }
     hasRun=true;
   }catch{try{localStorage.removeItem(SAVE_KEY);}catch{}}
 }

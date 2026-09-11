@@ -7,7 +7,7 @@ for(const touch of [true,false]){
  await page.goto(process.env.GAME_URL||'http://localhost:5173');await page.locator('#play-button').click();await page.locator('#balls .ball:not([disabled])').first().waitFor();
  const cdp=await page.context().newCDPSession(page);
  const order=()=>page.locator('#balls .face').allTextContents();
- const initial=await order();
+ const initial=await order();const destinations=await page.evaluate(()=>JSON.parse(localStorage.getItem('binglatro.run.v1')).destinations);
  const ball=n=>page.locator(`#balls .ball[data-number="${n}"]`);
  const center=async locator=>{const r=await locator.boundingBox();return {x:r.x+r.width/2,y:r.y+r.height/2};};
  const down=async pos=>{if(touch)await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[pos]});else{await page.mouse.move(pos.x,pos.y);await page.mouse.down();}};
@@ -24,7 +24,7 @@ for(const touch of [true,false]){
  // Reorder, then play that same ball on the card in one gesture.
  await down(await center(ball(initial[0])));await move(last);const board=await center(page.locator('#board'));await move(board);await up();
  await page.waitForFunction(()=>document.querySelector('#calls').textContent==='11'&&!document.querySelector('#balls .ball').disabled);
- assert.ok(await page.locator(`#cell-${initial[0]}`).evaluate(el=>el.classList.contains('stamped')));assert.equal(await page.locator('#money').textContent(),'5');assert.equal(await page.locator('#bag-count').textContent(),'24');
+ assert.ok(await page.locator(`#cell-${destinations[initial[0]]}`).evaluate(el=>el.classList.contains('stamped')));assert.equal(await page.locator('#money').textContent(),'5');assert.equal(await page.locator('#bag-count').textContent(),'24');
  assert.deepEqual(errors,[]);await page.close();
 }
 console.log('Passed touch and mouse reorder in both directions, invalid drop, cancellation, no resource cost, and reorder-to-play in one gesture.');

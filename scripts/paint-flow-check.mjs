@@ -22,18 +22,18 @@ for(const [i,color] of ['gold','red','blue'].entries()){
 }
 await page.locator('#shop-bag').click();for(const [n,color] of [[1,'gold'],[7,'red'],[13,'blue']])assert.ok((await page.locator(`#bag-grid [data-number="${n}"]`).evaluate(b=>getComputedStyle(b).backgroundImage)).includes(assets[color]));await page.locator('#bag-dialog .close').click();
 await page.locator('#shop-next').click();await page.locator('#balls .ball:not([disabled])').first().waitFor();
-const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('binglatro.run.v1')));saved.offer=[1,7,13];await restore(saved);await page.locator('#balls .ball:not([disabled])').first().waitFor();
+const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('binglatro.run.v1')));saved.offer=[1,7,13];saved.destinations={1:3,7:16,13:24};await restore(saved);await page.locator('#balls .ball:not([disabled])').first().waitFor();
 const backgrounds=[];
-for(const [n,color] of [[1,'gold'],[7,'red'],[13,'blue']]){const tile=page.locator(`#cell-${n}`);assert.ok(await tile.evaluate((c,color)=>c.classList.contains(`paint-${color}`),color));backgrounds.push(await tile.evaluate(c=>getComputedStyle(c).backgroundColor));}
+for(const [n,color] of [[1,'gold'],[7,'red'],[13,'blue']]){const tile=page.locator(`#cell-${saved.destinations[n]}`);assert.ok(await tile.evaluate((c,color)=>c.classList.contains(`paint-${color}`),color));backgrounds.push(await tile.evaluate(c=>getComputedStyle(c).backgroundColor));}
 assert.equal(new Set(backgrounds).size,3);assert.ok(backgrounds.every(c=>c!== 'rgb(240, 223, 183)'));
-await page.locator('#cell-13').tap();assert.equal(await page.locator('#tooltip-effect').textContent(),'+3 draws when scored');await page.locator('#cell-13').tap();await page.screenshot({path:'/tmp/binglatro-painted-card.png'});
+await page.locator('#cell-24').tap();assert.equal(await page.locator('#tooltip-effect').textContent(),'+3 draws when scored');await page.locator('#cell-24').tap();await page.screenshot({path:'/tmp/binglatro-painted-card.png'});
 for(const [n,color] of [[1,'gold'],[7,'red'],[13,'blue']]){
- const state=await page.evaluate(()=>JSON.parse(localStorage.getItem('binglatro.run.v1')));state.offer=[n];await restore(state);await page.locator('#balls .ball:not([disabled])').first().waitFor();
+ const state=await page.evaluate(()=>JSON.parse(localStorage.getItem('binglatro.run.v1')));state.offer=[n];state.destinations={[n]:saved.destinations[n]};await restore(state);await page.locator('#balls .ball:not([disabled])').first().waitFor();
  const b=await page.locator('#balls .ball').boundingBox(),board=await page.locator('#board').boundingBox();
  await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();await page.mouse.move(board.x+board.width/2,board.y+board.height/2,{steps:12});
  assert.ok((await page.locator('.drag-ghost').evaluate(b=>getComputedStyle(b).backgroundImage)).includes(assets[color]));await page.mouse.up();
  await page.locator('#balls .ball:not([disabled])').first().waitFor();
- assert.ok((await page.locator(`#cell-${n}`).evaluate(c=>getComputedStyle(c,'::before').backgroundImage)).includes(`stamp-${color}.svg`));
+ assert.ok((await page.locator(`#cell-${saved.destinations[n]}`).evaluate(c=>getComputedStyle(c,'::before').backgroundImage)).includes(`stamp-${color}.svg`));
 }
 await page.screenshot({path:'/tmp/binglatro-painted-stamps.png'});
 for(const name of ['app.js','game.js','background.js','style.css'])assert.ok(requests.some(u=>new URL(u).pathname.endsWith('/'+name)&&new URL(u).searchParams.has('v')),`${name} has a versioned URL`);

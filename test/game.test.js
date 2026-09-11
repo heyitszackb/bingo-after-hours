@@ -1,57 +1,36 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newStage as createStage,draw,choose,redraw,PATTERNS,settleStage,STAGE_TARGETS,targetFor} from '../game.js';
-const newStage=(stage=1,money=5,paints={})=>createStage(stage,money,paints,()=>.999999);
-test('25 ordinary balls and unique offers before any are played',()=>{for(let i=0;i<100;i++){const offer=draw();assert.equal(new Set(offer).size,3);assert.ok(offer.every(n=>n>=1&&n<=25));}assert.deepEqual(draw(newStage(),()=>.5),draw(newStage(),()=>.5));assert.equal(draw(newStage(),Math.random,8).length,8);});
-test('row activates five spaces for their numbered points and clears only completed stamps',()=>{const s=newStage();s.stamps=new Set([1,2,3,4,9]);s.offer=[5,10,12];const r=choose(s,5);assert.equal(r.points,15);assert.deepEqual([...s.stamps],[9]);assert.equal(s.calls,11);assert.equal(s.status,'playing');assert.deepEqual(r.activations.map(a=>a.number),[1,2,3,4,5]);});
-test('simultaneous row column and diagonal all score before union clears',()=>{const s=newStage(10);s.stamps=new Set([2,3,4,5,6,11,16,21,7,13,19,25,8]);s.offer=[1,10,20];const r=choose(s,1);assert.equal(r.points,135);assert.equal(r.activations.length,15);assert.equal(r.activations.filter(a=>a.number===1).length,3);assert.deepEqual([...s.stamps],[8]);assert.equal(s.status,'playing');});
-test('every row column and diagonal scores',()=>{for(const p of PATTERNS){const s=newStage();s.stamps=new Set(p.slice(0,4));s.offer=[p[4]];assert.equal(choose(s,p[4]).points,p.reduce((sum,n)=>sum+n,0));assert.equal(s.stamps.size,0);}});
-test('duplicate spends a call and counts plays but adds no stamp',()=>{const s=newStage();s.stamps.add(3);s.offer=[3,5,8];assert.equal(choose(s,3).duplicate,true);assert.equal(s.stamps.size,1);assert.equal(s.calls,11);assert.equal(s.played[3],1);});
-test('new runs have $5 and each reroll costs $1 without spending a call',()=>{
-  const s=newStage();assert.equal(s.money,5);
-  for(let remaining=4;remaining>=0;remaining--){assert.ok(redraw(s));assert.equal(s.money,remaining);assert.equal(s.calls,12);assert.equal(s.bag.size,25);}
-  const offer=[...s.offer];assert.equal(redraw(s),false);assert.equal(s.money,0);assert.deepEqual(s.offer,offer);
+import {newStage,draw,deal,choose,redraw,PATTERNS,settleStage,STAGE_TARGETS,openShop,paintBall,redrawShop} from '../game.js';
+const place=(s,ball,tile)=>{s.offer=[ball];s.destinations={[ball]:tile};return choose(s,ball);};
+test('new stages are blank with all balls, 12 calls and no permanent mappings',()=>{
+ const s=newStage();assert.equal(s.stamps.size,0);assert.deepEqual(s.stampBalls,{});assert.deepEqual(s.destinations,{});assert.equal(s.bag.size,25);assert.equal(s.calls,12);assert.equal(s.money,5);assert.equal(s.board,undefined);
 });
-test('money carries into the next stage and new runs reset to $5',()=>{
-  const s=newStage();redraw(s);redraw(s);const next=newStage(2,s.money);
-  assert.equal(next.money,3);assert.equal(newStage().money,5);
-  next.status='passed';assert.equal(redraw(next),false);assert.equal(next.money,3);
+test('deals pair unique available balls with unique empty destinations',()=>{
+ const s=newStage();place(s,25,3);for(let i=0;i<100;i++){deal(s);assert.equal(s.offer.length,3);assert.equal(new Set(s.offer).size,3);assert.equal(new Set(Object.values(s.destinations)).size,3);assert.ok(!s.offer.includes(25));assert.ok(!Object.values(s.destinations).includes(3));}
 });
-test('last-call success precedes game over; failure ends run',()=>{const s=newStage();s.score=25;s.calls=1;s.stamps=new Set([1,2,3,4]);s.offer=[5];choose(s,5);assert.equal(s.status,'passed');const f=newStage();f.calls=1;f.offer=[2];choose(f,2);assert.equal(f.status,'over');assert.equal(choose(f,2),null);});
-test('stage reset refreshes board calls and counts, increases target',()=>{const s=newStage(2);assert.equal(s.target,70);assert.equal(s.calls,12);assert.equal(s.money,5);assert.equal(s.stamps.size,0);assert.ok(s.played.every(n=>n===0));});
-
-test('playing removes only the chosen ball from all future draws and redraws',()=>{
-  const s=newStage();s.offer=[3,5,8];choose(s,3);
-  assert.equal(s.bag.size,24);assert.ok(!s.bag.has(3));assert.ok(s.bag.has(5)&&s.bag.has(8));
-  const all=draw(s,Math.random,25);assert.equal(all.length,24);assert.ok(!all.includes(3));
-  for(let i=0;i<100;i++)assert.ok(!draw(s).includes(3));
-  redraw(s);assert.ok(!s.offer.includes(3));assert.equal(s.bag.size,24);
-  s.offer=[3];assert.equal(choose(s,3),null);assert.equal(s.calls,11);
+test('playing uses the offered destination, removes only that ball, and clears offers',()=>{
+ const s=newStage();s.offer=[1,2,3];s.destinations={1:25,2:7,3:9};const r=choose(s,1);assert.equal(r.tile,25);assert.deepEqual([...s.stamps],[25]);assert.equal(s.stampBalls[25],1);assert.equal(s.calls,11);assert.ok(!s.bag.has(1));assert.ok(s.bag.has(2));assert.equal(s.played[1],1);assert.deepEqual(s.offer,[]);assert.deepEqual(s.destinations,{});
 });
-test('scoring clears stamps without returning played balls to the bag',()=>{
-  const s=newStage(2);
-  for(let n=1;n<=5;n++){s.offer=[n];choose(s,n);}
-  assert.equal(s.score,15);assert.equal(s.stamps.size,0);assert.equal(s.bag.size,20);
-  assert.ok(draw(s,Math.random,25).every(n=>n>5));
-  assert.equal(newStage(3).bag.size,25);
+test('invalid, stale and occupied destinations spend nothing',()=>{
+ const s=newStage();place(s,1,7);s.offer=[2];s.destinations={2:7};assert.equal(choose(s,2),null);assert.equal(s.calls,11);assert.equal(s.bag.size,24);s.destinations={};assert.equal(choose(s,2),null);s.destinations={2:26};assert.equal(choose(s,2),null);assert.equal(choose(s,1),null);
 });
-test('inspection and redraws do not remove balls',()=>{
-  const s=newStage();s.offer=draw(s);assert.equal(s.bag.size,25);
-  redraw(s);redraw(s);assert.equal(s.bag.size,25);
+test('every geometric pattern scores five base points independent of ball numbers',()=>{
+ for(const pattern of PATTERNS){const s=newStage(10);let r;for(let i=0;i<5;i++)r=place(s,25-i,pattern[i]);assert.equal(r.points,5);assert.deepEqual(r.activations.map(a=>a.tile),pattern);assert.deepEqual(r.activations.map(a=>a.number),[25,24,23,22,21]);assert.ok(r.activations.every(a=>a.points===1));assert.equal(s.stamps.size,0);assert.deepEqual(s.stampBalls,{});assert.equal(s.bag.size,20);}
 });
-
-test('cleared stages pay one dollar per unused call exactly once',()=>{
-  const s=newStage();s.money=3;s.calls=7;s.status='passed';
-  assert.equal(settleStage(s),7);assert.equal(s.money,10);
-  assert.equal(settleStage(s),0);assert.equal(s.money,10);
-  const next=newStage(2,s.money);assert.equal(next.money,10);assert.equal(next.bonusPaid,false);
+test('redraw costs $1, moves destinations, and leaves stamps and calls intact',()=>{
+ const s=newStage();place(s,25,1);deal(s,()=>.5);const first={...s.destinations};assert.ok(redraw(s,()=>0));assert.notDeepEqual(s.destinations,first);assert.equal(s.money,4);assert.equal(s.calls,11);assert.equal(s.stampBalls[1],25);for(let i=0;i<4;i++)redraw(s);const offer=[...s.offer],dest={...s.destinations};assert.equal(redraw(s),false);assert.deepEqual(s.offer,offer);assert.deepEqual(s.destinations,dest);
 });
-test('no bonus for unfinished or failed stages, or for a last-call win',()=>{
-  for(const status of ['playing','over']){const s=newStage();s.status=status;assert.equal(settleStage(s),0);assert.equal(s.money,5);}
-  const s=newStage();s.status='passed';s.calls=0;assert.equal(settleStage(s),0);assert.equal(s.money,5);assert.equal(s.bonusPaid,true);
+test('deals shrink gracefully when fewer than three balls or empty tiles remain',()=>{
+ const s=newStage();s.bag=new Set([1,2]);assert.equal(deal(s).length,2);s.stamps=new Set(Array.from({length:24},(_,i)=>i+1));assert.equal(deal(s).length,1);assert.deepEqual(Object.values(s.destinations),[25]);
 });
-
-test('all ten stages use the numbered-scoring target curve',()=>{
-  assert.deepEqual(STAGE_TARGETS,[40,70,100,140,190,250,325,425,550,700]);
-  STAGE_TARGETS.forEach((target,i)=>assert.equal(targetFor(i+1),target));
+test('last-call win takes precedence over failure and settles exactly once',()=>{
+ const s=newStage();for(let n=1;n<5;n++)place(s,20+n,n);s.calls=1;place(s,25,5);assert.equal(s.status,'passed');assert.equal(settleStage(s),0);assert.equal(settleStage(s),0);
+ const f=newStage();f.calls=1;place(f,2,8);assert.equal(f.status,'over');assert.equal(settleStage(f),0);
+ const win=newStage();win.status='passed';win.calls=7;assert.equal(settleStage(win),7);assert.equal(win.money,12);assert.equal(settleStage(win),0);
+});
+test('stages retain paints and money but reset all placements and replenish balls',()=>{
+ const s=newStage(1,12,{25:'blue'});place(s,25,1);const next=newStage(2,s.money,s.paints);assert.equal(next.money,12);assert.deepEqual(next.paints,{25:'blue'});assert.equal(next.stamps.size,0);assert.deepEqual(next.stampBalls,{});assert.equal(next.bag.size,25);assert.equal(next.calls,12);assert.deepEqual(STAGE_TARGETS,[5,10,15,20,30,40,55,70,90,120]);
+});
+test('shop prices, eligibility, replacement paints and all-ball pool',()=>{
+ const s=newStage(1,20);assert.equal(openShop(s),false);s.status='passed';settleStage(s);assert.ok(openShop(s));s.shopOffer=[1,2,3];const cash=s.money;assert.ok(paintBall(s,1,'gold'));assert.equal(s.money,cash-3);assert.equal(paintBall(s,1,'gold'),false);assert.ok(paintBall(s,1,'red'));assert.ok(paintBall(s,2,'blue'));assert.equal(paintBall(s,4,'red'),false);s.bag.clear();assert.ok(redrawShop(s));assert.equal(s.shopOffer.length,3);s.money=1;assert.equal(redrawShop(s),false);assert.equal(paintBall(s,s.shopOffer[0],'gold'),false);s.stage=10;assert.equal(openShop(s),false);
 });
