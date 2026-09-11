@@ -96,3 +96,6 @@ footer button{min-width:74px}#pause-button{min-width:50px;color:#aac9b9;border-c
 .cash-flight{position:absolute;display:grid;place-items:center;width:28px;height:28px;background:url('assets/coin.svg') center/contain no-repeat;image-rendering:pixelated;color:#49301b;font:21px 'VT323',monospace;filter:drop-shadow(0 0 8px #ffc871);pointer-events:none;will-change:transform}
 .cash-spark{position:absolute;width:4px;height:4px;background:#ffe59d;box-shadow:0 0 7px #f4c66c;pointer-events:none}
 @media(max-height:650px){#stage-result{height:85px}#stage-result #payout-earned{font-size:30px}#stage-result #result-icon{font-size:30px}}
+
+#bag-grid .ball.played-ball{filter:grayscale(1);opacity:.45}
+#bag-grid .ball.played-ball.inspected{filter:grayscale(1);outline:2px solid #a0b7ad;outline-offset:2px}

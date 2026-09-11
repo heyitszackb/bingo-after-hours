@@ -55,7 +55,17 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&tooltipAnchor){e.pr
 window.addEventListener('resize',positionTooltip);
 window.visualViewport?.addEventListener('resize',positionTooltip);
 document.addEventListener('scroll',()=>hideTooltip(),true);
-function refreshBag(){if(tooltipAnchor?.closest('#bag-grid'))hideTooltip();$('bag-grid').replaceChildren();for(const n of state.bag){const b=ball(n);if(state.stamps.has(n))b.classList.add('stamped-ball');if(state.offer.includes(n))b.classList.add('on-track');b.setAttribute('aria-label',`Ball ${n}${state.stamps.has(n)?', stamped on card':''}${state.offer.includes(n)?', on track':''}; played ${state.played[n]} times`);b.onclick=()=>inspect(n,b);$('bag-grid').append(b);}}
+function refreshBag(){
+  if(tooltipAnchor?.closest('#bag-grid'))hideTooltip();
+  $('bag-grid').replaceChildren();
+  for(let n=1;n<=25;n++){
+    const b=ball(n),played=state.played[n]>0;
+    if(played)b.classList.add('played-ball');
+    if(state.offer.includes(n))b.classList.add('on-track');
+    b.setAttribute('aria-label',`Ball ${n}${played?', already played, unavailable this stage':''}${state.offer.includes(n)?', on track':''}; played ${state.played[n]} times`);
+    b.onclick=()=>inspect(n,b);$('bag-grid').append(b);
+  }
+}
 function lock(){hideTooltip();busy=true;render();document.querySelectorAll('#balls .ball').forEach(b=>b.disabled=true);}
 function unlock(){busy=false;saveRun();render();document.querySelectorAll('#balls .ball').forEach(b=>{b.disabled=false;b.classList.remove('enter');});}
 function showBalls(){$('balls').replaceChildren();state.offer.forEach((n,i)=>{const b=ball(n);b.classList.add('enter');b.style.setProperty('--i',i);b.disabled=true;b.setAttribute('aria-label',`Ball ${n}. Tap to inspect. Drag along the track to reorder, or to the card to play. Keyboard: Enter to inspect, Space to play.`);b.addEventListener('pointerdown',e=>startDrag(e,n,b));b.addEventListener('pointermove',moveDrag);b.addEventListener('pointerup',endDrag);b.addEventListener('pointercancel',cancelDrag);b.addEventListener('lostpointercapture',()=>{if(drag)cancelDrag();});b.onclick=e=>{if(e.detail===0&&!busy)inspect(n,b);};b.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();if(!busy&&!drag)play(n,b);} };$('balls').append(b);});refreshBag();}
