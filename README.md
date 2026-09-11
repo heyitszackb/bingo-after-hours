@@ -4,9 +4,9 @@ A solo arcade bingo game built for one mobile screen.
 
 - Drag one of three ordinary numbered balls anywhere onto the card; it snaps to its matching square. Tap a ball to inspect it without spending a call. Balls have no powers yet.
 - Each row, column, or diagonal scores 10 points. Simultaneous lines score together, then only their stamps clear.
-- 12 calls and two free redraws per stage. Repeated stamps spend a call. All balls return to the bag after a choice.
+- 12 calls and two free redraws per stage. The played ball is removed for the rest of the stage, including after its stamp scores and clears. Unchosen balls return; redraws remove nothing. Each new stage refills all 25 balls.
 - Ten stages with targets from 10 to 100. The stage map marks your current stage, completed stages, and locked future stages. Completing stage 10 finishes the run.
-- The bag displays all 25 balls, greys out stamped numbers, and marks current offers with a cyan dot. Play counts remain available in accessible labels.
+- The bag displays only remaining balls and marks current offers with a cyan dot. Its counter decreases after each play.
 - Compact score, money, and stage counters. Money starts at $0; earning and spending are not implemented.
 - Rolling, magnetic placement, stamp impacts, pixel particles, synthesized impact sounds, and supported-device haptics. Reduced-motion preferences are respected.
 - Keyboard: Enter inspects a focused ball; Space plays it. All icon controls have accessible labels.

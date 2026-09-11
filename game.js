@@ -5,17 +5,17 @@ export const PATTERNS = [
 ];
 export const targetFor = stage => stage * 10;
 export function newStage(stage=1) {
-  return {stage,target:targetFor(stage),score:0,calls:12,redraws:2,stamps:new Set(),played:Array(26).fill(0),status:'playing',offer:[]};
+  return {stage,target:targetFor(stage),score:0,calls:12,redraws:2,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
 }
-export function draw(random=Math.random,count=3) {
-  const bag=Array.from({length:25},(_,i)=>i+1);
+export function draw(state=newStage(),random=Math.random,count=3) {
+  const bag=[...state.bag];
   for(let i=bag.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}
   return bag.slice(0,Math.min(count,25));
 }
 export function choose(state,number) {
-  if(state.status!=='playing'||!state.offer.includes(number)) return null;
+  if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)) return null;
   const duplicate=state.stamps.has(number);
-  state.stamps.add(number);state.played[number]++;state.calls--;
+  state.stamps.add(number);state.bag.delete(number);state.played[number]++;state.calls--;
   const patterns=PATTERNS.filter(p=>p.every(n=>state.stamps.has(n)));
   const cleared=[...new Set(patterns.flat())];
   state.score+=patterns.length*10;
@@ -27,5 +27,5 @@ export function choose(state,number) {
 }
 export function redraw(state,random=Math.random) {
   if(state.status!=='playing'||state.redraws===0)return false;
-  state.redraws--;state.offer=draw(random);return true;
+  state.redraws--;state.offer=draw(state,random);return true;
 }
