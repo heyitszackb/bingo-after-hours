@@ -34,9 +34,8 @@ export function draw(state=newStage(),random=Math.random,count=3) {
   for(let i=bag.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}
   return bag.slice(0,Math.min(count,25));
 }
-export function choose(state,number) {
-  const tile=state.destinations[number];
-  if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||tile<1||tile>25||state.stamps.has(tile)) return null;
+export function choose(state,number,tile=state.destinations[number]) {
+  if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||!Object.values(state.destinations).includes(tile)||tile<1||tile>25||state.stamps.has(tile)) return null;
   state.stamps.add(tile);state.stampBalls[tile]=number;state.bag.delete(number);state.played[number]++;state.calls--;
   const scoredPatterns=completedPatterns(state.stamps);
   const patterns=scoredPatterns.map(p=>p.tiles);

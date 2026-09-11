@@ -26,8 +26,8 @@ await first.tap();
 // Exercise real touch drag through Chromium's input protocol.
 const cdp=await page.context().newCDPSession(page);
 async function touchDrag(locator,x,y){const r=await locator.boundingBox();const sx=r.x+r.width/2,sy=r.y+r.height/2;await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:sx,y:sy}]});for(let i=1;i<=8;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:sx+(x-sx)*i/8,y:sy+(y-sy)*i/8}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
-const tile=await page.evaluate(n=>JSON.parse(localStorage.getItem('binglatro.run.v1')).destinations[n],n);
-let board=await page.locator('#board').boundingBox();await touchDrag(first,board.x+board.width-10,board.y+10);
+const tile=await page.evaluate(()=>Object.values(JSON.parse(localStorage.getItem('binglatro.run.v1')).destinations)[1]);
+let board=await page.locator(`#cell-${tile}`).boundingBox();await touchDrag(first,board.x+board.width/2,board.y+board.height/2);
 await page.waitForFunction(()=>document.querySelector('#calls').textContent==='11'&&!document.querySelector('#balls .ball').disabled);
 assert.ok(await page.locator(`#cell-${tile}`).evaluate(e=>e.classList.contains('stamped')));assert.equal(await page.locator('.drag-ghost').count(),0);assert.ok(await page.locator('#inspect-tooltip').isHidden());
 await page.locator('#bag').tap();assert.equal(await page.locator('#bag-grid .ball').count(),25);assert.equal(await page.locator('#bag-grid .played-ball').count(),1);assert.equal(await page.locator('#bag-grid .played-ball .face').textContent(),n);assert.equal(await page.locator('#bag-count').textContent(),'24');assert.ok((await page.locator('#bag-grid .face').allTextContents()).includes(n));assert.equal(await page.locator('#bag-grid .on-track').count(),3);await page.locator('#bag-grid .played-ball').tap();assert.equal(await page.locator('#bag-grid .played-ball').evaluate(b=>getComputedStyle(b).filter),'grayscale(1)');assert.ok(await page.locator('#inspect-tooltip').isVisible());assert.equal(await page.locator('dialog[open]').count(),1);await page.keyboard.press('Escape');assert.ok(await page.locator('#bag-dialog').isVisible());await page.locator('#bag-dialog .close').tap();
@@ -38,5 +38,5 @@ for(let remaining=3;remaining>=0;remaining--){await page.locator('#redraw').tap(
 assert.ok(await page.locator('#redraw').isDisabled());
 await page.screenshot({path:'/tmp/bingo-mobile-v2.png'});
 assert.deepEqual(errors,[]);
-console.log('Passed: six viewport fits, tap inspection, touch drag to matching square, invalid drop, visual bag, locked stage map, redraw, no browser errors.');
+console.log('Passed: six viewport fits, tap inspection, touch drag to a shared offered square, invalid drop, visual bag, locked stage map, redraw, no browser errors.');
 await browser.close();

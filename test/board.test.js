@@ -1,6 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newStage,deal,choose} from '../game.js';
+test('every offered ball can occupy every offered space, retaining its own identity and paint',()=>{
+ for(const number of [1,2,3])for(const tile of [1,13,25]){
+  const s=newStage(10,5,{1:'red',2:'gold',3:'blue'});s.offer=[1,2,3];s.destinations={1:1,2:13,3:25};
+  const result=choose(s,number,tile);
+  assert.equal(result.tile,tile);assert.equal(s.stampBalls[tile],number);assert.deepEqual([...s.stamps],[tile]);assert.equal(s.calls,11);assert.equal(s.score,0);assert.equal(s.bag.size,24);assert.ok(!s.bag.has(number));assert.equal(s.played[number],1);
+ }
+});
+test('choosing an unoffered location or an occupied location spends nothing',()=>{
+ const s=newStage();s.offer=[1,2,3];s.destinations={1:1,2:13,3:25};
+ assert.equal(choose(s,1,7),null);assert.equal(s.calls,12);assert.equal(s.bag.size,25);
+ s.stamps.add(13);assert.equal(choose(s,1,13),null);assert.equal(s.calls,12);assert.equal(s.played[1],0);
+});
 test('the same three balls get different locations on different deals',()=>{
  const s=newStage();s.bag=new Set([1,2,3]);deal(s,()=>0);const first={...s.destinations};deal(s,()=>.8);assert.deepEqual([...s.offer].sort(),[1,2,3]);assert.notDeepEqual(s.destinations,first);
 });

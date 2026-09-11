@@ -195,3 +195,8 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 @media(max-width:350px){#patterns-dialog{padding:18px 10px 12px}.pattern-name{font-size:19px;gap:7px}.patterns-columns,.pattern-row{grid-template-columns:minmax(0,1fr) 32px 50px;gap:6px}.pattern-count{font-size:25px}.pattern-preview{width:36px;height:36px;flex-basis:36px}.patterns-columns{font-size:12px}}
 @media(max-height:650px){.patterns-heading{margin-bottom:10px}.pattern-row{min-height:53px;padding-top:5px;padding-bottom:5px}#patterns-list{gap:6px}#patterns-note{margin-top:12px}}
 @media(orientation:landscape) and (max-height:500px){#patterns-dialog{width:min(94vw,730px);padding:17px 14px 12px}#patterns-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}.patterns-columns{display:none}.patterns-heading{margin-bottom:12px}.patterns-heading h2{font-size:31px}.patterns-heading small{font-size:12px}.patterns-total strong{font-size:30px}.patterns-total small{font-size:11px}.pattern-name{font-size:20px;gap:8px}.pattern-row{grid-template-columns:minmax(0,1fr) 33px 47px;gap:5px;min-height:56px}.pattern-count{font-size:26px}.pattern-preview{width:36px;height:36px;flex-basis:36px}#patterns-note{margin-top:12px}footer button{gap:10px}}
+
+/* A stamp carries its ball's identity; unplayed tiles stay blank. */
+.cell.stamped span{transform:rotate(-12deg);pointer-events:none}
+.cell.just-stamped span{animation:stamp .36s both}
+.cell.clearing span{animation:stamp-clear .25s ease-out forwards}

@@ -1,5 +1,5 @@
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=7932ea5bc29b';
+import {newStage,deal,choose,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=eea5240cae59';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,muted=false,paintDrag=null,selectedPaint=null,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
@@ -11,10 +11,10 @@ function render(){
   $('patterns-button').disabled=busy||payingOut;$('score-patterns').disabled=busy||payingOut;
   $('score-patterns').setAttribute('aria-label',`${state.score} of ${state.target} points. View scoring patterns and run counts`);
   $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);for(const k of ['score','target','calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw').disabled=busy||state.money<1||state.status!=='playing';$('redraw').setAttribute('aria-label',state.money<1?'Reroll costs $1; not enough money':'Reroll for $1 without using a call');renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
-    const c=$(`cell-${tile}`),offered=state.offer.find(n=>state.destinations[n]===tile),number=state.stampBalls[tile]??offered;
-    c.className=`cell paint-${state.paints[number]||'grey'}${state.stamps.has(tile)?' stamped':''}${offered!==undefined?' offered':''}`;
-    c.querySelector('span').textContent=offered??'';
-    c.setAttribute('aria-label',`Row ${Math.floor((tile-1)/5)+1}, column ${(tile-1)%5+1}${state.stamps.has(tile)?', stamped':offered!==undefined?`, destination for ball ${offered}`:', empty'}. Base score 1 point.`);
+    const c=$(`cell-${tile}`),offered=Object.values(state.destinations).includes(tile),number=state.stampBalls[tile];
+    c.className=`cell paint-${state.paints[number]||'grey'}${state.stamps.has(tile)?' stamped':''}${offered?' offered':''}`;
+    c.querySelector('span').textContent=state.stamps.has(tile)?state.stampBalls[tile]:'';
+    c.setAttribute('aria-label',`Row ${Math.floor((tile-1)/5)+1}, column ${(tile-1)%5+1}${state.stamps.has(tile)?`, stamped with ball ${number}`:offered?', available for any drawn ball':', empty'}. Base score 1 point.`);
   }}
 
 function ball(n){const b=document.createElement('button');b.className=`ball paint-${state.paints[n]||'grey'}`;b.dataset.number=n;b.innerHTML=`<span class="face">${n}</span>`;b.setAttribute('aria-label',`Inspect ball ${n}`);return b;}
@@ -59,7 +59,7 @@ function showTooltip(n,anchor,space=false){
   positionTooltip();
   animate(tip,[{opacity:0,transform:'translateY(5px) scale(.94)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:150,easing:'cubic-bezier(.2,.8,.25,1)'});
 }
-function inspectSpace(tile){const n=state.stampBalls[tile]??state.offer.find(n=>state.destinations[n]===tile);showTooltip(n,$(`cell-${tile}`),true);}
+function inspectSpace(tile){showTooltip(state.stampBalls[tile],$(`cell-${tile}`),true);}
 function inspect(n,anchor){showTooltip(n,anchor);}
 document.addEventListener('pointerdown',e=>{if(tooltipAnchor&&!tooltipAnchor.contains(e.target)&&!$('inspect-tooltip').contains(e.target))hideTooltip();},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&tooltipAnchor){e.preventDefault();e.stopPropagation();hideTooltip();}},true);
@@ -103,6 +103,15 @@ function previewOrder(d,order){
   }
 }
 function isOnBoard(x,y){const r=$('board').getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;}
+function nearestDestination(x,y){
+  let nearest=null,distance=Infinity;
+  for(const tile of Object.values(state.destinations)){
+    if(state.stamps.has(tile))continue;
+    const r=$(`cell-${tile}`).getBoundingClientRect(),d=Math.hypot(x-r.left-r.width/2,y-r.top-r.height/2);
+    if(d<distance){nearest=tile;distance=d;}
+  }
+  return nearest;
+}
 function isOnTrack(x,y){const r=document.querySelector('.track').getBoundingClientRect();return x>=r.left-16&&x<=r.right+16&&y>=r.top-16&&y<=r.bottom+16;}
 function moveDrag(e){
   if(!drag||e.pointerId!==drag.id)return;
@@ -118,7 +127,8 @@ function moveDrag(e){
   const over=isOnBoard(e.clientX,e.clientY),onTrack=!over&&isOnTrack(e.clientX,e.clientY);
   document.querySelector('.board-frame').classList.toggle('drag-over',over);
   $('balls').classList.toggle('reordering',onTrack);
-  $(`cell-${d.tile}`).classList.toggle('destination',over);
+  document.querySelectorAll('.cell.destination').forEach(c=>c.classList.remove('destination'));
+  if(over){d.tile=nearestDestination(e.clientX,e.clientY);$(`cell-${d.tile}`)?.classList.add('destination');}
   if(onTrack){
     const x=e.clientX+$('balls').scrollLeft-d.scrollLeft;
     let index=0;
@@ -128,7 +138,7 @@ function moveDrag(e){
 }
 function cleanDrag(d){
   d.b.classList.remove('held');$('balls').classList.remove('reordering');
-  document.querySelector('.board-frame').classList.remove('drag-over');$(`cell-${d.tile}`).classList.remove('destination');
+  document.querySelector('.board-frame').classList.remove('drag-over');document.querySelectorAll('.cell.destination').forEach(c=>c.classList.remove('destination'));
 }
 function commitOrder(d){
   for(const n of state.offer){const node=d.nodes.find(node=>Number(node.dataset.number)===n);$('balls').append(node);node.style.order='';node.style.setProperty('--i',state.offer.indexOf(n));}
@@ -138,7 +148,7 @@ async function endDrag(e){
   const d=drag;drag=null;
   if(!d.moved){cleanDrag(d);inspect(d.n,d.b);return;}
   if(isOnBoard(e.clientX,e.clientY)){
-    cleanDrag(d);commitOrder(d);await play(d.n,d.b,d.ghost);return;
+    d.tile=nearestDestination(e.clientX,e.clientY);cleanDrag(d);commitOrder(d);await play(d.n,d.b,d.ghost,d.tile);return;
   }
   busy=true;
   const reordered=isOnTrack(e.clientX,e.clientY);
@@ -227,7 +237,7 @@ async function activateSpaces(result){
   result.cleared.forEach(n=>$(`cell-${n}`).classList.add('clearing'));
   await wait(250);
 }
-async function play(n,b,ghost){if(busy){ghost?.remove();return;}lock();const result=choose(state,n);if(!result){ghost?.remove();unlock();return;}saveRun();renderCalls(state.calls-result.bonusDraws);$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);const cell=$(`cell-${result.tile}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.classList.add('leave');});if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}document.querySelectorAll('.cell.offered').forEach(c=>{c.className='cell paint-grey';c.querySelector('span').textContent='';});cell.className=`cell paint-${state.paints[n]||'grey'} stamped just-stamped`;pulseBackground();sound('stamp');navigator.vibrate?.(18);burst(r);animate(document.querySelector('.board-frame'),[{transform:'translate(0,0)'},{transform:'translate(0,3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});$('announcer').textContent=`Played ball ${n}. One call used.`;await wait(370);if(result.points)await activateSpaces(result);await wait(120);render();refreshBag();if(state.status!=='playing'){showResult();return;}await nextDraw();}
+async function play(n,b,ghost,tile=state.destinations[n]){if(busy){ghost?.remove();return;}lock();const result=choose(state,n,tile);if(!result){ghost?.remove();unlock();return;}saveRun();renderCalls(state.calls-result.bonusDraws);$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);const cell=$(`cell-${result.tile}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.classList.add('leave');});if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}document.querySelectorAll('.cell.offered').forEach(c=>{c.className='cell paint-grey';c.querySelector('span').textContent='';});cell.className=`cell paint-${state.paints[n]||'grey'} stamped just-stamped`;cell.querySelector('span').textContent=n;pulseBackground();sound('stamp');navigator.vibrate?.(18);burst(r);animate(document.querySelector('.board-frame'),[{transform:'translate(0,0)'},{transform:'translate(0,3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});$('announcer').textContent=`Played ball ${n}. One call used.`;await wait(370);if(result.points)await activateSpaces(result);await wait(120);render();refreshBag();if(state.status!=='playing'){showResult();return;}await nextDraw();}
 function showStages(){hideTooltip();$('stage-grid').innerHTML=Array.from({length:10},(_,i)=>{const n=i+1,current=n===state.stage,done=n<state.stage;return `<div class="stage-node ${current?'current':done?'complete':'locked'}" ${current?'aria-current="step"':''} aria-label="Stage ${n}, ${current?'current':done?'completed':'locked'}"><span>${n}<small>${STAGE_TARGETS[i].toLocaleString()} pts</small></span>${current?'<span>◆</span>':done?'<span>✓</span>':'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'}</div>`;}).join('');$('stage-dialog').showModal();}
 function showPatterns(){
   if(busy||drag||paintDrag||payingOut)return;

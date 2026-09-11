@@ -22,9 +22,9 @@ for(const touch of [true,false]){
  if(touch){await down(await center(ball(initial[0])));await move(last);await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});await settle();assert.deepEqual(await order(),initial);}
  assert.equal(await page.locator('#calls').textContent(),'12');assert.equal(await page.locator('#money').textContent(),'5');assert.equal(await page.locator('#bag-count').textContent(),'25');assert.equal(await page.locator('.board .stamped').count(),0);
  // Reorder, then play that same ball on the card in one gesture.
- await down(await center(ball(initial[0])));await move(last);const board=await center(page.locator('#board'));await move(board);await up();
+ await down(await center(ball(initial[0])));await move(last);const board=await center(page.locator(`#cell-${destinations[initial[1]]}`));await move(board);await up();
  await page.waitForFunction(()=>document.querySelector('#calls').textContent==='11'&&!document.querySelector('#balls .ball').disabled);
- assert.ok(await page.locator(`#cell-${destinations[initial[0]]}`).evaluate(el=>el.classList.contains('stamped')));assert.equal(await page.locator('#money').textContent(),'5');assert.equal(await page.locator('#bag-count').textContent(),'24');
+ assert.ok(await page.locator(`#cell-${destinations[initial[1]]}`).evaluate(el=>el.classList.contains('stamped')));assert.equal(await page.locator('#money').textContent(),'5');assert.equal(await page.locator('#bag-count').textContent(),'24');
  assert.deepEqual(errors,[]);await page.close();
 }
 console.log('Passed touch and mouse reorder in both directions, invalid drop, cancellation, no resource cost, and reorder-to-play in one gesture.');

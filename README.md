@@ -5,8 +5,8 @@ A solo arcade bingo MVP designed to fit one mobile screen.
 ## Current prototype
 
 - The 5×5 board starts blank. Tiles have no permanent numbers or ball identities.
-- Every draw pairs three random available balls (numbered 1–25) with three distinct random empty tiles. Only those destinations temporarily display their offered ball numbers. Rerolling changes both the balls and destinations. Reordering balls does not change their destinations.
-- Drag a ball anywhere onto the card to stamp its assigned destination. The number disappears; the tile retains the played ball’s paint. Unchosen tiles become blank again. Played balls leave the bag until the next stage; unchosen balls remain available.
+- Every draw offers three random available balls (numbered 1–25) and three distinct random empty tiles. Any offered ball can go to any offered tile. Those destinations glow, but empty tiles have no printed numbers. Rerolling changes both the balls and destinations. Reordering balls does not change the available spaces.
+- Drag a ball over the card: the nearest offered space highlights, and releasing stamps that space. Dropping outside the card cancels placement. The stamp retains the played ball’s number and paint until it clears. Unchosen tiles become blank again. Played balls leave the bag until the next stage; unchosen balls remain available.
 - Five pattern types score: full rows (5), columns (5), diagonals (5), the four outer board corners (4), and filled 2×2 squares anywhere (4). 3×3 squares do not score as a separate pattern. Each scoring tile earns 1 base point. Ball numbers have no scoring value. Simultaneous patterns each activate their tiles, including shared tiles, then their stamps clear. Other stamps remain. A cleared tile can later receive a different ball.
 - Grey is the default paint. Red doubles the entire scoring pattern, stacking per red stamp. Gold pays $1 when its stamp scores. Blue grants 3 extra calls when its stamp scores. Shared stamps trigger once per completed pattern. Red multiplies points only, not money or calls.
 - Each stage starts with 12 calls. Every play uses one. Rerolls cost $1, without using a call. Start a run with $5. Unused calls, including blue bonuses, fly into the wallet for $1 each after a win. Running out of calls or available balls below target ends the run.
@@ -23,6 +23,7 @@ A solo arcade bingo MVP designed to fit one mobile screen.
 
 `npm test` covers deals, destinations, scoring, paint interactions, resource costs and progression. Browser checks require `npm install` and local Google Chrome. Each accepts `GAME_URL` for a deployed site:
 
+- `node scripts/placement-check.mjs`: mouse/touch nearest-space selection, stamp numbers and reload persistence.
 - `node scripts/pattern-check.mjs`: scoring ledger, square scoring, run count persistence, restart and mobile layout.
 - `node scripts/board-check.mjs`: blank board, random assignments, scoring and save migration.
 - `node scripts/browser-check.mjs`: mobile sizes, touch drag, tooltips, bag and rerolls.
