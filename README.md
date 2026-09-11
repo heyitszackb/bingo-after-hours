@@ -2,6 +2,7 @@
 
 A solo arcade bingo game built for one mobile screen, with a title screen, pause menu, help, restart, and saved-run resume.
 
+- Unpainted balls and stamps are grey. Red paint supplies the ×2 scoring effect; saved orange paint upgrades migrate to red.
 - Drag balls along the track to reorder them for free, with neighboring balls sliding into place. Drag one of three numbered balls anywhere onto the card; it snaps to its matching square. Tap a ball or board space for an anchored tooltip without spending a call. Space tooltips show “Nothing special” when unmodified and describe active paint effects. Tap again, tap elsewhere, or press Escape to dismiss.
 - Each row, column, or diagonal activates its five spaces in order for 1 point each (5 points per bingo). Each activation pops, shows +1, and ticks the score up. Simultaneous lines each activate all five spaces, including shared spaces, then only their stamps clear.
 - 12 calls per stage. Rerolls cost $1 each and spend no calls; they are disabled at $0. The played ball is removed for the rest of the stage, including after its stamp scores and clears. Unchosen balls return; redraws remove nothing. Each new stage refills all 25 balls.
@@ -15,12 +16,12 @@ A solo arcade bingo game built for one mobile screen, with a title screen, pause
 
 ## Paint shop
 
-After each successful stage (except the final stage), three random balls from the full set are offered for painting. Drag gold, orange, or blue paint onto a ball for $3; selecting paint then selecting a ball also works with touch or keyboard. Refresh the three balls for $2, or leave for the next stage at any time. Replacing an existing color costs $3; applying the same color again costs nothing and makes no change. Paint persists for the run and appears on the track, board, and bag. Shops and purchases are saved immediately.
+After each successful stage (except the final stage), three random balls from the full set are offered for painting. Drag gold, red, or blue paint onto a ball for $3; selecting paint then selecting a ball also works with touch or keyboard. Refresh the three balls for $2, or leave for the next stage at any time. Replacing an existing color costs $3; applying the same color again costs nothing and makes no change. Paint persists for the run and appears on the track, board, and bag. Shops and purchases are saved immediately.
 
 - Gold balls pay $1 each time their space activates in a completed row, column, or diagonal. A coin flies into the wallet during scoring; adjacent plays give no bonus.
 - Blue balls grant 3 extra calls each time their space activates in a completed row, column, or diagonal. The bonus flies into the call counter immediately during scoring. Calls can exceed 12; unused bonus calls are included in the stage payout. New stages start with 12 calls again. If every ball has been played below target, the run ends even with bonus calls remaining.
-- Shared spaces activate once per completed pattern, including their gold or blue bonus. Orange multiplies points only, not money or extra calls.
-- Orange balls double the points of every completed pattern containing them: horizontal rows, vertical columns, and diagonals. Multipliers are calculated only when a pattern scores. Multiple orange balls multiply together (two give ×4), independently for each simultaneously completed pattern. The completed pattern flashes its multiplier before its spaces activate for multiplied points.
+- Shared spaces activate once per completed pattern, including their gold or blue bonus. Red multiplies points only, not money or extra calls.
+- Red balls double the points of every completed pattern containing them: horizontal rows, vertical columns, and diagonals. Multipliers are calculated only when a pattern scores. Multiple red balls multiply together (two give ×4), independently for each simultaneously completed pattern. The completed pattern flashes its multiplier before its spaces activate for multiplied points.
 
 ## Navigation and saves
 
@@ -39,7 +40,7 @@ Run `npm start`, then open http://localhost:5173. Plain HTML/CSS/JavaScript; no 
 - `node scripts/browser-check.mjs`: six viewport sizes, actual touch input, inspection, valid/invalid drops, bag, stage map, and redraws. Set `GAME_URL` to check the deployed site.
 - `node scripts/navigation-check.mjs`: title, help, pause, restart, saved-run resume, sound settings, targets, and corrupt-save recovery.
 - `node scripts/reorder-check.mjs`: touch and mouse reordering, cancellation, unchanged money/calls, and dragging from a reordered track onto the board. Set `GAME_URL` to check the live site.
-- `node scripts/shop-check.mjs`: mobile shop layouts, touch/mouse painting, payment guards, saved offers, color persistence, gold payouts, orange multipliers, and keyboard purchases.
+- `node scripts/shop-check.mjs`: mobile shop layouts, touch/mouse painting, payment guards, saved offers, color persistence, gold payouts, red multipliers, and keyboard purchases.
 - `node scripts/stage-check.mjs`: normal-motion scoring, stage progression, and final-stage restart using deterministic browser fixtures.
 
 ## Deployment

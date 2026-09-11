@@ -19,7 +19,7 @@ export function choose(state,number) {
   state.stamps.add(number);state.bag.delete(number);state.played[number]++;state.calls--;
   const patterns=PATTERNS.filter(p=>p.every(n=>state.stamps.has(n)));
   const cleared=[...new Set(patterns.flat())];
-  const multipliers=patterns.map(pattern=>2**pattern.filter(n=>state.paints[n]==='orange').length);
+  const multipliers=patterns.map(pattern=>2**pattern.filter(n=>state.paints[n]==='red').length);
   const activations=patterns.flatMap((pattern,i)=>pattern.map((number,j)=>({number,points:multipliers[i],gold:state.paints[number]==='gold'?1:0,draws:state.paints[number]==='blue'?3:0,patternMultiplier:j===0?multipliers[i]:1,pattern:j===0?pattern:null})));
   const points=activations.reduce((total,activation)=>total+activation.points,0);
   const gold=activations.reduce((sum,a)=>sum+a.gold,0),bonusDraws=activations.reduce((sum,a)=>sum+a.draws,0);
@@ -50,7 +50,7 @@ export function openShop(state,random=Math.random){
   return true;
 }
 export function paintBall(state,number,color){
-  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!state.shopOffer?.includes(number)||!['gold','orange','blue'].includes(color)||state.money<3||state.paints[number]===color)return false;
+  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!state.shopOffer?.includes(number)||!['gold','red','blue'].includes(color)||state.money<3||state.paints[number]===color)return false;
   state.money-=3;state.paints[number]=color;return true;
 }
 export function redrawShop(state,random=Math.random){

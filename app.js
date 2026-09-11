@@ -5,10 +5,10 @@ let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=fal
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
 const animate=(el,frames,options)=>el.animate(frames,{...options,duration:reduced?1:options.duration}).finished.catch(()=>{});
 function sound(kind,step=0){if(muted)return;if(!navigator.userActivation?.hasBeenActive)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const t=audio.currentTime;const o=audio.createOscillator(),g=audio.createGain();o.type=kind==='score'?'triangle':'square';o.frequency.setValueAtTime(kind==='activate'?330*2**(Math.min(step,12)/12):kind==='score'?660:kind==='roll'?180:110,t);o.frequency.exponentialRampToValueAtTime(kind==='activate'?220*2**(Math.min(step,12)/12):kind==='score'?1320:40,t+.12);g.gain.setValueAtTime(.035,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);o.connect(g).connect(audio.destination);o.start(t);o.stop(t+.17);}catch{}}
-function burst(rect,scoring=false){if(reduced)return;for(let i=0;i<(scoring?28:12);i++){const p=document.createElement('i');p.className='particle';p.style.left=`${rect.left+rect.width/2}px`;p.style.top=`${rect.top+rect.height/2}px`;p.style.background=scoring?'#f4c66c':i%2?'#f37868':'#f7dfaf';$('effects').append(p);const angle=Math.random()*Math.PI*2,d=25+Math.random()*(scoring?150:65);animate(p,[{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+25}px) scale(0)`,opacity:0}],{duration:450+Math.random()*250,easing:'cubic-bezier(.1,.7,.3,1)'}).then(()=>p.remove());}}
+function burst(rect,scoring=false){if(reduced)return;for(let i=0;i<(scoring?28:12);i++){const p=document.createElement('i');p.className='particle';p.style.left=`${rect.left+rect.width/2}px`;p.style.top=`${rect.top+rect.height/2}px`;p.style.background=scoring?'#f4c66c':i%2?'#a9b7b8':'#e4e9dd';$('effects').append(p);const angle=Math.random()*Math.PI*2,d=25+Math.random()*(scoring?150:65);animate(p,[{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+25}px) scale(0)`,opacity:0}],{duration:450+Math.random()*250,easing:'cubic-bezier(.1,.7,.3,1)'}).then(()=>p.remove());}}
 for(let n=1;n<=25;n++){const c=document.createElement('button');c.type='button';c.id=`cell-${n}`;c.className='cell';c.innerHTML=`<span>${n}</span>`;c.onclick=()=>{if(!busy&&!drag)inspectSpace(n);};$('board').append(c);}
-function render(){$('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);for(const k of ['score','target','calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw').disabled=busy||state.money<1||state.status!=='playing';$('redraw').setAttribute('aria-label',state.money<1?'Reroll costs $1; not enough money':'Reroll for $1 without using a call');renderCalls(state.calls);for(let n=1;n<=25;n++){const c=$(`cell-${n}`);c.className=`cell paint-${state.paints[n]||'red'}${state.stamps.has(n)?' stamped':''}${state.offer.includes(n)?' offered':''}`;c.setAttribute('aria-label',`${n}${state.stamps.has(n)?', stamped':''}`);}}
-function ball(n){const b=document.createElement('button');b.className=`ball paint-${state.paints[n]||'red'}`;b.dataset.number=n;b.innerHTML=`<span class="face">${n}</span>`;b.setAttribute('aria-label',`Inspect ball ${n}`);return b;}
+function render(){$('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);for(const k of ['score','target','calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw').disabled=busy||state.money<1||state.status!=='playing';$('redraw').setAttribute('aria-label',state.money<1?'Reroll costs $1; not enough money':'Reroll for $1 without using a call');renderCalls(state.calls);for(let n=1;n<=25;n++){const c=$(`cell-${n}`);c.className=`cell paint-${state.paints[n]||'grey'}${state.stamps.has(n)?' stamped':''}${state.offer.includes(n)?' offered':''}`;c.setAttribute('aria-label',`${n}${state.stamps.has(n)?', stamped':''}`);}}
+function ball(n){const b=document.createElement('button');b.className=`ball paint-${state.paints[n]||'grey'}`;b.dataset.number=n;b.innerHTML=`<span class="face">${n}</span>`;b.setAttribute('aria-label',`Inspect ball ${n}`);return b;}
 function hideTooltip(){
   const tip=$('inspect-tooltip');
   if(tip.matches(':popover-open'))tip.hidePopover();
@@ -39,7 +39,7 @@ function showTooltip(n,anchor,space=false){
   (anchor.closest('dialog')||document.body).append(tip);
   $('tooltip-number').textContent=n;
   const color=space?(state.stamps.has(n)?state.paints[n]:null):state.paints[n];
-  $('tooltip-effect').textContent=color==='gold'?'+$1 when scored':color==='orange'?'×2 to any scoring bingo · stacks':color==='blue'?'+3 draws when scored':space?'Nothing special':'';
+  $('tooltip-effect').textContent=color==='gold'?'+$1 when scored':color==='red'?'×2 to any scoring bingo · stacks':color==='blue'?'+3 draws when scored':space?'Nothing special':'';
   $('tooltip-effect').hidden=!space&&!color;
   tip.classList.toggle('space-tooltip',space);
   tooltipAnchor=anchor;
@@ -99,7 +99,7 @@ function moveDrag(e){
   if(!drag||e.pointerId!==drag.id)return;
   const d=drag;
   if(!d.moved&&Math.hypot(e.clientX-d.x,e.clientY-d.y)>7){
-    d.moved=true;hideTooltip();d.ghost=d.b.cloneNode(true);d.ghost.className=`ball drag-ghost paint-${state.paints[d.n]||'red'}`;
+    d.moved=true;hideTooltip();d.ghost=d.b.cloneNode(true);d.ghost.className=`ball drag-ghost paint-${state.paints[d.n]||'grey'}`;
     d.ghost.removeAttribute('disabled');d.ghost.setAttribute('aria-hidden','true');d.ghost.tabIndex=-1;
     d.size=d.b.getBoundingClientRect().width;d.ghost.style.setProperty('--size',`${d.size}px`);
     document.body.append(d.ghost);d.b.classList.add('held');
@@ -298,7 +298,7 @@ function renderShop(){
   hideTooltip();$('money').textContent=state.money;
   $('shop-balls').replaceChildren();
   state.shopOffer.forEach(n=>{
-    const b=ball(n);b.setAttribute('aria-label',`Ball ${n}, ${state.paints[n]||'red'}. Drop paint here, or select paint then select this ball.`);
+    const b=ball(n);b.setAttribute('aria-label',`Ball ${n}, ${state.paints[n]||'grey'}. Drop paint here, or select paint then select this ball.`);
     b.onclick=()=>{if(busy)return;if(selectedPaint)applyPaint(n,selectedPaint,b);else inspect(n,b);};
     $('shop-balls').append(b);
   });
@@ -354,7 +354,7 @@ async function applyPaint(n,color,target){
   }
   busy=true;selectedPaint=null;saveRun();
   document.querySelectorAll('#shop-screen button').forEach(b=>b.disabled=true);
-  target.classList.remove('paint-red','paint-gold','paint-orange','paint-blue');target.classList.add(`paint-${color}`);
+  target.classList.remove('paint-grey','paint-gold','paint-red','paint-blue');target.classList.add(`paint-${color}`);
   const r=target.getBoundingClientRect();
   for(let i=0;i<18&&!reduced;i++){
     const drop=document.createElement('i');drop.className=`paint-splash ${color}`;drop.style.left=`${r.left+r.width/2}px`;drop.style.top=`${r.top+r.height/2}px`;$('effects').append(drop);
@@ -395,10 +395,11 @@ function loadRun(){
     if(!saved)return;
     const numbers=a=>Array.isArray(a)&&a.every(n=>Number.isInteger(n)&&n>=1&&n<=25)&&new Set(a).size===a.length;
     if(!Number.isInteger(saved.stage)||saved.stage<1||saved.stage>10||!numbers(saved.stamps)||!numbers(saved.bag)||!numbers(saved.offer)||!saved.offer.every(n=>saved.bag.includes(n))||!Number.isInteger(saved.calls)||saved.calls<0||saved.calls>192||!Number.isInteger(saved.money)||saved.money<0||!Number.isInteger(saved.score)||saved.score<0||!['playing','passed','over'].includes(saved.status)||!Array.isArray(saved.played)||saved.played.length!==26)throw new Error('Invalid save');
+    if(saved.paints&&typeof saved.paints==='object'){for(const n of Object.keys(saved.paints))if(saved.paints[n]==='orange')saved.paints[n]='red';}
     delete saved.goldSeals;
     saved.callCapacity??=Math.max(12,saved.calls);
     if(!Number.isInteger(saved.callCapacity)||saved.callCapacity<12||saved.callCapacity>192||saved.calls>saved.callCapacity)throw new Error('Invalid call capacity');
-    if(saved.paints!==undefined&&(!saved.paints||Array.isArray(saved.paints)||typeof saved.paints!=='object'||!Object.entries(saved.paints).every(([n,c])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&['gold','orange','blue'].includes(c))))throw new Error('Invalid paint');
+    if(saved.paints!==undefined&&(!saved.paints||Array.isArray(saved.paints)||typeof saved.paints!=='object'||!Object.entries(saved.paints).every(([n,c])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&['gold','red','blue'].includes(c))))throw new Error('Invalid paint');
     if(saved.shopOffer!=null&&(!numbers(saved.shopOffer)||saved.shopOffer.length!==3||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
     state={...newStage(saved.stage,saved.money),...saved,target:STAGE_TARGETS[saved.stage-1],stamps:new Set(saved.stamps),bag:new Set(saved.bag)};
     hasRun=true;
