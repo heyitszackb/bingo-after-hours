@@ -99,3 +99,44 @@ footer button{min-width:74px}#pause-button{min-width:50px;color:#aac9b9;border-c
 
 #bag-grid .ball.played-ball{filter:grayscale(1);opacity:.45}
 #bag-grid .ball.played-ball.inspected{filter:grayscale(1);outline:2px solid #a0b7ad;outline-offset:2px}
+
+/* Paint stays with a ball throughout the run. */
+.ball.paint-gold{background-image:url('assets/coin.svg')}
+.ball.paint-orange{background-image:url('assets/ball-orange.svg')}
+.cell.stamped.paint-gold:before,.cell.gold-seal:not(.stamped):before{background-image:url('assets/stamp-gold.svg')}
+.cell.stamped.paint-orange:before{background-image:url('assets/stamp-orange.svg')}
+.cell.gold-seal:not(.stamped):before{content:'';position:absolute;width:76%;aspect-ratio:1;background-size:100% 100%;opacity:.55;image-rendering:pixelated;transform:rotate(-12deg)}
+.cell.gold-seal{box-shadow:inset 3px 3px #ffe7a1,inset -3px -3px #b68d33}
+.cell.gold-paying{outline:3px solid #fff0a0;outline-offset:-3px;filter:brightness(1.2);box-shadow:0 0 28px #f4c66c}
+.cell.multiplied{outline:3px solid #ffae5d;outline-offset:-3px;background:#fbb260}
+.row-multiplier{position:absolute;font:54px 'VT323',monospace;color:#ffb060;text-shadow:3px 3px #482513,-2px -2px #482513;white-space:nowrap}
+#inspect-tooltip p{white-space:normal;max-width:230px;line-height:1.1}
+.cabinet.shopping>.call-meter,.cabinet.shopping>.board-frame,.cabinet.shopping>.draw-area,.cabinet.shopping>footer{display:none}
+.cabinet.shopping{gap:16px}
+#shop-screen{width:100%;display:flex;flex-direction:column;gap:20px;padding:18px 0 0}
+.shop-heading{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #4a7062;padding:0 2px 12px}
+.shop-heading h2{font-size:32px;letter-spacing:2px;color:var(--gold);margin:0;font-weight:400}
+#shop-menu{font-size:30px;padding:0 10px}
+.paint-shelf{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.paint-can{--paint:#f3c84d;border:3px solid #866f3f;background:#153930;box-shadow:4px 5px #001c22;display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 8px 14px;touch-action:none;user-select:none}
+.paint-can.orange,.paint-tin.orange{--paint:#fa943b}
+.paint-can.orange{border-color:#a35e36}
+.paint-tin{position:relative;display:grid;place-items:center;width:56px;height:62px;background:linear-gradient(#243e39 0 7px,var(--paint) 7px 48px,#acb1a0 48px);border:4px solid #142a29;box-shadow:4px 4px #001c2266,inset 4px 0 #fff4;outline:2px solid #a1b3a0;color:#27312a;font-size:29px;line-height:1;image-rendering:pixelated}
+.paint-tin:before{content:'';position:absolute;left:-7px;right:-7px;top:-6px;height:7px;background:var(--paint);border:2px solid #f3dfb7;box-shadow:0 3px #243e39}
+.paint-can strong{font-size:23px;font-weight:400;display:flex;align-items:center;justify-content:center;gap:12px;color:var(--paint)}
+.paint-can b{font-weight:400;color:var(--cream)}
+.paint-can small{font-size:18px;color:#c1cbb1}
+.paint-can.selected{outline:3px solid var(--paint);outline-offset:3px}
+.paint-can.held{opacity:.5}
+#shop-hint{font-size:18px;letter-spacing:1px;text-align:center;color:#a7c5b0;margin:2px 0 0;min-height:22px}
+.painting-bench{position:relative;padding:5px 0 14px}
+#shop-balls{display:flex;justify-content:space-evenly;gap:12px;padding:8px 5px;min-height:95px;position:relative;z-index:2}
+#shop-balls .ball{--size:82px;transition:filter .12s}
+#shop-balls .paint-target{filter:drop-shadow(0 0 8px #fff3ba) brightness(1.2);outline:3px dashed #e7d7a4;outline-offset:5px}
+.shop-actions{display:flex;gap:16px}.shop-actions .menu-button{min-width:0;flex:1}.shop-actions #shop-next{flex:1.3}
+#shop-bag{align-self:center;padding:2px 20px;min-height:32px;color:var(--gold);font-size:23px}
+.paint-ghost{position:fixed;top:0;left:0;z-index:102;pointer-events:none;--paint:#f3c84d}
+.paint-splash{position:absolute;width:9px;height:9px;background:#f3c84d;box-shadow:3px 3px #fff4ba80}.paint-splash.orange{background:#fa943b}
+@media(max-height:700px){#shop-screen{gap:14px;padding-top:4px}.paint-can{padding:12px 6px 10px;gap:9px}.shop-heading{padding-bottom:5px}.shop-heading h2{font-size:28px}#shop-balls .ball{--size:70px}#shop-balls{min-height:80px}}
+@media(max-width:350px){.paint-can strong{font-size:20px;gap:8px}.paint-can small{font-size:16px}.paint-shelf{gap:12px}}
+@media(orientation:landscape) and (max-height:500px){.cabinet.shopping{display:flex;width:min(94vw,760px);gap:8px}.shopping .dashboard{width:min(100%,470px)}#shop-screen{display:grid;grid-template-columns:1fr 1fr;gap:8px 22px;padding:0}.shop-heading{grid-column:1/3;padding:0;border:0}.shop-heading h2{font-size:24px}.paint-shelf{grid-column:1;grid-row:2/5;gap:12px}.paint-can{padding:12px 4px 8px;gap:9px}.paint-can strong{font-size:20px}.paint-can small{font-size:16px}#shop-hint{grid-column:2;grid-row:2;font-size:15px;margin:0}.painting-bench{grid-column:2;grid-row:3;padding:0 0 10px}#shop-balls{min-height:65px;padding:0 5px 4px}#shop-balls .ball{--size:58px}#shop-balls .face{font-size:28px}.shop-actions{grid-column:2;grid-row:4;gap:10px}.shop-actions .menu-button{min-height:39px;font-size:21px;padding:6px 10px}#shop-bag{position:absolute;bottom:4px;left:15px;font-size:18px;min-height:26px}}

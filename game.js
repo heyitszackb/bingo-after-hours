@@ -5,8 +5,8 @@ export const PATTERNS = [
 ];
 export const STAGE_TARGETS = [5,10,20,40,100,200,500,1000,5000,10000];
 export const targetFor = stage => STAGE_TARGETS[stage-1];
-export function newStage(stage=1,money=5) {
-  return {stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
+export function newStage(stage=1,money=5,paints={}) {
+  return {paints:{...paints},goldSeals:new Set(),shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
 }
 export function draw(state=newStage(),random=Math.random,count=3) {
   const bag=[...state.bag];
@@ -16,17 +16,21 @@ export function draw(state=newStage(),random=Math.random,count=3) {
 export function choose(state,number) {
   if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)) return null;
   const duplicate=state.stamps.has(number);
+  const goldEarnings=[...state.goldSeals].filter(n=>Math.abs(Math.floor((n-1)/5)-Math.floor((number-1)/5))+Math.abs((n-1)%5-(number-1)%5)===1);
+  state.money+=goldEarnings.length;
+  if(state.paints[number]==='gold')state.goldSeals.add(number);
   state.stamps.add(number);state.bag.delete(number);state.played[number]++;state.calls--;
   const patterns=PATTERNS.filter(p=>p.every(n=>state.stamps.has(n)));
   const cleared=[...new Set(patterns.flat())];
-  const activations=patterns.flatMap(pattern=>pattern.map(number=>({number,points:1})));
+  const multipliers=patterns.map(pattern=>pattern[1]===pattern[0]+1?2**pattern.filter(n=>state.paints[n]==='orange').length:1);
+  const activations=patterns.flatMap((pattern,i)=>pattern.map((number,j)=>({number,points:multipliers[i],rowMultiplier:j===0?multipliers[i]:1})));
   const points=activations.reduce((total,activation)=>total+activation.points,0);
   state.score+=points;
   cleared.forEach(n=>state.stamps.delete(n));
   state.offer=[];
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0)state.status='over';
-  return {duplicate,patterns,cleared,activations,points};
+  return {duplicate,patterns,cleared,activations,points,goldEarnings};
 }
 export function redraw(state,random=Math.random) {
   if(state.status!=='playing'||state.money<1)return false;
@@ -39,4 +43,18 @@ export function settleStage(state){
   state.money+=bonus;
   state.bonusPaid=true;
   return bonus;
+}
+
+export function openShop(state,random=Math.random){
+  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10)return false;
+  state.shopOffer??=draw({bag:new Set(Array.from({length:25},(_,i)=>i+1))},random);
+  return true;
+}
+export function paintBall(state,number,color){
+  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!state.shopOffer?.includes(number)||!['gold','orange'].includes(color)||state.money<3||state.paints[number]===color)return false;
+  state.money-=3;state.paints[number]=color;return true;
+}
+export function redrawShop(state,random=Math.random){
+  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!state.shopOffer||state.money<2)return false;
+  state.money-=2;state.shopOffer=draw({bag:new Set(Array.from({length:25},(_,i)=>i+1))},random);return true;
 }

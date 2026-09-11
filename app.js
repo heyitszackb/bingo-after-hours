@@ -1,14 +1,14 @@
 import {pulseBackground} from './background.js';
-import {newStage,draw,choose,redraw,settleStage,STAGE_TARGETS} from './game.js';
+import {newStage,draw,choose,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS} from './game.js';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,muted=false;
+let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,muted=false,paintDrag=null,selectedPaint=null,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
 const animate=(el,frames,options)=>el.animate(frames,{...options,duration:reduced?1:options.duration}).finished.catch(()=>{});
 function sound(kind,step=0){if(muted)return;if(!navigator.userActivation?.hasBeenActive)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const t=audio.currentTime;const o=audio.createOscillator(),g=audio.createGain();o.type=kind==='score'?'triangle':'square';o.frequency.setValueAtTime(kind==='activate'?330*2**(Math.min(step,12)/12):kind==='score'?660:kind==='roll'?180:110,t);o.frequency.exponentialRampToValueAtTime(kind==='activate'?220*2**(Math.min(step,12)/12):kind==='score'?1320:40,t+.12);g.gain.setValueAtTime(.035,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);o.connect(g).connect(audio.destination);o.start(t);o.stop(t+.17);}catch{}}
 function burst(rect,scoring=false){if(reduced)return;for(let i=0;i<(scoring?28:12);i++){const p=document.createElement('i');p.className='particle';p.style.left=`${rect.left+rect.width/2}px`;p.style.top=`${rect.top+rect.height/2}px`;p.style.background=scoring?'#f4c66c':i%2?'#f37868':'#f7dfaf';$('effects').append(p);const angle=Math.random()*Math.PI*2,d=25+Math.random()*(scoring?150:65);animate(p,[{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+25}px) scale(0)`,opacity:0}],{duration:450+Math.random()*250,easing:'cubic-bezier(.1,.7,.3,1)'}).then(()=>p.remove());}}
 for(let n=1;n<=25;n++){const c=document.createElement('button');c.type='button';c.id=`cell-${n}`;c.className='cell';c.innerHTML=`<span>${n}</span>`;c.onclick=()=>{if(!busy&&!drag)inspectSpace(n);};$('board').append(c);}
-function render(){$('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);for(const k of ['score','target','calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw').disabled=busy||state.money<1||state.status!=='playing';$('redraw').setAttribute('aria-label',state.money<1?'Reroll costs $1; not enough money':'Reroll for $1 without using a call');$('call-dots').innerHTML=Array.from({length:12},(_,i)=>`<i class="${i>=state.calls?'used':''}"></i>`).join('');document.querySelector('.call-meter').setAttribute('aria-label',`${state.calls} calls remaining`);for(let n=1;n<=25;n++){const c=$(`cell-${n}`);c.className=`cell${state.stamps.has(n)?' stamped':''}${state.offer.includes(n)?' offered':''}`;c.setAttribute('aria-label',`${n}${state.stamps.has(n)?', stamped':''}`);}}
-function ball(n){const b=document.createElement('button');b.className='ball';b.dataset.number=n;b.innerHTML=`<span class="face">${n}</span>`;b.setAttribute('aria-label',`Inspect ball ${n}`);return b;}
+function render(){$('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);for(const k of ['score','target','calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw').disabled=busy||state.money<1||state.status!=='playing';$('redraw').setAttribute('aria-label',state.money<1?'Reroll costs $1; not enough money':'Reroll for $1 without using a call');$('call-dots').innerHTML=Array.from({length:12},(_,i)=>`<i class="${i>=state.calls?'used':''}"></i>`).join('');document.querySelector('.call-meter').setAttribute('aria-label',`${state.calls} calls remaining`);for(let n=1;n<=25;n++){const c=$(`cell-${n}`);c.className=`cell paint-${state.paints[n]||'red'}${state.goldSeals.has(n)?' gold-seal':''}${state.stamps.has(n)?' stamped':''}${state.offer.includes(n)?' offered':''}`;c.setAttribute('aria-label',`${n}${state.stamps.has(n)?', stamped':''}`);}}
+function ball(n){const b=document.createElement('button');b.className=`ball paint-${state.paints[n]||'red'}`;b.dataset.number=n;b.innerHTML=`<span class="face">${n}</span>`;b.setAttribute('aria-label',`Inspect ball ${n}`);return b;}
 function hideTooltip(){
   const tip=$('inspect-tooltip');
   if(tip.matches(':popover-open'))tip.hidePopover();
@@ -38,7 +38,9 @@ function showTooltip(n,anchor,space=false){
   const tip=$('inspect-tooltip');
   (anchor.closest('dialog')||document.body).append(tip);
   $('tooltip-number').textContent=n;
-  $('tooltip-effect').hidden=!space;
+  const color=space?(state.goldSeals.has(n)?'gold':state.stamps.has(n)?state.paints[n]:null):state.paints[n];
+  $('tooltip-effect').textContent=color==='gold'?'Gold seal · +$1 for each adjacent play':color==='orange'?'×2 to a scoring row · stacks':space?'Nothing special':'';
+  $('tooltip-effect').hidden=!space&&!color;
   tip.classList.toggle('space-tooltip',space);
   tooltipAnchor=anchor;
   anchor.setAttribute('aria-describedby','inspect-tooltip');
@@ -97,7 +99,7 @@ function moveDrag(e){
   if(!drag||e.pointerId!==drag.id)return;
   const d=drag;
   if(!d.moved&&Math.hypot(e.clientX-d.x,e.clientY-d.y)>7){
-    d.moved=true;hideTooltip();d.ghost=d.b.cloneNode(true);d.ghost.className='ball drag-ghost';
+    d.moved=true;hideTooltip();d.ghost=d.b.cloneNode(true);d.ghost.className=`ball drag-ghost paint-${state.paints[d.n]||'red'}`;
     d.ghost.removeAttribute('disabled');d.ghost.setAttribute('aria-hidden','true');d.ghost.tabIndex=-1;
     d.size=d.b.getBoundingClientRect().width;d.ghost.style.setProperty('--size',`${d.size}px`);
     document.body.append(d.ghost);d.b.classList.add('held');
@@ -145,6 +147,15 @@ async function activateSpaces(result){
   let displayedScore=state.score-result.points;
   for(const [index,activation] of result.activations.entries()){
     const cell=$(`cell-${activation.number}`);
+    if(activation.rowMultiplier>1){
+      const row=Array.from({length:5},(_,i)=>$(`cell-${Math.floor((activation.number-1)/5)*5+i+1}`));
+      row.forEach(c=>c.classList.add('multiplied'));
+      const badge=document.createElement('span');badge.className='row-multiplier';badge.textContent=`×${activation.rowMultiplier}`;
+      const r=row[2].getBoundingClientRect();badge.style.left=`${r.left+r.width/2}px`;badge.style.top=`${r.top+r.height/2}px`;$('effects').append(badge);
+      sound('score');pulseBackground();
+      await animate(badge,[{transform:'translate(-50%,-50%) scale(.5)',opacity:0},{transform:'translate(-50%,-70%) scale(1.2)',opacity:1,offset:.25},{transform:'translate(-50%,-100%) scale(1)',opacity:0}],{duration:550});
+      badge.remove();row.forEach(c=>c.classList.remove('multiplied'));
+    }
     cell.classList.add('activating','charged');
     sound('activate',index);
     navigator.vibrate?.(8);
@@ -180,7 +191,14 @@ async function activateSpaces(result){
   result.cleared.forEach(n=>$(`cell-${n}`).classList.add('clearing'));
   await wait(250);
 }
-async function play(n,b,ghost){if(busy){ghost?.remove();return;}lock();const result=choose(state,n);if(!result){ghost?.remove();unlock();return;}saveRun();$('calls').textContent=state.calls;$('bag-count').textContent=state.bag.size;$('call-dots').children[state.calls]?.classList.add('used');document.querySelector('.call-meter').setAttribute('aria-label',`${state.calls} calls remaining`);$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);const cell=$(`cell-${n}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.className='ball leave';});if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}cell.classList.add('stamped','just-stamped');pulseBackground();sound('stamp');navigator.vibrate?.(18);burst(r);animate(document.querySelector('.board-frame'),[{transform:'translate(0,0)'},{transform:'translate(0,3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});$('announcer').textContent=result.duplicate?`${n} already stamped. One call used.`:`Stamped ${n}.`;await wait(370);if(result.points)await activateSpaces(result);await wait(120);render();refreshBag();if(state.status!=='playing'){showResult();return;}await nextDraw();}
+async function play(n,b,ghost){if(busy){ghost?.remove();return;}lock();const result=choose(state,n);if(!result){ghost?.remove();unlock();return;}saveRun();$('calls').textContent=state.calls;$('bag-count').textContent=state.bag.size;$('call-dots').children[state.calls]?.classList.add('used');document.querySelector('.call-meter').setAttribute('aria-label',`${state.calls} calls remaining`);$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);const cell=$(`cell-${n}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.classList.add('leave');});if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}cell.classList.add('stamped','just-stamped');if(state.goldSeals.has(n))cell.classList.add('gold-seal');pulseBackground();sound('stamp');navigator.vibrate?.(18);burst(r);animate(document.querySelector('.board-frame'),[{transform:'translate(0,0)'},{transform:'translate(0,3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});$('announcer').textContent=result.duplicate?`${n} already stamped. One call used.`:`Stamped ${n}.`;await wait(220);if(result.goldEarnings.length){
+  let collected=0;const before=state.money-result.goldEarnings.length;
+  for(const seal of result.goldEarnings){
+    const source=$(`cell-${seal}`);source.classList.add('gold-paying');sound('activate',collected);
+    await cashInCall(source,collected,before,()=>++collected,false);source.classList.remove('gold-paying');
+  }
+  $('announcer').textContent=`Gold seals paid $${collected}.`;
+}await wait(150);if(result.points)await activateSpaces(result);await wait(120);render();refreshBag();if(state.status!=='playing'){showResult();return;}await nextDraw();}
 function showStages(){hideTooltip();$('stage-grid').innerHTML=Array.from({length:10},(_,i)=>{const n=i+1,current=n===state.stage,done=n<state.stage;return `<div class="stage-node ${current?'current':done?'complete':'locked'}" ${current?'aria-current="step"':''} aria-label="Stage ${n}, ${current?'current':done?'completed':'locked'}"><span>${n}<small>${STAGE_TARGETS[i].toLocaleString()} pts</small></span>${current?'<span>◆</span>':done?'<span>✓</span>':'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'}</div>`;}).join('');$('stage-dialog').showModal();}
 function resetResultUI(){
   $('stage-result').hidden=true;
@@ -189,17 +207,18 @@ function resetResultUI(){
 }
 function finishResult(){
   payingOut=false;
+  if(state.status==='passed'&&state.stage<10){showShop();return;}
   $('continue').disabled=false;$('result-menu').disabled=false;
   $('result-actions').hidden=false;
   $('bag').disabled=false;$('stages').disabled=false;
 }
-async function cashInCall(dot,index,before,onArrival){
+async function cashInCall(dot,index,before,onArrival,payout=true){
   const from=dot.getBoundingClientRect(),to=document.querySelector('.money-panel').getBoundingClientRect();
   const token=document.createElement('span');token.className='cash-flight';token.textContent='$';
   token.style.left=`${from.left+from.width/2}px`;token.style.top=`${from.top+from.height/2}px`;
   $('effects').append(token);
   const dx=to.left+to.width/2-from.left-from.width/2,dy=to.top+to.height/2-from.top-from.height/2;
-  dot.classList.add('used');
+  if(payout)dot.classList.add('used');
   await animate(token,[
     {transform:'translate(-50%,-50%) scale(.45)',opacity:.7,filter:'hue-rotate(65deg)'},
     {transform:'translate(-50%,calc(-50% - 18px)) scale(1.12)',opacity:1,filter:'hue-rotate(0deg)',offset:.2},
@@ -209,7 +228,7 @@ async function cashInCall(dot,index,before,onArrival){
   token.remove();
   const collected=onArrival();
   $('money').textContent=before+collected;
-  $('payout-earned').textContent=`+$${collected}`;
+  if(payout)$('payout-earned').textContent=`+$${collected}`;
   sound('activate',index);navigator.vibrate?.(8);
   animate(document.querySelector('.money-panel'),[{transform:'scale(1.08)',boxShadow:'0 0 22px #f4c66c99',borderColor:'#fff2bd'},{transform:'scale(1)',boxShadow:'3px 4px #00191e',borderColor:'#a68a58'}],{duration:170});
   animate($('money'),[{transform:'translateY(-3px) scale(1.2)',color:'#fff4c9'},{transform:'translateY(0) scale(1)',color:'#f4c66c'}],{duration:170});
@@ -258,15 +277,106 @@ async function showResult(){
   await wait(250);
   finishResult();
 }
-$('continue').onclick=async()=>{if(payingOut)return;const next=state.status==='passed'&&state.stage<10?state.stage+1:1;state=newStage(next,next===1?5:state.money);hasRun=true;saveRun();resetResultUI();await nextDraw();};
-$('redraw').onclick=async()=>{if(busy||drag||state.money<1)return;lock();if(!redraw(state)){unlock();return;}saveRun();$('money').textContent=state.money;animate($('money'),[{transform:'scale(1.25)',color:'#fff1c2'},{transform:'scale(1)',color:'#f4c66c'}],{duration:180});sound('roll');document.querySelectorAll('#balls .ball').forEach(b=>b.className='ball leave');await wait(480);render();showBalls();await wait(770);unlock();};
+$('continue').onclick=async()=>{if(payingOut)return;const next=state.status==='passed'&&state.stage<10?state.stage+1:1;state=newStage(next,next===1?5:state.money,next===1?{}:state.paints);hasRun=true;saveRun();resetResultUI();await nextDraw();};
+$('redraw').onclick=async()=>{if(busy||drag||state.money<1)return;lock();if(!redraw(state)){unlock();return;}saveRun();$('money').textContent=state.money;animate($('money'),[{transform:'scale(1.25)',color:'#fff1c2'},{transform:'scale(1)',color:'#f4c66c'}],{duration:180});sound('roll');document.querySelectorAll('#balls .ball').forEach(b=>b.classList.add('leave'));await wait(480);render();showBalls();await wait(770);unlock();};
 $('bag').onclick=()=>{hideTooltip();refreshBag();$('bag-dialog').showModal();};$('stages').onclick=showStages;
 for(const dialog of document.querySelectorAll('#bag-dialog,#stage-dialog,#help-dialog')){dialog.addEventListener('close',hideTooltip);dialog.querySelector('.close').onclick=()=>dialog.close();dialog.addEventListener('pointerdown',e=>{if(e.target!==dialog)return;const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();});}
+
+
+function renderShop(){
+  hideTooltip();$('money').textContent=state.money;
+  $('shop-balls').replaceChildren();
+  state.shopOffer.forEach(n=>{
+    const b=ball(n);b.setAttribute('aria-label',`Ball ${n}, ${state.paints[n]||'red'}. Drop paint here, or select paint then select this ball.`);
+    b.onclick=()=>{if(busy)return;if(selectedPaint)applyPaint(n,selectedPaint,b);else inspect(n,b);};
+    $('shop-balls').append(b);
+  });
+  document.querySelectorAll('.paint-can').forEach(b=>{b.disabled=busy||state.money<3;b.classList.toggle('selected',b.dataset.paint===selectedPaint);b.setAttribute('aria-pressed',String(b.dataset.paint===selectedPaint));});
+  $('shop-redraw').disabled=busy||state.money<2;$('shop-next').disabled=busy;$('shop-menu').disabled=busy;$('shop-bag').disabled=busy;
+  $('shop-hint').textContent=state.money<3?'NEXT →':selectedPaint?'CHOOSE A BALL ↓':'DRAG PAINT ↓ BALL';
+}
+function showShop(){
+  openShop(state);shopping=true;busy=false;selectedPaint=null;
+  hideTooltip();$('game-screen').classList.add('shopping');$('shop-screen').hidden=false;
+  $('bag').disabled=false;$('stages').disabled=false;renderShop();saveRun();
+  animate($('shop-screen'),[{transform:'translateY(24px)',opacity:0},{transform:'translateY(0)',opacity:1}],{duration:350,easing:'cubic-bezier(.2,.8,.3,1)'});
+}
+function paintTarget(x,y){return [...$('shop-balls').children].find(b=>{const r=b.getBoundingClientRect();return x>=r.left-8&&x<=r.right+8&&y>=r.top-12&&y<=r.bottom+12;});}
+function cancelPaintDrag(){
+  if(!paintDrag)return;
+  const d=paintDrag;paintDrag=null;d.ghost?.remove();d.button.classList.remove('held');
+  document.querySelectorAll('.paint-target').forEach(b=>b.classList.remove('paint-target'));
+  if(d.button.hasPointerCapture(d.id))d.button.releasePointerCapture(d.id);
+}
+for(const button of document.querySelectorAll('.paint-can')){
+  button.addEventListener('pointerdown',e=>{
+    if(busy||paintDrag||e.button!==0||state.money<3)return;
+    e.preventDefault();hideTooltip();button.setPointerCapture(e.pointerId);
+    paintDrag={button,color:button.dataset.paint,id:e.pointerId,x:e.clientX,y:e.clientY,ghost:null,moved:false};
+  });
+  button.addEventListener('pointermove',e=>{
+    const d=paintDrag;if(!d||d.id!==e.pointerId)return;
+    if(!d.moved&&Math.hypot(e.clientX-d.x,e.clientY-d.y)>6){
+      d.moved=true;d.ghost=d.button.querySelector('.paint-tin').cloneNode(true);d.ghost.classList.add('paint-ghost',d.color);d.ghost.setAttribute('aria-hidden','true');document.body.append(d.ghost);d.button.classList.add('held');
+    }
+    if(!d.moved)return;
+    d.ghost.style.transform=`translate(${e.clientX-28}px,${e.clientY-32}px) rotate(-12deg)`;
+    const target=paintTarget(e.clientX,e.clientY);
+    [...$('shop-balls').children].forEach(b=>b.classList.toggle('paint-target',b===target));
+  });
+  button.addEventListener('pointerup',e=>{
+    const d=paintDrag;if(!d||d.id!==e.pointerId)return;
+    const target=d.moved?paintTarget(e.clientX,e.clientY):null;
+    cancelPaintDrag();
+    if(target)applyPaint(Number(target.dataset.number),d.color,target);
+    else if(!d.moved){selectedPaint=selectedPaint===d.color?null:d.color;renderShop();sound('roll');}
+  });
+  button.addEventListener('pointercancel',cancelPaintDrag);
+  button.addEventListener('lostpointercapture',cancelPaintDrag);
+  button.onclick=e=>{if(e.detail===0&&!busy&&state.money>=3){selectedPaint=selectedPaint===button.dataset.paint?null:button.dataset.paint;renderShop();}};
+}
+async function applyPaint(n,color,target){
+  if(busy)return;
+  if(!paintBall(state,n,color)){
+    $('shop-hint').textContent=state.paints[n]===color?'ALREADY PAINTED': 'NEED $3';
+    animate(target,[{transform:'translateX(-4px)'},{transform:'translateX(4px)'},{transform:'translateX(0)'}],{duration:180});return;
+  }
+  busy=true;selectedPaint=null;saveRun();
+  document.querySelectorAll('#shop-screen button').forEach(b=>b.disabled=true);
+  target.classList.remove('paint-red','paint-gold','paint-orange');target.classList.add(`paint-${color}`);
+  const r=target.getBoundingClientRect();
+  for(let i=0;i<18&&!reduced;i++){
+    const drop=document.createElement('i');drop.className=`paint-splash ${color}`;drop.style.left=`${r.left+r.width/2}px`;drop.style.top=`${r.top+r.height/2}px`;$('effects').append(drop);
+    const a=i*Math.PI/9,d=25+Math.random()*45;
+    animate(drop,[{transform:'scale(.3)',opacity:1},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px) rotate(90deg)`,opacity:0}],{duration:420}).then(()=>drop.remove());
+  }
+  sound('stamp');pulseBackground();navigator.vibrate?.([12,20,8]);$('money').textContent=state.money;
+  await animate(target,[{transform:'scale(1)'},{transform:'scale(1.17,.85)',offset:.2},{transform:'scale(.94,1.08)',offset:.55},{transform:'scale(1)'}],{duration:380});
+  busy=false;renderShop();refreshBag();render();
+  $('shop-hint').textContent=`${n} · ${color.toUpperCase()} ✓`;
+  $('announcer').textContent=`Ball ${n} painted ${color} for $3. Balance $${state.money}.`;
+}
+$('shop-redraw').onclick=async()=>{
+  if(busy||paintDrag||!redrawShop(state))return;
+  busy=true;selectedPaint=null;saveRun();
+  document.querySelectorAll('#shop-screen button').forEach(b=>b.disabled=true);$('money').textContent=state.money;
+  const balls=[...$('shop-balls').children];balls.forEach((b,i)=>{b.style.setProperty('--i',i);b.classList.add('leave');});
+  sound('roll');await wait(420);renderShop();
+  [...$('shop-balls').children].forEach((b,i)=>{b.style.setProperty('--i',i);b.classList.add('enter');b.disabled=true;});
+  await wait(770);busy=false;renderShop();
+};
+$('shop-next').onclick=async()=>{
+  if(busy||paintDrag)return;
+  hideTooltip();shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;
+  state=newStage(state.stage+1,state.money,state.paints);saveRun();await nextDraw();
+};
+$('shop-menu').onclick=()=>{if(!busy&&!paintDrag)showMenu();};
+$('shop-bag').onclick=()=>{if(busy)return;refreshBag();$('bag-dialog').showModal();};
 
 const SAVE_KEY='binglatro.run.v1';
 function saveRun(){
   if(!hasRun)return;
-  try{localStorage.setItem(SAVE_KEY,JSON.stringify({...state,stamps:[...state.stamps],bag:[...state.bag]}));}catch{}
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify({...state,stamps:[...state.stamps],bag:[...state.bag],goldSeals:[...state.goldSeals]}));}catch{}
 }
 function loadRun(){
   try{
@@ -274,7 +384,10 @@ function loadRun(){
     if(!saved)return;
     const numbers=a=>Array.isArray(a)&&a.every(n=>Number.isInteger(n)&&n>=1&&n<=25)&&new Set(a).size===a.length;
     if(!Number.isInteger(saved.stage)||saved.stage<1||saved.stage>10||!numbers(saved.stamps)||!numbers(saved.bag)||!numbers(saved.offer)||!saved.offer.every(n=>saved.bag.includes(n))||!Number.isInteger(saved.calls)||saved.calls<0||saved.calls>12||!Number.isInteger(saved.money)||saved.money<0||!Number.isInteger(saved.score)||saved.score<0||!['playing','passed','over'].includes(saved.status)||!Array.isArray(saved.played)||saved.played.length!==26)throw new Error('Invalid save');
-    state={...newStage(saved.stage,saved.money),...saved,target:STAGE_TARGETS[saved.stage-1],stamps:new Set(saved.stamps),bag:new Set(saved.bag)};
+    if(saved.goldSeals!==undefined&&!numbers(saved.goldSeals))throw new Error('Invalid seals');
+    if(saved.paints!==undefined&&(!saved.paints||Array.isArray(saved.paints)||typeof saved.paints!=='object'||!Object.entries(saved.paints).every(([n,c])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&['gold','orange'].includes(c))))throw new Error('Invalid paint');
+    if(saved.shopOffer!=null&&(!numbers(saved.shopOffer)||saved.shopOffer.length!==3||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
+    state={...newStage(saved.stage,saved.money),...saved,goldSeals:new Set(saved.goldSeals||[]),target:STAGE_TARGETS[saved.stage-1],stamps:new Set(saved.stamps),bag:new Set(saved.bag)};
     hasRun=true;
   }catch{try{localStorage.removeItem(SAVE_KEY);}catch{}}
 }
@@ -285,7 +398,7 @@ function updateMenu(){
   $('saved-stage').textContent=`STAGE ${state.stage} · ${state.score}/${state.target.toLocaleString()} pts · $${state.money}`;
 }
 function showMenu(){
-  hideTooltip();cancelDrag();saveRun();
+  hideTooltip();cancelDrag();cancelPaintDrag();saveRun();
   document.querySelectorAll('dialog[open]').forEach(d=>d.close());
   $('game-screen').hidden=true;$('title-screen').hidden=false;inMenu=true;
   updateMenu();$('play-button').focus();
@@ -294,6 +407,7 @@ async function enterGame(fresh=false){
   if(!inMenu&&!fresh)return;
   document.querySelectorAll('dialog[open]').forEach(d=>d.close());
   if(fresh||!hasRun){state=newStage();hasRun=true;}
+  shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;
   inMenu=false;resetResultUI();$('title-screen').hidden=true;$('game-screen').hidden=false;
   render();
   if(state.status!=='playing'){busy=true;showBalls();showResult();}
@@ -301,6 +415,7 @@ async function enterGame(fresh=false){
   else await nextDraw();
 }
 function pauseGame(){
+  if(shopping&&!paintDrag&&!busy){showMenu();return;}
   if(inMenu||busy||payingOut||document.querySelector('dialog[open]'))return;
   cancelDrag();hideTooltip();saveRun();
   $('pause-summary').textContent=`STAGE ${state.stage} · ${state.score}/${state.target.toLocaleString()} pts`;

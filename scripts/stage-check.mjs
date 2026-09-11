@@ -15,7 +15,7 @@ for(const start of [1,10]){
  assert.equal(await page.locator('dialog[open]').count(),0);
  await page.locator('.cash-flight').first().waitFor({state:'visible'});
  assert.ok(await page.locator('#continue').isDisabled());
- await page.locator('#continue:not([disabled])').waitFor();
+ await page.locator(start===1?'#shop-screen':'#continue:not([disabled])').waitFor({state:'visible'});
  assert.equal(await page.locator('#payout-earned').textContent(),'+$11');
  assert.equal(await page.locator('#money').textContent(),'15');
  assert.equal(await page.locator('#calls').textContent(),'0');
@@ -24,9 +24,8 @@ for(const start of [1,10]){
 
  assert.deepEqual(await page.evaluate(()=>window.scoreSteps.filter((n,i,a)=>n>0&&a.indexOf(n)===i)),[1,2,3,4,5]);
  assert.equal(await page.locator('#score').textContent(),'5');assert.equal(await page.locator('.cell.stamped').count(),0);
- assert.equal(await page.locator('#continue').getAttribute('aria-label'),start===10?'New run':'Next stage');
- if(start===1){await page.locator('#result-menu').click();await page.locator('#play-button').click();await page.locator('#continue:not([disabled])').waitFor();assert.equal(await page.locator('#money').textContent(),'15');}
- await page.locator('#continue').click();await page.locator('#balls .ball:not([disabled])').first().waitFor();
+ if(start===1){await page.locator('#shop-menu').click();await page.locator('#play-button').click();await page.locator('#shop-screen').waitFor({state:'visible'});assert.equal(await page.locator('#money').textContent(),'15');}
+ await page.locator(start===1?'#shop-next':'#continue').click();await page.locator('#balls .ball:not([disabled])').first().waitFor();
  assert.equal(await page.locator('#stage').textContent(),start===10?'1':'2');assert.equal(await page.locator('#calls').textContent(),'12');assert.equal(await page.locator('#money').textContent(),start===10?'5':'15');
  await page.locator('#stages').click();assert.equal(await page.locator('.stage-node.complete').count(),start===10?0:1);assert.equal(await page.locator('.stage-node.locked').count(),start===10?9:8);
  await page.close();
