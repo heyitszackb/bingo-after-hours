@@ -21,3 +21,31 @@ button.cell{border:0;padding:0;min-width:0;font-family:inherit}
 #inspect-tooltip p[hidden]{display:none}
 .ball.inspected{outline:2px solid #ffe4a5;outline-offset:3px}
 .cell.inspected{outline:3px solid #76dace;outline-offset:-4px}
+
+/* Crisp pixel surfaces with oversized draw highlights. */
+body{background-image:radial-gradient(ellipse at 50% 40%,#27635745,#001d2355 85%),url('assets/felt.svg');background-size:auto,256px 256px;image-rendering:pixelated}
+.dashboard>div,.dashboard>button,footer button,#continue{border-width:3px;box-shadow:3px 0 0 #00191e,0 4px 0 #00191e,3px 4px 0 #00191e,inset 2px 2px 0 #ffffff0a}
+svg{shape-rendering:crispEdges;stroke-linecap:butt}
+.board-frame{border-width:3px;box-shadow:0 0 0 2px #082125,4px 0 0 #001a20,0 6px 0 #001a20,4px 6px 0 #001a20,inset 0 0 0 2px #675b40}
+.cell{background:repeating-conic-gradient(#f0dfb700 0% 25%,#b8996320 0% 50%) 0 0/6px 6px,#f0dfb7;box-shadow:inset 3px 3px 0 #fff0ca,inset -3px -3px 0 #c4ad80;text-shadow:1px 1px 0 #fff3d060}
+.cell.offered{z-index:2;outline:none;background:repeating-conic-gradient(#d8f3d500 0% 25%,#60ad9720 0% 50%) 0 0/6px 6px,#d8f3d5;box-shadow:inset 0 0 0 4px #36a99b,inset 0 0 0 7px #dffff0,0 0 19px 3px #64f2c977}
+.cell.offered:after{content:'';position:absolute;inset:2px;border:2px solid #a6ffe0;box-shadow:inset 0 0 12px #5fefbd50,0 0 8px #8fffd288;pointer-events:none;animation:draw-glow 2.4s steps(5,end) infinite}
+.cell.destination,.cell.inspected{outline:4px solid #e2fff0;outline-offset:-5px}
+@keyframes draw-glow{0%,100%{opacity:.65}50%{opacity:1}}
+.ball{border:0;border-radius:0;background: url('assets/ball.svg') center/100% 100% no-repeat;box-shadow:none;image-rendering:pixelated;filter:drop-shadow(3px 5px 0 #001a20a0)}
+.ball:before{display:none}
+.ball .face{border:0;border-radius:0;background:none;box-shadow:none;text-shadow:1px 1px 0 #fff5d8;font-size:36px}
+#balls .ball{filter:drop-shadow(0 0 6px #80ebbc85) drop-shadow(3px 5px 0 #001a20a0)}
+#balls .ball:hover:not(:disabled){filter:brightness(1.1) drop-shadow(0 0 9px #a5ffe0b0)}
+.ball.inspected{outline:none;filter:drop-shadow(2px 0 0 #fff0b0) drop-shadow(-2px 0 0 #fff0b0) drop-shadow(0 2px 0 #fff0b0) drop-shadow(0 -2px 0 #fff0b0)}
+#bag-grid .ball .face{font-size:27px}
+.cell.stamped:before{border:0;border-radius:0;background:url('assets/stamp.svg') center/100% 100% no-repeat;box-shadow:none;image-rendering:pixelated}
+.rail{border-top-width:4px;box-shadow:0 3px 0 #00171f,inset 0 2px 0 #775c34}
+dialog{border-width:3px;background:#103731;box-shadow:5px 0 0 #001a21,0 6px 0 #001a21,5px 6px 0 #001a21,inset 2px 2px 0 #4e706055}
+#inspect-tooltip{border-radius:0;border-width:3px;box-shadow:3px 0 0 #001b22b0,0 4px 0 #001b22b0,3px 4px 0 #001b22b0,inset 2px 2px 0 #fff4d8}
+#call-dots i{height:6px;box-shadow:0 2px 0 #134b45,0 0 6px #63ded550}
+.cell.charged{background:#f4d17f}
+.cell.activating{z-index:6;outline:3px solid #fff0b8;outline-offset:-2px;box-shadow:0 0 20px #ffc76e90,3px 5px 0 #001a2260}
+@media(orientation:landscape) and (max-height:500px){#bag-grid .ball .face{font-size:20px}}
+
+#balls .ball.inspected{filter:drop-shadow(2px 0 0 #fff0b0) drop-shadow(-2px 0 0 #fff0b0) drop-shadow(0 2px 0 #fff0b0) drop-shadow(0 -2px 0 #fff0b0) drop-shadow(0 0 9px #a5ffe090)}

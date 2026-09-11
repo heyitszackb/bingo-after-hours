@@ -8,6 +8,7 @@ A solo arcade bingo game built for one mobile screen.
 - Ten stages with targets from 10 to 100. The stage map marks your current stage, completed stages, and locked future stages. Completing stage 10 finishes the run.
 - The bag displays only remaining balls and marks current offers with a cyan dot. Its counter decreases after each play.
 - Compact score, money, and stage counters. Money starts at $0; earning and spending are not implemented.
+- Original pixel-drawn ball, stamp, and felt SVG assets; strong mint highlights identify the three offered numbers on the board.
 - Rolling, magnetic placement, stamp impacts, pixel particles, synthesized impact sounds, and supported-device haptics. Reduced-motion preferences are respected.
 - Keyboard: Enter inspects a focused ball; Space plays it. All icon controls have accessible labels.
 
