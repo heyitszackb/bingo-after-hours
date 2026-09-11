@@ -1,5 +1,5 @@
-import {pulseBackground} from './background.js';
-import {newStage,draw,choose,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS} from './game.js';
+import {pulseBackground} from './background.js?v=64709a33df06';
+import {newStage,draw,choose,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS} from './game.js?v=5accfafc9c33';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,muted=false,paintDrag=null,selectedPaint=null,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
@@ -41,7 +41,7 @@ function showTooltip(n,anchor,space=false){
   const tip=$('inspect-tooltip');
   (anchor.closest('dialog')||document.body).append(tip);
   $('tooltip-number').textContent=n;
-  const color=space?(state.stamps.has(n)?state.paints[n]:null):state.paints[n];
+  const color=state.paints[n];
   $('tooltip-effect').textContent=color==='gold'?'+$1 when scored':color==='red'?'×2 to any scoring bingo · stacks':color==='blue'?'+3 draws when scored':space?'Nothing special':'';
   $('tooltip-effect').hidden=!space&&!color;
   tip.classList.toggle('space-tooltip',space);
@@ -315,14 +315,22 @@ function showShop(){
   $('bag').disabled=false;$('stages').disabled=false;renderShop();saveRun();
   animate($('shop-screen'),[{transform:'translateY(24px)',opacity:0},{transform:'translateY(0)',opacity:1}],{duration:350,easing:'cubic-bezier(.2,.8,.3,1)'});
 }
-function paintTarget(x,y){return [...$('shop-balls').children].find(b=>{const r=b.getBoundingClientRect();return x>=r.left-8&&x<=r.right+8&&y>=r.top-12&&y<=r.bottom+12;});}
+function paintTarget(x,y){
+  const bench=$('shop-balls').getBoundingClientRect();
+  if(x<bench.left-16||x>bench.right+16||y<bench.top-28||y>bench.bottom+28)return null;
+  return [...$('shop-balls').children].reduce((nearest,b)=>{
+    const r=b.getBoundingClientRect(),distance=Math.abs(x-r.left-r.width/2);
+    return !nearest||distance<nearest.distance?{ball:b,distance}:nearest;
+  },null)?.ball;
+}
 function cancelPaintDrag(){
   if(!paintDrag)return;
   const d=paintDrag;paintDrag=null;d.ghost?.remove();d.button.classList.remove('held');
-  document.querySelectorAll('.paint-target').forEach(b=>b.classList.remove('paint-target'));
+  document.querySelectorAll('.paint-target').forEach(b=>{b.classList.remove('paint-target');b.removeAttribute('data-paint-preview');});
   if(d.button.hasPointerCapture(d.id))d.button.releasePointerCapture(d.id);
 }
 for(const button of document.querySelectorAll('.paint-can')){
+  button.addEventListener('dragstart',e=>e.preventDefault());
   button.addEventListener('pointerdown',e=>{
     if(busy||paintDrag||e.button!==0||state.money<3)return;
     e.preventDefault();hideTooltip();button.setPointerCapture(e.pointerId);
@@ -336,14 +344,17 @@ for(const button of document.querySelectorAll('.paint-can')){
     if(!d.moved)return;
     d.ghost.style.transform=`translate(${e.clientX-28}px,${e.clientY-32}px) rotate(-12deg)`;
     const target=paintTarget(e.clientX,e.clientY);
-    [...$('shop-balls').children].forEach(b=>b.classList.toggle('paint-target',b===target));
+    [...$('shop-balls').children].forEach(b=>{b.classList.toggle('paint-target',b===target);if(b===target)b.dataset.paintPreview=d.color;else b.removeAttribute('data-paint-preview');});
+    $('shop-hint').textContent=target?`${target.dataset.number} · ${d.color.toUpperCase()} · $3`:'DROP ON A BALL ↓';
   });
   button.addEventListener('pointerup',e=>{
     const d=paintDrag;if(!d||d.id!==e.pointerId)return;
+    d.moved ||= Math.hypot(e.clientX-d.x,e.clientY-d.y)>6;
     const target=d.moved?paintTarget(e.clientX,e.clientY):null;
     cancelPaintDrag();
     if(target)applyPaint(Number(target.dataset.number),d.color,target);
     else if(!d.moved){selectedPaint=selectedPaint===d.color?null:d.color;renderShop();sound('roll');}
+    else $('shop-hint').textContent='DROP ON A BALL ↓';
   });
   button.addEventListener('pointercancel',cancelPaintDrag);
   button.addEventListener('lostpointercapture',cancelPaintDrag);

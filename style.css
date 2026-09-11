@@ -23,7 +23,7 @@ button.cell{border:0;padding:0;min-width:0;font-family:inherit}
 .cell.inspected{outline:3px solid #76dace;outline-offset:-4px}
 
 /* Crisp pixel surfaces with oversized draw highlights. */
-body{background-image:radial-gradient(ellipse at 50% 40%,#27635745,#001d2355 85%),url('assets/felt.svg');background-size:auto,256px 256px;image-rendering:pixelated}
+body{background-image:radial-gradient(ellipse at 50% 40%,#27635745,#001d2355 85%),url('assets/felt.svg?v=cecf7e04c25b');background-size:auto,256px 256px;image-rendering:pixelated}
 .dashboard>div,.dashboard>button,footer button,#continue{border-width:3px;box-shadow:3px 0 0 #00191e,0 4px 0 #00191e,3px 4px 0 #00191e,inset 2px 2px 0 #ffffff0a}
 svg{shape-rendering:crispEdges;stroke-linecap:butt}
 .board-frame{border-width:3px;box-shadow:0 0 0 2px #082125,4px 0 0 #001a20,0 6px 0 #001a20,4px 6px 0 #001a20,inset 0 0 0 2px #675b40}
@@ -32,14 +32,14 @@ svg{shape-rendering:crispEdges;stroke-linecap:butt}
 .cell.offered:after{content:'';position:absolute;inset:2px;border:2px solid #a6ffe0;box-shadow:inset 0 0 12px #5fefbd50,0 0 8px #8fffd288;pointer-events:none;animation:draw-glow 2.4s steps(5,end) infinite}
 .cell.destination,.cell.inspected{outline:4px solid #e2fff0;outline-offset:-5px}
 @keyframes draw-glow{0%,100%{opacity:.65}50%{opacity:1}}
-.ball{border:0;border-radius:0;background: url('assets/ball.svg') center/100% 100% no-repeat;box-shadow:none;image-rendering:pixelated;filter:drop-shadow(3px 5px 0 #001a20a0)}
+.ball{border:0;border-radius:0;background: url('assets/ball.svg?v=4ea0e880d176') center/100% 100% no-repeat;box-shadow:none;image-rendering:pixelated;filter:drop-shadow(3px 5px 0 #001a20a0)}
 .ball:before{display:none}
 .ball .face{border:0;border-radius:0;background:none;box-shadow:none;text-shadow:1px 1px 0 #fff5d8;font-size:36px}
 #balls .ball{filter:drop-shadow(0 0 6px #80ebbc85) drop-shadow(3px 5px 0 #001a20a0)}
 #balls .ball:hover:not(:disabled){filter:brightness(1.1) drop-shadow(0 0 9px #a5ffe0b0)}
 .ball.inspected{outline:none;filter:drop-shadow(2px 0 0 #fff0b0) drop-shadow(-2px 0 0 #fff0b0) drop-shadow(0 2px 0 #fff0b0) drop-shadow(0 -2px 0 #fff0b0)}
 #bag-grid .ball .face{font-size:27px}
-.cell.stamped:before{border:0;border-radius:0;background:url('assets/stamp.svg') center/100% 100% no-repeat;box-shadow:none;image-rendering:pixelated}
+.cell.stamped:before{border:0;border-radius:0;background:url('assets/stamp.svg?v=ff2fb538bdcb') center/100% 100% no-repeat;box-shadow:none;image-rendering:pixelated}
 .rail{border-top-width:4px;box-shadow:0 3px 0 #00171f,inset 0 2px 0 #775c34}
 dialog{border-width:3px;background:#103731;box-shadow:5px 0 0 #001a21,0 6px 0 #001a21,5px 6px 0 #001a21,inset 2px 2px 0 #4e706055}
 #inspect-tooltip{border-radius:0;border-width:3px;box-shadow:3px 0 0 #001b22b0,0 4px 0 #001b22b0,3px 4px 0 #001b22b0,inset 2px 2px 0 #fff4d8}
@@ -93,7 +93,7 @@ footer button{min-width:74px}#pause-button{min-width:50px;color:#aac9b9;border-c
 #result-actions{display:flex;align-items:center;gap:10px}
 #stage-result #continue,#stage-result #result-menu{margin:0;width:60px;min-width:60px;height:49px;padding:0;display:grid;place-items:center;border:3px solid #c9a25f;background:#163b34;box-shadow:3px 4px #001a20;color:var(--gold);font-size:33px}
 #stage-result #result-menu{width:45px;min-width:45px;border-color:#57867a;color:var(--cyan)}
-.cash-flight{position:absolute;display:grid;place-items:center;width:28px;height:28px;background:url('assets/coin.svg') center/contain no-repeat;image-rendering:pixelated;color:#49301b;font:21px 'VT323',monospace;filter:drop-shadow(0 0 8px #ffc871);pointer-events:none;will-change:transform}
+.cash-flight{position:absolute;display:grid;place-items:center;width:28px;height:28px;background:url('assets/coin.svg?v=cbf54afe4ed5') center/contain no-repeat;image-rendering:pixelated;color:#49301b;font:21px 'VT323',monospace;filter:drop-shadow(0 0 8px #ffc871);pointer-events:none;will-change:transform}
 .cash-spark{position:absolute;width:4px;height:4px;background:#ffe59d;box-shadow:0 0 7px #f4c66c;pointer-events:none}
 @media(max-height:650px){#stage-result{height:85px}#stage-result #payout-earned{font-size:30px}#stage-result #result-icon{font-size:30px}}
 
@@ -101,10 +101,10 @@ footer button{min-width:74px}#pause-button{min-width:50px;color:#aac9b9;border-c
 #bag-grid .ball.played-ball.inspected{filter:grayscale(1);outline:2px solid #a0b7ad;outline-offset:2px}
 
 /* Paint stays with a ball throughout the run. */
-.ball.paint-gold{background-image:url('assets/coin.svg')}
-.ball.paint-red{background-image:url('assets/ball-red.svg')}
-.cell.stamped.paint-gold:before{background-image:url('assets/stamp-gold.svg')}
-.cell.stamped.paint-red:before{background-image:url('assets/stamp-red.svg')}
+.ball.paint-gold{background-image:url('assets/coin.svg?v=cbf54afe4ed5')}
+.ball.paint-red{background-image:url('assets/ball-red.svg?v=63ef3c33b781')}
+.cell.stamped.paint-gold:before{background-image:url('assets/stamp-gold.svg?v=9fcef9e096ff')}
+.cell.stamped.paint-red:before{background-image:url('assets/stamp-red.svg?v=325c41bd2e89')}
 .cell.gold-paying{outline:3px solid #fff0a0;outline-offset:-3px;filter:brightness(1.2);box-shadow:0 0 28px #f4c66c}
 .cell.multiplied{outline:3px solid #ff938b;outline-offset:-3px;background:#f49c8c}
 .pattern-multiplier{position:absolute;font:54px 'VT323',monospace;color:#ff938b;text-shadow:3px 3px #482513,-2px -2px #482513;white-space:nowrap}
@@ -139,8 +139,8 @@ footer button{min-width:74px}#pause-button{min-width:50px;color:#aac9b9;border-c
 @media(max-width:350px){.paint-can strong{font-size:20px;gap:8px}.paint-can small{font-size:16px}.paint-shelf{gap:12px}}
 @media(orientation:landscape) and (max-height:500px){.cabinet.shopping{display:flex;width:min(94vw,760px);gap:8px}.shopping .dashboard{width:min(100%,470px)}#shop-screen{display:grid;grid-template-columns:1fr 1fr;gap:8px 22px;padding:0}.shop-heading{grid-column:1/3;padding:0;border:0}.shop-heading h2{font-size:24px}.paint-shelf{grid-column:1;grid-row:2/5;gap:12px}.paint-can{padding:12px 4px 8px;gap:9px}.paint-can strong{font-size:20px}.paint-can small{font-size:16px}#shop-hint{grid-column:2;grid-row:2;font-size:15px;margin:0}.painting-bench{grid-column:2;grid-row:3;padding:0 0 10px}#shop-balls{min-height:65px;padding:0 5px 4px}#shop-balls .ball{--size:58px}#shop-balls .face{font-size:28px}.shop-actions{grid-column:2;grid-row:4;gap:10px}.shop-actions .menu-button{min-height:39px;font-size:21px;padding:6px 10px}#shop-bag{position:absolute;bottom:4px;left:15px;font-size:18px;min-height:26px}}
 
-.ball.paint-blue{background-image:url('assets/ball-blue.svg')}
-.cell.stamped.paint-blue:before{background-image:url('assets/stamp-blue.svg')}
+.ball.paint-blue{background-image:url('assets/ball-blue.svg?v=d59923407e86')}
+.cell.stamped.paint-blue:before{background-image:url('assets/stamp-blue.svg?v=eb22978417ed')}
 .paint-can.blue,.paint-tin.blue{--paint:#56baff}.paint-can.blue{border-color:#3879a4}
 .paint-splash.blue{background:#56baff}
 .draw-bonus{position:absolute;font:38px 'VT323',monospace;color:#9de4ff;text-shadow:2px 2px #123652,-2px -2px #123652;white-space:nowrap}
@@ -149,3 +149,13 @@ footer button{min-width:74px}#pause-button{min-width:50px;color:#aac9b9;border-c
 .paint-can{padding-left:4px;padding-right:4px;min-width:0}.paint-can strong{flex-wrap:wrap;gap:4px 8px;font-size:19px}.paint-can small{font-size:15px;text-align:center;line-height:1.1;min-height:32px}.paint-tin{width:48px;height:58px}
 @media(max-width:350px){.paint-can strong{font-size:17px;gap:4px}.paint-can small{font-size:13px}.paint-shelf{gap:7px}}
 @media(orientation:landscape) and (max-height:500px){.paint-can strong{font-size:17px}.paint-can small{font-size:13px}.paint-shelf{gap:7px}}
+
+/* Paint is visible on its numbered tile before and after stamping. */
+.cell.paint-red{--tile-color:#ee9690;--tile-grain:#af454728}
+.cell.paint-gold{--tile-color:#edce74;--tile-grain:#ae812d28}
+.cell.paint-blue{--tile-color:#83c4ed;--tile-grain:#337dac28}
+.cell:is(.paint-red,.paint-gold,.paint-blue):not(.charged){background:repeating-conic-gradient(transparent 0% 25%,var(--tile-grain) 0% 50%) 0 0/6px 6px,var(--tile-color)}
+.paint-can,.paint-can *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
+.ball[data-paint-preview=gold]{background-image:url('assets/coin.svg?v=cbf54afe4ed5')}
+.ball[data-paint-preview=red]{background-image:url('assets/ball-red.svg?v=63ef3c33b781')}
+.ball[data-paint-preview=blue]{background-image:url('assets/ball-blue.svg?v=d59923407e86')}

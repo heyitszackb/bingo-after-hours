@@ -17,7 +17,7 @@ A solo arcade bingo game built for one mobile screen, with a title screen, pause
 
 ## Paint shop
 
-After each successful stage (except the final stage), three random balls from the full set are offered for painting. Drag gold, red, or blue paint onto a ball for $3; selecting paint then selecting a ball also works with touch or keyboard. Refresh the three balls for $2, or leave for the next stage at any time. Replacing an existing color costs $3; applying the same color again costs nothing and makes no change. Paint persists for the run and appears on the track, board, and bag. Shops and purchases are saved immediately.
+After each successful stage (except the final stage), three random balls from the full set are offered for painting. Drag gold, red, or blue paint onto a ball for $3; selecting paint then selecting a ball also works with touch or keyboard. Refresh the three balls for $2, or leave for the next stage at any time. Replacing an existing color costs $3; applying the same color again costs nothing and makes no change. Paint persists for the run and appears on the track, board, and bag. Painted tiles stay visibly tinted on the card even before they are stamped. Dragging paint previews its color on the nearest ball in the drop area. Shops and purchases are saved immediately.
 
 - Gold balls pay $1 each time their space activates in a completed row, column, or diagonal. A coin flies into the wallet during scoring; adjacent plays give no bonus.
 - Blue balls grant 3 extra calls each time their space activates in a completed row, column, or diagonal. The bonus flies into the call counter immediately during scoring. Calls can exceed 12; unused bonus calls are included in the stage payout. New stages start with 12 calls again. If every ball has been played below target, the run ends even with bonus calls remaining.
@@ -38,6 +38,7 @@ Run `npm start`, then open http://localhost:5173. Plain HTML/CSS/JavaScript; no 
 
 `npm test` runs scoring and progression tests. After `npm install`, with the local server running and Google Chrome installed:
 
+- `node scripts/paint-flow-check.mjs`: forgiving touch/mouse paint drops, preview, matching colors across bag/track/card/stamps, saved paint, and versioned resources.
 - `node scripts/board-check.mjs`: shuffled run/stage layouts, position-based scoring and paint effects, drag placement, layout persistence, and saved-board validation.
 - `node scripts/browser-check.mjs`: six viewport sizes, actual touch input, inspection, valid/invalid drops, bag, stage map, and redraws. Set `GAME_URL` to check the deployed site.
 - `node scripts/navigation-check.mjs`: title, help, pause, restart, saved-run resume, sound settings, targets, and corrupt-save recovery.
@@ -47,4 +48,4 @@ Run `npm start`, then open http://localhost:5173. Plain HTML/CSS/JavaScript; no 
 
 ## Deployment
 
-GitHub Pages serves the root of `main`. Pushes to `main` publish changes.
+GitHub Pages serves the root of `main`. Before committing a release, run `python3 scripts/version-assets.py` to fingerprint the browser assets and avoid mixing cached code and styles. Pushes to `main` publish changes.
