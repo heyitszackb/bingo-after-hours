@@ -84,3 +84,15 @@ h1{font:clamp(52px,14vw,78px) 'VT323',monospace;letter-spacing:2px;margin:0;colo
 footer button{min-width:74px}#pause-button{min-width:50px;color:#aac9b9;border-color:#5d877b}#result-menu{margin-top:12px;width:100%}.stage-node small{display:block;font:14px 'VT323',monospace;color:#9ab4a2}.stage-node.current small{color:#e4c784}.stage-node{height:62px}.large-score{font-size:21px!important;gap:2px!important}.large-score small{font-size:13px}
 @media(max-height:650px){.title-screen{gap:10px}.title-emblem{font-size:32px}.title-balls{margin:6px 0 12px}.title-balls .ball{--size:58px}.navigation-dialog{padding:20px}.navigation-dialog h2{font-size:33px;margin-bottom:12px}.navigation-dialog .menu-button{min-height:43px;margin-top:9px}#stage-grid{gap:8px}.stage-node{height:56px}}
 @media(orientation:landscape) and (max-height:500px){.title-screen{display:grid;width:min(94vw,680px);grid-template-columns:1.2fr 1fr;gap:8px 25px;align-content:center}.title-emblem{display:none}h1{grid-column:1;grid-row:1;font-size:58px}.title-balls{grid-column:1;grid-row:2/5;margin:10px 0}.title-screen .menu-button,.title-screen .text-button,.saved-stage{grid-column:2}.saved-stage{font-size:15px}#result-menu{grid-column:1;grid-row:4;margin-top:0}.navigation-dialog{max-height:94dvh}#help-dialog{width:min(94vw,650px)}#help-dialog p{font-size:16px;margin-bottom:9px}#help-dialog h2{font-size:28px;margin-bottom:10px}}
+
+/* Stage completion stays on the card; unused calls fly into the real wallet. */
+#stage-result{height:100px;width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 4px}
+.result-summary{display:flex;align-items:center;justify-content:center;gap:12px;flex:1;color:var(--gold)}
+#stage-result #result-icon{font-size:36px;line-height:1}
+#stage-result #payout-earned{font-size:36px;line-height:1;margin:0}
+#result-actions{display:flex;align-items:center;gap:10px}
+#stage-result #continue,#stage-result #result-menu{margin:0;width:60px;min-width:60px;height:49px;padding:0;display:grid;place-items:center;border:3px solid #c9a25f;background:#163b34;box-shadow:3px 4px #001a20;color:var(--gold);font-size:33px}
+#stage-result #result-menu{width:45px;min-width:45px;border-color:#57867a;color:var(--cyan)}
+.cash-flight{position:absolute;display:grid;place-items:center;width:28px;height:28px;background:url('assets/ball.svg') center/contain no-repeat;image-rendering:pixelated;color:#49301b;font:21px 'VT323',monospace;filter:drop-shadow(0 0 8px #ffc871);pointer-events:none;will-change:transform}
+.cash-spark{position:absolute;width:4px;height:4px;background:#ffe59d;box-shadow:0 0 7px #f4c66c;pointer-events:none}
+@media(max-height:650px){#stage-result{height:85px}#stage-result #payout-earned{font-size:30px}#stage-result #result-icon{font-size:30px}}
