@@ -7,7 +7,7 @@ A solo arcade bingo game built for one mobile screen, with a title screen, pause
 - Drag balls along the track to reorder them for free, with neighboring balls sliding into place. Drag one of three numbered balls anywhere onto the card; it snaps to its matching square. Tap a ball or board space for an anchored tooltip without spending a call. Space tooltips show “Nothing special” when unmodified and describe active paint effects. Tap again, tap elsewhere, or press Escape to dismiss.
 - Each row, column, or diagonal activates its five spaces in order for points equal to each tile’s number, with red multipliers applied on top. For example, 3, 8, 12, 19, and 25 score 67 points, or 134 with one red ball in that line. Each activation pops, shows its actual points, and ticks the score up. Simultaneous lines each activate all five spaces, including shared spaces, then only their stamps clear.
 - 12 calls per stage. Rerolls cost $1 each and spend no calls; they are disabled at $0. The played ball is removed for the rest of the stage, including after its stamp scores and clears. Unchosen balls return; redraws remove nothing. Each new stage refills all 25 balls.
-- Ten stages with targets of 5, 10, 20, 40, 100, 200, 500, 1,000, 5,000, and 10,000. The stage map marks your current stage, completed stages, and locked future stages. Completing stage 10 finishes the run.
+- Ten stages with targets of 40, 70, 100, 140, 190, 250, 325, 425, 550, and 700. The stage map marks your current stage, completed stages, and locked future stages. Completing stage 10 finishes the run.
 - The bag always displays all 25 balls. Played balls are greyed out for the rest of the stage, even after their stamps clear; they cannot be drawn again. Current offers have a cyan dot. The bag counter shows how many balls remain available.
 - Compact score, money, and stage counters. Runs start with $5. Money carries between stages and resets to $5 on a new run; rerolls cost $1. Clearing a stage pays $1 per unused call. The call-meter pips lift off as pixel coins and fly into the money counter, which ticks up on each arrival. The paint shop opens after the payout, with no result modal. Failed stages pay no bonus.
 - Original pixel-drawn ball, stamp, and felt SVG assets; strong mint highlights identify the three offered numbers on the board.
@@ -28,7 +28,7 @@ After each successful stage (except the final stage), three random balls from th
 
 Play starts a run. The pause icon opens Resume, Restart Run, Main Menu, and a sound toggle. Escape opens/closes pause between calls. Completed actions and ball order are saved locally; Resume restores the run after returning to the menu or refreshing. Restart asks before replacing the current run. Navigation is briefly disabled while a call or cash tally resolves.
 
-Stage targets are unchanged. The current paint economy and late-stage difficulty have not yet been balanced; further scoring mechanics will be needed for the highest targets.
+The initial target curve is tuned around a 65-point average unpainted bingo: the opening stage usually needs one line, and later stages increasingly reward red multipliers, blue bonus calls, and multiple bingos. These are first-pass balance values, checked against seeded heuristic simulations with representative paint counts, not a guarantee of run completion or a full shop-economy simulation.
 
 ## Run locally
 

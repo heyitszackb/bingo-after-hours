@@ -1,5 +1,5 @@
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,draw,choose,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS} from './game.js?v=5accfafc9c33';
+import {newStage,draw,choose,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS} from './game.js?v=a06c01b70cb3';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,muted=false,paintDrag=null,selectedPaint=null,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));

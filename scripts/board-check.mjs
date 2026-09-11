@@ -13,13 +13,13 @@ const first=await layout(),ordered=Array.from({length:25},(_,i)=>i+1);assert.dee
 await page.locator('#redraw').click();await ready();assert.deepEqual(await layout(),first);
 await page.locator('#pause-button').click();await page.locator('#main-menu-button').click();await page.reload();await page.locator('#play-button').click();await ready();assert.deepEqual(await layout(),first);
 const s=await page.evaluate(()=>JSON.parse(localStorage.getItem('binglatro.run.v1')));
-const row=first.slice(0,5);s.stamps=row.slice(0,4);s.bag=s.bag.filter(n=>!s.stamps.includes(n));s.stamps.forEach(n=>s.played[n]=1);s.calls=8;s.offer=[row[4]];s.paints={[row[0]]:'red',[row[1]]:'gold',[row[2]]:'blue'};
+const row=first.slice(0,5);s.stamps=row.slice(0,4);s.bag=s.bag.filter(n=>!s.stamps.includes(n));s.stamps.forEach(n=>s.played[n]=1);s.calls=8;s.score=25;s.offer=[row[4]];s.paints={[row[0]]:'red',[row[1]]:'gold',[row[2]]:'blue'};
 await restore(s);await ready();assert.deepEqual(await layout(),first);await page.screenshot({path:'/tmp/binglatro-shuffled.png'});
 const ball=await page.locator('#balls .ball').boundingBox(),board=await page.locator('#board').boundingBox();
 await page.mouse.move(ball.x+ball.width/2,ball.y+ball.height/2);await page.mouse.down();await page.mouse.move(board.x+board.width/2,board.y+board.height/2,{steps:15});await page.mouse.up();
 await page.locator('.pattern-multiplier').waitFor({state:'visible'});assert.deepEqual(await page.locator('.cell.multiplied').evaluateAll(c=>c.map(n=>Number(n.id.replace('cell-','')))),row);
 assert.ok(await page.locator(`#cell-${row[4]}`).evaluate(c=>c.classList.contains('stamped')));
-await page.locator('#shop-screen').waitFor({state:'visible'});assert.equal(await page.locator('#score').textContent(),String(2*row.reduce((sum,n)=>sum+n,0)));assert.equal(await page.locator('.cell.stamped').count(),0);
+await page.locator('#shop-screen').waitFor({state:'visible'});assert.equal(await page.locator('#score').textContent(),String(s.score+2*row.reduce((sum,n)=>sum+n,0)));assert.equal(await page.locator('.cell.stamped').count(),0);
 await page.locator('#shop-next').click();await ready();const second=await layout();assert.notDeepEqual(second,first);assert.deepEqual([...second].sort((a,b)=>a-b),ordered);
 assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('binglatro.run.v1')).paints),s.paints);
 await page.locator('#pause-button').click();await page.locator('#restart-button').click();await page.locator('#confirm-restart').click();await ready();assert.notDeepEqual(await layout(),second);

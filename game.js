@@ -3,7 +3,7 @@ export const PATTERNS = [
   ...Array.from({length:5},(_,c)=>Array.from({length:5},(_,r)=>r*5+c+1)),
   [1,7,13,19,25],[5,9,13,17,21]
 ];
-export const STAGE_TARGETS = [5,10,20,40,100,200,500,1000,5000,10000];
+export const STAGE_TARGETS = [40,70,100,140,190,250,325,425,550,700];
 export const targetFor = stage => STAGE_TARGETS[stage-1];
 export function shuffleBoard(random=Math.random){
   const board=Array.from({length:25},(_,i)=>i+1);

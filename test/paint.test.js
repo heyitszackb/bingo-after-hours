@@ -21,7 +21,7 @@ test('shared colored spaces trigger per completed pattern and red does not multi
 test('blue rescues a last call; extra calls can exceed 12 and pay out once',()=>{
   const s=newStage(4,5,{1:'blue',2:'blue'});s.calls=1;s.stamps=new Set([1,2,3,4]);s.offer=[5];choose(s,5);
   assert.equal(s.calls,6);assert.equal(s.status,'playing');
-  const win=newStage(1,5,{1:'blue'});win.stamps=new Set([1,2,3,4]);win.offer=[5];choose(win,5);
+  const win=newStage(1,5,{1:'blue'});win.score=25;win.stamps=new Set([1,2,3,4]);win.offer=[5];choose(win,5);
   assert.equal(win.calls,14);assert.equal(win.status,'passed');assert.equal(settleStage(win),14);assert.equal(win.money,19);assert.equal(settleStage(win),0);
   const next=newStage(2,win.money,win.paints);assert.equal(next.calls,12);assert.equal(next.callCapacity,12);assert.deepEqual(next.paints,{1:'blue'});
 });
