@@ -10,7 +10,7 @@
 </main>
 <dialog id="bag-dialog" aria-label="Remaining balls in the bag"><button class="close" aria-label="Close bag">×</button><div id="bag-grid"></div></dialog>
 <dialog id="stage-dialog" aria-label="Ten stages"><button class="close" aria-label="Close stages">×</button><div id="stage-grid"></div></dialog>
-<dialog id="result-dialog" aria-label="Stage result"><div id="result-icon"></div><div id="result-score"></div><button id="continue" aria-label="Continue">→</button></dialog>
+<dialog id="result-dialog" aria-label="Stage result"><div id="result-icon"></div><div id="result-score"></div><section id="payout" hidden aria-label="Unused calls bonus"><div class="payout-formula"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9l5 3"/><circle cx="12" cy="12" r="9"/></svg><span id="payout-count"></span><span>× $1</span></div><div id="payout-coins" aria-hidden="true"></div><div id="payout-earned">+$0</div><div class="payout-balance"><span id="payout-before"></span><span>→</span><strong id="payout-money"></strong></div></section><button id="continue" aria-label="Continue">→</button></dialog>
 <div id="announcer" class="sr-only" role="status" aria-live="polite"></div><div id="effects" aria-hidden="true"></div>
 <div id="inspect-tooltip" role="tooltip" popover="manual" hidden><strong id="tooltip-number"></strong><p id="tooltip-effect" hidden>Nothing special</p></div>
 <script type="module" src="app.js"></script></body></html>

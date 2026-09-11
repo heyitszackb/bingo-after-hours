@@ -5,7 +5,7 @@ export const PATTERNS = [
 ];
 export const targetFor = stage => stage * 10;
 export function newStage(stage=1,money=5) {
-  return {stage,target:targetFor(stage),score:0,calls:12,money,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
+  return {stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
 }
 export function draw(state=newStage(),random=Math.random,count=3) {
   const bag=[...state.bag];
@@ -30,4 +30,12 @@ export function choose(state,number) {
 export function redraw(state,random=Math.random) {
   if(state.status!=='playing'||state.money<1)return false;
   state.money--;state.offer=draw(state,random);return true;
+}
+
+export function settleStage(state){
+  if(state.status!=='passed'||state.bonusPaid)return 0;
+  const bonus=state.calls;
+  state.money+=bonus;
+  state.bonusPaid=true;
+  return bonus;
 }

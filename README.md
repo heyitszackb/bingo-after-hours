@@ -7,7 +7,7 @@ A solo arcade bingo game built for one mobile screen.
 - 12 calls per stage. Rerolls cost $1 each and spend no calls; they are disabled at $0. The played ball is removed for the rest of the stage, including after its stamp scores and clears. Unchosen balls return; redraws remove nothing. Each new stage refills all 25 balls.
 - Ten stages with targets from 10 to 100. The stage map marks your current stage, completed stages, and locked future stages. Completing stage 10 finishes the run.
 - The bag displays only remaining balls and marks current offers with a cyan dot. Its counter decreases after each play.
-- Compact score, money, and stage counters. Runs start with $5. Money carries between stages and resets to $5 on a new run; rerolls cost $1.
+- Compact score, money, and stage counters. Runs start with $5. Money carries between stages and resets to $5 on a new run; rerolls cost $1. Clearing a stage pays $1 per unused call, counted out visually before continuing. Failed stages pay no bonus.
 - Original pixel-drawn ball, stamp, and felt SVG assets; strong mint highlights identify the three offered numbers on the board.
 - A low-resolution teal-and-blue swirl drifts behind the game and ripples with a brief vibration on each played ball. Background movement is disabled for reduced-motion preferences.
 - Rolling, magnetic placement, stamp impacts, pixel particles, synthesized impact sounds, and supported-device haptics. Reduced-motion preferences are respected.

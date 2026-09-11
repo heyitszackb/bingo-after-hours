@@ -1,7 +1,7 @@
 import {pulseBackground} from './background.js';
-import {newStage,draw,choose,redraw} from './game.js';
+import {newStage,draw,choose,redraw,settleStage} from './game.js';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null;
+let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
 const animate=(el,frames,options)=>el.animate(frames,{...options,duration:reduced?1:options.duration}).finished.catch(()=>{});
 function sound(kind,step=0){if(!navigator.userActivation?.hasBeenActive)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const t=audio.currentTime;const o=audio.createOscillator(),g=audio.createGain();o.type=kind==='score'?'triangle':'square';o.frequency.setValueAtTime(kind==='activate'?330*2**(Math.min(step,12)/12):kind==='score'?660:kind==='roll'?180:110,t);o.frequency.exponentialRampToValueAtTime(kind==='activate'?220*2**(Math.min(step,12)/12):kind==='score'?1320:40,t+.12);g.gain.setValueAtTime(.035,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);o.connect(g).connect(audio.destination);o.start(t);o.stop(t+.17);}catch{}}
@@ -172,8 +172,53 @@ async function activateSpaces(result){
 }
 async function play(n,b,ghost){if(busy){ghost?.remove();return;}lock();const result=choose(state,n);if(!result){ghost?.remove();unlock();return;}$('calls').textContent=state.calls;$('bag-count').textContent=state.bag.size;$('call-dots').children[state.calls]?.classList.add('used');document.querySelector('.call-meter').setAttribute('aria-label',`${state.calls} calls remaining`);$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);const cell=$(`cell-${n}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.className='ball leave';});if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}cell.classList.add('stamped','just-stamped');pulseBackground();sound('stamp');navigator.vibrate?.(18);burst(r);animate(document.querySelector('.board-frame'),[{transform:'translate(0,0)'},{transform:'translate(0,3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});$('announcer').textContent=result.duplicate?`${n} already stamped. One call used.`:`Stamped ${n}.`;await wait(370);if(result.points)await activateSpaces(result);await wait(120);render();refreshBag();if(state.status!=='playing'){showResult();return;}await nextDraw();}
 function showStages(){hideTooltip();$('stage-grid').innerHTML=Array.from({length:10},(_,i)=>{const n=i+1,current=n===state.stage,done=n<state.stage;return `<div class="stage-node ${current?'current':done?'complete':'locked'}" ${current?'aria-current="step"':''} aria-label="Stage ${n}, ${current?'current':done?'completed':'locked'}"><span>${n}</span>${current?'<span>◆</span>':done?'<span>✓</span>':'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'}</div>`;}).join('');$('stage-dialog').showModal();}
-function showResult(){hideTooltip();const passed=state.status==='passed',finished=passed&&state.stage===10;$('result-icon').textContent=finished?'♛':passed?'✦':'↻';$('result-score').textContent=`${state.score}/${state.target} pts`;$('continue').textContent=passed&&!finished?'→':'↻';$('continue').setAttribute('aria-label',passed&&!finished?'Next stage':'New run');$('result-dialog').setAttribute('aria-label',finished?'All ten stages complete':passed?'Stage complete':'Run ended');$('result-dialog').showModal();}
-$('continue').onclick=async()=>{const next=state.status==='passed'&&state.stage<10?state.stage+1:1;state=newStage(next,next===1?5:state.money);$('result-dialog').close();await nextDraw();};
+async function showResult(){
+  hideTooltip();
+  const passed=state.status==='passed',finished=passed&&state.stage===10;
+  $('result-icon').textContent=finished?'♛':passed?'✦':'↻';
+  $('result-score').textContent=`${state.score}/${state.target} pts`;
+  $('continue').textContent=passed&&!finished?'→':'↻';
+  $('continue').setAttribute('aria-label',passed&&!finished?'Next stage':'New run');
+  $('result-dialog').setAttribute('aria-label',finished?'All ten stages complete':passed?'Stage complete':'Run ended');
+  $('payout').hidden=!passed;
+  payingOut=passed;
+  $('continue').disabled=payingOut;
+  const before=state.money,bonus=passed?settleStage(state):0;
+  if(passed){
+    $('payout-count').textContent=bonus;
+    $('payout-earned').textContent='+$0';
+    $('payout-before').textContent=`$${before}`;
+    $('payout-money').textContent=`$${before}`;
+    $('payout-coins').innerHTML=Array.from({length:bonus},()=>'<span class="payout-coin">$</span>').join('');
+  }
+  $('result-dialog').showModal();
+  if(!passed)return;
+  await wait(350);
+  for(let i=0;i<bonus;i++){
+    const coin=$('payout-coins').children[i];
+    coin.classList.add('cashing');
+    sound('activate',i);navigator.vibrate?.(8);
+    const token=document.createElement('span');token.className='payout-flight';token.textContent='+$1';
+    const from=coin.getBoundingClientRect(),to=$('payout-money').getBoundingClientRect(),dialog=$('result-dialog').getBoundingClientRect();
+    token.style.left=`${from.left+from.width/2-dialog.left}px`;
+    token.style.top=`${from.top-dialog.top}px`;
+    $('result-dialog').append(token);
+    animate(token,[{transform:'translate(-50%,0) scale(.8)',opacity:0},{transform:'translate(-50%,-12px) scale(1.15)',opacity:1,offset:.3},{transform:`translate(calc(-50% + ${to.left+to.width/2-from.left-from.width/2}px),${to.top-from.top}px) scale(.6)`,opacity:0}],{duration:250,easing:'cubic-bezier(.2,.7,.3,1)'}).then(()=>token.remove());
+    await wait(170);
+    coin.classList.add('cashed');coin.classList.remove('cashing');
+    $('payout-earned').textContent=`+$${i+1}`;
+    $('payout-money').textContent=`$${before+i+1}`;
+    $('money').textContent=before+i+1;
+    animate($('payout-money'),[{transform:'scale(1.22)',color:'#fff1bb'},{transform:'scale(1)',color:'#f4c66c'}],{duration:150});
+    const dot=$('call-dots').children[bonus-i-1];dot?.classList.add('used');
+    $('calls').textContent=bonus-i-1;
+  }
+  sound('score');
+  $('announcer').textContent=`${bonus} unused calls times one dollar: $${bonus} bonus. Balance $${state.money}.`;
+  await wait(350);
+  payingOut=false;$('continue').disabled=false;
+}
+$('continue').onclick=async()=>{if(payingOut)return;const next=state.status==='passed'&&state.stage<10?state.stage+1:1;state=newStage(next,next===1?5:state.money);$('result-dialog').close();await nextDraw();};
 $('result-dialog').addEventListener('cancel',e=>e.preventDefault());
 $('redraw').onclick=async()=>{if(busy||drag||state.money<1)return;lock();if(!redraw(state)){unlock();return;}$('money').textContent=state.money;animate($('money'),[{transform:'scale(1.25)',color:'#fff1c2'},{transform:'scale(1)',color:'#f4c66c'}],{duration:180});sound('roll');document.querySelectorAll('#balls .ball').forEach(b=>b.className='ball leave');await wait(480);render();showBalls();await wait(770);unlock();};
 $('bag').onclick=()=>{hideTooltip();refreshBag();$('bag-dialog').showModal();};$('stages').onclick=showStages;

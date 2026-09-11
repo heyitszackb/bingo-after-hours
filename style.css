@@ -57,3 +57,18 @@ dialog{border-width:3px;background:#103731;box-shadow:5px 0 0 #001a21,0 6px 0 #0
 
 #felt-background{position:fixed;inset:0;width:100%;height:100%;transform:scale(1.06);image-rendering:pixelated;pointer-events:none;z-index:0}
 .cabinet{position:relative;z-index:1}
+
+#payout[hidden]{display:none}
+#payout{margin-top:18px;padding-top:16px;border-top:2px solid #61877b}
+.payout-formula{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--cyan);font-size:28px}
+#payout-coins{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin:15px auto 8px;max-width:270px;min-height:24px}
+.payout-coin{display:grid;place-items:center;width:21px;height:25px;color:#fff0b4;background:#977239;border:2px solid #efc77e;box-shadow:2px 2px #08282c;font-size:22px}
+.payout-coin.cashing{animation:payout-pop .17s ease-out}
+.payout-coin.cashed{opacity:.18;box-shadow:none}
+#payout-earned{font-size:48px;color:var(--gold);line-height:1.1}
+.payout-balance{display:flex;gap:14px;justify-content:center;align-items:center;font-size:28px;color:#7da297;margin-top:8px}
+#payout-money{color:var(--gold);font-weight:400;display:inline-block;font-size:36px}
+.payout-flight{position:absolute;pointer-events:none;color:#fff0b4;font-size:27px;text-shadow:2px 2px #08282c;z-index:2}
+@keyframes payout-pop{50%{transform:translateY(-5px) scale(1.2)}}
+@media(max-height:650px){#result-dialog{padding:20px}#result-icon{font-size:44px}#result-score{font-size:30px}#payout{margin-top:12px;padding-top:12px}#continue{margin-top:16px}}
+@media(orientation:landscape) and (max-height:500px){#result-dialog[open]:has(#payout:not([hidden])){width:min(94vw,620px);display:grid;grid-template-columns:1fr 1.4fr;gap:10px 20px;align-items:center}#result-icon{grid-column:1;grid-row:1}#result-score{grid-column:1;grid-row:2}#payout{grid-column:2;grid-row:1/4;border-top:0;margin-top:0;padding-top:0}#continue{grid-column:1;grid-row:3}}
