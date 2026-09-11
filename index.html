@@ -8,9 +8,8 @@
 <footer><button id="redraw" aria-label="Redraw without using a call"><svg viewBox="0 0 24 24"><path d="M20 8a8 8 0 0 0-14-3L3 8m0-5v5h5M4 16a8 8 0 0 0 14 3l3-3m0 5v-5h-5"/></svg><span id="redraw-count">2</span></button><button id="bag" aria-label="Inspect bag"><svg viewBox="0 0 32 32"><path d="M10 3h12l-3 7 7 10v7H6v-7l7-10-3-7ZM11 10h10"/></svg><span id="bag-count">25</span></button></footer>
 </main>
 <dialog id="bag-dialog" aria-label="Remaining balls in the bag"><button class="close" aria-label="Close bag">×</button><div id="bag-grid"></div></dialog>
-<dialog id="ball-dialog" aria-label="Ball details"><button class="close" aria-label="Close ball details">×</button><div id="ball-detail"></div></dialog>
-<dialog id="space-dialog" aria-label="Board space effects"><button class="close" aria-label="Close space details">×</button><div id="space-number" class="cell"></div><p>Nothing special</p></dialog>
 <dialog id="stage-dialog" aria-label="Ten stages"><button class="close" aria-label="Close stages">×</button><div id="stage-grid"></div></dialog>
 <dialog id="result-dialog" aria-label="Stage result"><div id="result-icon"></div><div id="result-score"></div><button id="continue" aria-label="Continue">→</button></dialog>
 <div id="announcer" class="sr-only" role="status" aria-live="polite"></div><div id="effects" aria-hidden="true"></div>
+<div id="inspect-tooltip" role="tooltip" popover="manual" hidden><strong id="tooltip-number"></strong><p id="tooltip-effect" hidden>Nothing special</p></div>
 <script type="module" src="app.js"></script></body></html>

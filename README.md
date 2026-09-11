@@ -2,7 +2,7 @@
 
 A solo arcade bingo game built for one mobile screen.
 
-- Drag one of three ordinary numbered balls anywhere onto the card; it snaps to its matching square. Tap a ball to inspect it without spending a call. Balls have no powers yet.
+- Drag one of three ordinary numbered balls anywhere onto the card; it snaps to its matching square. Tap a ball or board space for an anchored tooltip without spending a call. Space tooltips show “Nothing special” until effects are added. Tap again, tap elsewhere, or press Escape to dismiss. Balls have no powers yet.
 - Each row, column, or diagonal activates its five spaces in order for 1 point each (5 points per bingo). Each activation pops, shows +1, and ticks the score up. Simultaneous lines each activate all five spaces, including shared spaces, then only their stamps clear.
 - 12 calls and two free redraws per stage. The played ball is removed for the rest of the stage, including after its stamp scores and clears. Unchosen balls return; redraws remove nothing. Each new stage refills all 25 balls.
 - Ten stages with targets from 10 to 100. The stage map marks your current stage, completed stages, and locked future stages. Completing stage 10 finishes the run.
