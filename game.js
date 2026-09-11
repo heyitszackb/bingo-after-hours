@@ -35,7 +35,7 @@ export function draw(state=newStage(),random=Math.random,count=3) {
   return bag.slice(0,Math.min(count,25));
 }
 export function choose(state,number,tile=state.destinations[number]) {
-  if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||!Object.values(state.destinations).includes(tile)||tile<1||tile>25||state.stamps.has(tile)) return null;
+  if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||(state.paints[number]!=='black'&&!Object.values(state.destinations).includes(tile))||tile<1||tile>25||state.stamps.has(tile)) return null;
   state.stamps.add(tile);state.stampBalls[tile]=number;state.bag.delete(number);state.played[number]++;state.calls--;
   const scoredPatterns=completedPatterns(state.stamps);
   const patterns=scoredPatterns.map(p=>p.tiles);
@@ -76,7 +76,7 @@ export function openShop(state,random=Math.random){
   return true;
 }
 export function paintBall(state,number,color){
-  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!state.shopOffer?.includes(number)||!['gold','red','blue'].includes(color)||state.money<3||state.paints[number]===color)return false;
+  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!state.shopOffer?.includes(number)||!['gold','red','blue','black'].includes(color)||state.money<3||state.paints[number]===color)return false;
   state.money-=3;state.paints[number]=color;return true;
 }
 export function redrawShop(state,random=Math.random){

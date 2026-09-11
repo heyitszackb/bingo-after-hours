@@ -1,5 +1,5 @@
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=eea5240cae59';
+import {newStage,deal,choose,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=8326d8c0905c';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,muted=false,paintDrag=null,selectedPaint=null,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
@@ -48,7 +48,7 @@ function showTooltip(n,anchor,space=false){
   (anchor.closest('dialog')||document.body).append(tip);
   $('tooltip-number').textContent=space?'1 pt':n;
   const color=state.paints[n];
-  $('tooltip-effect').textContent=color==='gold'?'+$1 when scored':color==='red'?'×2 to any scoring bingo · stacks':color==='blue'?'+3 draws when scored':space?'Nothing special':'';
+  $('tooltip-effect').textContent=color==='gold'?'+$1 when scored':color==='red'?'×2 to any scoring bingo · stacks':color==='blue'?'+3 draws when scored':color==='black'?'Place on any empty space':space?'Nothing special':'';
   $('tooltip-effect').hidden=!space&&!color;
   tip.classList.toggle('space-tooltip',space);
   tooltipAnchor=anchor;
@@ -103,9 +103,9 @@ function previewOrder(d,order){
   }
 }
 function isOnBoard(x,y){const r=$('board').getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;}
-function nearestDestination(x,y){
+function nearestDestination(x,y,number){
   let nearest=null,distance=Infinity;
-  for(const tile of Object.values(state.destinations)){
+  for(const tile of state.paints[number]==='black'?Array.from({length:25},(_,i)=>i+1):Object.values(state.destinations)){
     if(state.stamps.has(tile))continue;
     const r=$(`cell-${tile}`).getBoundingClientRect(),d=Math.hypot(x-r.left-r.width/2,y-r.top-r.height/2);
     if(d<distance){nearest=tile;distance=d;}
@@ -123,12 +123,13 @@ function moveDrag(e){
     document.body.append(d.ghost);d.b.classList.add('held');
   }
   if(!d.moved)return;
+  $('board').classList.toggle('free-placement',state.paints[d.n]==='black');
   d.ghost.style.transform=`translate(${e.clientX-d.size/2}px,${e.clientY-d.size/2}px) rotate(${Math.max(-14,Math.min(14,(e.clientX-d.x)*.08))}deg) scale(1.08)`;
   const over=isOnBoard(e.clientX,e.clientY),onTrack=!over&&isOnTrack(e.clientX,e.clientY);
   document.querySelector('.board-frame').classList.toggle('drag-over',over);
   $('balls').classList.toggle('reordering',onTrack);
   document.querySelectorAll('.cell.destination').forEach(c=>c.classList.remove('destination'));
-  if(over){d.tile=nearestDestination(e.clientX,e.clientY);$(`cell-${d.tile}`)?.classList.add('destination');}
+  if(over){d.tile=nearestDestination(e.clientX,e.clientY,d.n);$(`cell-${d.tile}`)?.classList.add('destination');}
   if(onTrack){
     const x=e.clientX+$('balls').scrollLeft-d.scrollLeft;
     let index=0;
@@ -137,6 +138,7 @@ function moveDrag(e){
   }else previewOrder(d,d.original);
 }
 function cleanDrag(d){
+  $('board').classList.remove('free-placement');
   d.b.classList.remove('held');$('balls').classList.remove('reordering');
   document.querySelector('.board-frame').classList.remove('drag-over');document.querySelectorAll('.cell.destination').forEach(c=>c.classList.remove('destination'));
 }
@@ -148,7 +150,7 @@ async function endDrag(e){
   const d=drag;drag=null;
   if(!d.moved){cleanDrag(d);inspect(d.n,d.b);return;}
   if(isOnBoard(e.clientX,e.clientY)){
-    d.tile=nearestDestination(e.clientX,e.clientY);cleanDrag(d);commitOrder(d);await play(d.n,d.b,d.ghost,d.tile);return;
+    d.tile=nearestDestination(e.clientX,e.clientY,d.n);cleanDrag(d);commitOrder(d);await play(d.n,d.b,d.ghost,d.tile);return;
   }
   busy=true;
   const reordered=isOnTrack(e.clientX,e.clientY);
@@ -408,7 +410,7 @@ async function applyPaint(n,color,target){
   }
   busy=true;selectedPaint=null;saveRun();
   document.querySelectorAll('#shop-screen button').forEach(b=>b.disabled=true);
-  target.classList.remove('paint-grey','paint-gold','paint-red','paint-blue');target.classList.add(`paint-${color}`);
+  target.classList.remove('paint-grey','paint-gold','paint-red','paint-blue','paint-black');target.classList.add(`paint-${color}`);
   const r=target.getBoundingClientRect();
   for(let i=0;i<18&&!reduced;i++){
     const drop=document.createElement('i');drop.className=`paint-splash ${color}`;drop.style.left=`${r.left+r.width/2}px`;drop.style.top=`${r.top+r.height/2}px`;$('effects').append(drop);
@@ -453,7 +455,7 @@ function loadRun(){
     delete saved.goldSeals;
     saved.callCapacity??=Math.max(12,saved.calls);
     if(!Number.isInteger(saved.callCapacity)||saved.callCapacity<12||saved.callCapacity>192||saved.calls>saved.callCapacity)throw new Error('Invalid call capacity');
-    if(saved.paints!==undefined&&(!saved.paints||Array.isArray(saved.paints)||typeof saved.paints!=='object'||!Object.entries(saved.paints).every(([n,c])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&['gold','red','blue'].includes(c))))throw new Error('Invalid paint');
+    if(saved.paints!==undefined&&(!saved.paints||Array.isArray(saved.paints)||typeof saved.paints!=='object'||!Object.entries(saved.paints).every(([n,c])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&['gold','red','blue','black'].includes(c))))throw new Error('Invalid paint');
     if(saved.shopOffer!=null&&(!numbers(saved.shopOffer)||saved.shopOffer.length!==3||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
     saved.patternCounts=Object.fromEntries(PATTERN_TYPES.map(({id})=>[id,Number.isSafeInteger(saved.patternCounts?.[id])&&saved.patternCounts[id]>=0?saved.patternCounts[id]:0]));
     if(saved.rulesVersion!==2){
