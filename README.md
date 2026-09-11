@@ -2,6 +2,7 @@
 
 A solo arcade bingo game built for one mobile screen, with a title screen, pause menu, help, restart, and saved-run resume.
 
+- Each new run and stage shuffles all 25 board numbers. Rows, columns, diagonals, scoring animations, and paint effects follow the visible tile positions. The layout stays fixed during the stage and survives pause, rerolls, and saved-run resume.
 - Unpainted balls and stamps are grey. Red paint supplies the ×2 scoring effect; saved orange paint upgrades migrate to red.
 - Drag balls along the track to reorder them for free, with neighboring balls sliding into place. Drag one of three numbered balls anywhere onto the card; it snaps to its matching square. Tap a ball or board space for an anchored tooltip without spending a call. Space tooltips show “Nothing special” when unmodified and describe active paint effects. Tap again, tap elsewhere, or press Escape to dismiss.
 - Each row, column, or diagonal activates its five spaces in order for 1 point each (5 points per bingo). Each activation pops, shows +1, and ticks the score up. Simultaneous lines each activate all five spaces, including shared spaces, then only their stamps clear.
@@ -37,6 +38,7 @@ Run `npm start`, then open http://localhost:5173. Plain HTML/CSS/JavaScript; no 
 
 `npm test` runs scoring and progression tests. After `npm install`, with the local server running and Google Chrome installed:
 
+- `node scripts/board-check.mjs`: shuffled run/stage layouts, position-based scoring and paint effects, drag placement, layout persistence, and saved-board validation.
 - `node scripts/browser-check.mjs`: six viewport sizes, actual touch input, inspection, valid/invalid drops, bag, stage map, and redraws. Set `GAME_URL` to check the deployed site.
 - `node scripts/navigation-check.mjs`: title, help, pause, restart, saved-run resume, sound settings, targets, and corrupt-save recovery.
 - `node scripts/reorder-check.mjs`: touch and mouse reordering, cancellation, unchanged money/calls, and dragging from a reordered track onto the board. Set `GAME_URL` to check the live site.

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newStage,choose,openShop,paintBall,redrawShop,settleStage,PATTERNS} from '../game.js';
+import {newStage as createStage,choose,openShop,paintBall,redrawShop,settleStage,PATTERNS} from '../game.js';
+const newStage=(stage=1,money=5,paints={})=>createStage(stage,money,paints,()=>.999999);
 const shop=()=>{const s=newStage(1,20);s.status='passed';settleStage(s);openShop(s);return s;};
 test('gold and blue trigger on scoring in every orientation, never on adjacent plays',()=>{
   for(const pattern of PATTERNS){

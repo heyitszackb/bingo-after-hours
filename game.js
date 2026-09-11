@@ -5,8 +5,14 @@ export const PATTERNS = [
 ];
 export const STAGE_TARGETS = [5,10,20,40,100,200,500,1000,5000,10000];
 export const targetFor = stage => STAGE_TARGETS[stage-1];
-export function newStage(stage=1,money=5,paints={}) {
-  return {paints:{...paints},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
+export function shuffleBoard(random=Math.random){
+  const board=Array.from({length:25},(_,i)=>i+1);
+  for(let i=board.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[board[i],board[j]]=[board[j],board[i]];}
+  return board;
+}
+export const boardPatterns=board=>PATTERNS.map(pattern=>pattern.map(position=>board[position-1]));
+export function newStage(stage=1,money=5,paints={},random=Math.random) {
+  return {board:shuffleBoard(random),paints:{...paints},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
 }
 export function draw(state=newStage(),random=Math.random,count=3) {
   const bag=[...state.bag];
@@ -17,7 +23,7 @@ export function choose(state,number) {
   if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)) return null;
   const duplicate=state.stamps.has(number);
   state.stamps.add(number);state.bag.delete(number);state.played[number]++;state.calls--;
-  const patterns=PATTERNS.filter(p=>p.every(n=>state.stamps.has(n)));
+  const patterns=boardPatterns(state.board).filter(p=>p.every(n=>state.stamps.has(n)));
   const cleared=[...new Set(patterns.flat())];
   const multipliers=patterns.map(pattern=>2**pattern.filter(n=>state.paints[n]==='red').length);
   const activations=patterns.flatMap((pattern,i)=>pattern.map((number,j)=>({number,points:multipliers[i],gold:state.paints[number]==='gold'?1:0,draws:state.paints[number]==='blue'?3:0,patternMultiplier:j===0?multipliers[i]:1,pattern:j===0?pattern:null})));

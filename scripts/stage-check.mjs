@@ -5,7 +5,7 @@ const browser=await chromium.launch({channel:'chrome',headless:true});
 const source=await readFile(new URL('../game.js',import.meta.url),'utf8');
 for(const start of [1,10]){
  const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
- await page.route('**/game.js',route=>route.fulfill({contentType:'text/javascript',body:source.replace('stage=1','stage='+start).replace('target:targetFor(stage)','target:5').replace('stamps:new Set()','stamps:new Set([1,2,3,4])').replace('return bag.slice(0,Math.min(count,25))','return [5,6,7]')}));
+ await page.route('**/game.js',route=>route.fulfill({contentType:'text/javascript',body:source.replace('board:shuffleBoard(random)','board:Array.from({length:25},(_,i)=>i+1)').replace('stage=1','stage='+start).replace('target:targetFor(stage)','target:5').replace('stamps:new Set()','stamps:new Set([1,2,3,4])').replace('return bag.slice(0,Math.min(count,25))','return [5,6,7]')}));
  await page.goto(process.env.GAME_URL||'http://localhost:5173');await page.locator('#play-button').click();await page.locator('#balls .ball:not([disabled])').first().waitFor();
  await page.locator('#redraw').click();await page.locator('#balls .ball:not([disabled])').first().waitFor();assert.equal(await page.locator('#money').textContent(),'4');
  await page.evaluate(()=>{window.scoreSteps=[];new MutationObserver(()=>window.scoreSteps.push(Number(document.querySelector('#score').textContent))).observe(document.querySelector('#score'),{childList:true});});
