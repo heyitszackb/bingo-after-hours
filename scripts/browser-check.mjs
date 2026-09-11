@@ -1,40 +1,31 @@
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 const browser=await chromium.launch({channel:'chrome',headless:true});
-const page=await browser.newPage({viewport:{width:1280,height:1000},reducedMotion:'reduce'});
+const page=await browser.newPage({viewport:{width:375,height:667},isMobile:true,hasTouch:true,reducedMotion:'reduce'});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
 await page.goto(process.env.GAME_URL||'http://localhost:5173');
-await page.locator('.ball:not([disabled])').first().waitFor();
-assert.equal(await page.locator('.cell').count(),25);
-assert.equal(await page.locator('.ball').count(),3);
-await page.screenshot({path:'/tmp/bingo-desktop.png',fullPage:true});
-const chosen=await page.locator('.ball .face').first().textContent();
-await page.locator('.ball').first().click();
-await page.waitForFunction(()=>document.querySelector('#calls').textContent==='11'&&!document.querySelector('.ball').disabled);
-assert.ok(await page.locator(`#cell-${chosen}`).evaluate(e=>e.classList.contains('stamped')));
-await page.locator('#bag').click();
-assert.equal(await page.locator('.bag-item.on-track').count(),3);
-assert.equal(await page.locator('.bag-item').nth(Number(chosen)-1).locator('small').textContent(),'×1');
-await page.locator('.close').click();
-for(let i=0;i<2;i++){await page.locator('#redraw').click();await page.waitForFunction(()=>!document.querySelector('.ball').disabled);}
-assert.equal(await page.locator('#calls').textContent(),'11');
-assert.ok(await page.locator('#redraw').isDisabled());
-await page.setViewportSize({width:375,height:812});
-await page.screenshot({path:'/tmp/bingo-mobile.png',fullPage:true});
-assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-// Always choose an existing stamp when offered, otherwise minimize progress to test game over.
-for(let i=0;i<11;i++){
- if(await page.locator('#result-dialog').isVisible())break;
- await page.locator('.ball:not([disabled])').first().waitFor();
- const repeat=page.locator('.ball').filter({has:page.locator('.repeat')});
- await (await repeat.count()?repeat.first():page.locator('.ball').first()).click();
- await page.waitForFunction(()=>document.querySelector('#result-dialog').open||!document.querySelector('.ball').disabled);
+const ready=()=>page.locator('#balls .ball:not([disabled])').first().waitFor();
+await ready();
+for(const [width,height] of [[320,568],[375,667],[390,844],[430,932],[667,375],[1280,800]]){
+ await page.setViewportSize({width,height});
+ const bounds=await page.evaluate(()=>{const r=document.querySelector('footer').getBoundingClientRect(),b=document.querySelector('.board-frame').getBoundingClientRect();return {bottom:r.bottom,top:b.top,right:r.right,h:innerHeight,w:innerWidth,scroll:document.documentElement.scrollHeight};});
+ assert.ok(bounds.bottom<=height&&bounds.top>=0&&bounds.right<=width,JSON.stringify(bounds));
+ assert.ok(bounds.scroll<=height,JSON.stringify({width,height,...bounds}));
 }
-assert.ok(await page.locator('#result-dialog').isVisible());
-await page.locator('#continue').click();
-await page.locator('.ball:not([disabled])').first().waitFor();
-assert.equal(await page.locator('#calls').textContent(),'12');
-assert.equal(await page.locator('.stamped').count(),0);
+await page.setViewportSize({width:375,height:667});
+const first=page.locator('#balls .ball').first(),n=await first.locator('.face').textContent();
+await first.tap();await page.locator('#ball-dialog').waitFor({state:'visible'});assert.equal(await page.locator('#ball-detail .face').textContent(),n);assert.equal(await page.locator('#calls').textContent(),'12');assert.equal(await page.locator('.cell.stamped').count(),0);await page.locator('#ball-dialog .close').tap();
+// Exercise real touch drag through Chromium's input protocol.
+const cdp=await page.context().newCDPSession(page);
+async function touchDrag(locator,x,y){const r=await locator.boundingBox();const sx=r.x+r.width/2,sy=r.y+r.height/2;await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:sx,y:sy}]});for(let i=1;i<=8;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:sx+(x-sx)*i/8,y:sy+(y-sy)*i/8}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
+let board=await page.locator('#board').boundingBox();await touchDrag(first,board.x+board.width-10,board.y+10);
+await page.waitForFunction(()=>document.querySelector('#calls').textContent==='11'&&!document.querySelector('#balls .ball').disabled);
+assert.ok(await page.locator(`#cell-${n}`).evaluate(e=>e.classList.contains('stamped')));assert.equal(await page.locator('.drag-ghost').count(),0);
+await page.locator('#bag').tap();assert.equal(await page.locator('#bag-grid .ball').count(),25);assert.equal(await page.locator('#bag-grid .stamped-ball').count(),1);assert.equal(await page.locator('#bag-grid .on-track').count(),3);await page.locator('#bag-grid .ball').first().tap();assert.ok(await page.locator('#ball-dialog').isVisible());await page.locator('#ball-dialog .close').tap();await page.locator('#bag-dialog .close').tap();
+await page.locator('#stages').tap();assert.equal(await page.locator('.stage-node').count(),10);assert.equal(await page.locator('.stage-node.locked').count(),9);assert.equal(await page.locator('.stage-node.current').count(),1);await page.screenshot({path:'/tmp/bingo-stages.png'});await page.locator('#stage-dialog .close').tap();
+await touchDrag(page.locator('#balls .ball').first(),5,5);await page.waitForFunction(()=>!document.querySelector('.drag-ghost'));assert.equal(await page.locator('#calls').textContent(),'11');
+await page.locator('#redraw').tap();await ready();assert.equal(await page.locator('#calls').textContent(),'11');assert.equal(await page.locator('#redraw-count').textContent(),'1');
+await page.screenshot({path:'/tmp/bingo-mobile-v2.png'});
 assert.deepEqual(errors,[]);
-console.log('Browser checks passed: card, stamping, bag counts, redraws, mobile layout, run transition.');
+console.log('Passed: six viewport fits, tap inspection, touch drag to matching square, invalid drop, visual bag, locked stage map, redraw, no browser errors.');
 await browser.close();

@@ -1,21 +1,27 @@
 # Bingo After Hours
 
-A solo arcade bingo game. Pick one of three ordinary numbered balls, build lines, and beat increasing stage targets.
+A solo arcade bingo game built for one mobile screen.
 
-- 5×5 card, numbers 1–25. Three distinct balls per draw; every ball returns after each choice.
+- Drag one of three ordinary numbered balls anywhere onto the card; it snaps to its matching square. Tap a ball to inspect it without spending a call. Balls have no powers yet.
 - Each row, column, or diagonal scores 10 points. Simultaneous lines score together, then only their stamps clear.
-- 12 calls and two free redraws per stage. Repeated stamps spend a call.
-- Targets start at 10 and increase by 10 per stage. Passing resets the card, score, calls, redraws, and play counts.
-- Bag inspector shows all 25 balls, current offers, and how often each number was chosen this stage.
+- 12 calls and two free redraws per stage. Repeated stamps spend a call. All balls return to the bag after a choice.
+- Ten stages with targets from 10 to 100. The stage map marks your current stage, completed stages, and locked future stages. Completing stage 10 finishes the run.
+- The bag displays all 25 balls, greys out stamped numbers, and marks current offers with a cyan dot. Play counts remain available in accessible labels.
+- Compact score, money, and stage counters. Money starts at $0; earning and spending are not implemented.
+- Rolling, magnetic placement, stamp impacts, pixel particles, synthesized impact sounds, and supported-device haptics. Reduced-motion preferences are respected.
+- Keyboard: Enter inspects a focused ball; Space plays it. All icon controls have accessible labels.
 
 ## Run locally
 
-Run `npm start`, then open http://localhost:5173. The game is plain HTML/CSS/JavaScript with no production dependencies or build step. Google Fonts are optional; system monospace is the fallback.
+Run `npm start`, then open http://localhost:5173. Plain HTML/CSS/JavaScript; no production dependencies or build step. Google Fonts are optional with a system monospace fallback.
 
 ## Checks
 
-`npm test` runs the scoring and progression unit tests. After `npm install`, run `node scripts/browser-check.mjs` with the local server running to smoke-test the UI using an installed Google Chrome. Set `GAME_URL` to test the deployed site.
+`npm test` runs scoring and progression tests. After `npm install`, with the local server running and Google Chrome installed:
+
+- `node scripts/browser-check.mjs`: six viewport sizes, actual touch input, inspection, valid/invalid drops, bag, stage map, and redraws. Set `GAME_URL` to check the deployed site.
+- `node scripts/stage-check.mjs`: normal-motion scoring, stage progression, and final-stage restart using deterministic browser fixtures.
 
 ## Deployment
 
-GitHub Pages serves the root of the `main` branch. Pushes to `main` publish changes.
+GitHub Pages serves the root of `main`. Pushes to `main` publish changes.
