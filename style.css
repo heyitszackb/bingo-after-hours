@@ -49,3 +49,8 @@ dialog{border-width:3px;background:#103731;box-shadow:5px 0 0 #001a21,0 6px 0 #0
 @media(orientation:landscape) and (max-height:500px){#bag-grid .ball .face{font-size:20px}}
 
 #balls .ball.inspected{filter:drop-shadow(2px 0 0 #fff0b0) drop-shadow(-2px 0 0 #fff0b0) drop-shadow(0 2px 0 #fff0b0) drop-shadow(0 -2px 0 #fff0b0) drop-shadow(0 0 9px #a5ffe090)}
+
+#balls .ball{cursor:grab}
+#balls.reordering .ball.held{opacity:.16;filter:drop-shadow(0 0 8px #a4ffdc)}
+#balls.reordering .ball:not(.held){will-change:transform}
+.drag-ghost{cursor:grabbing}
