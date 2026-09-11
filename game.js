@@ -1,12 +1,26 @@
-export const PATTERNS = [
-  ...Array.from({length:5},(_,r)=>Array.from({length:5},(_,c)=>r*5+c+1)),
-  ...Array.from({length:5},(_,c)=>Array.from({length:5},(_,r)=>r*5+c+1)),
-  [1,7,13,19,25],[5,9,13,17,21]
+const squareTiles=(row,column,size)=>Array.from({length:size*size},(_,i)=>(row+Math.floor(i/size))*5+column+i%size+1);
+export const PATTERN_TYPES = [
+  {id:'row',label:'5 in a row',previewTiles:[11,12,13,14,15],basePoints:5},
+  {id:'column',label:'5 in a col',previewTiles:[3,8,13,18,23],basePoints:5},
+  {id:'diagonal',label:'Diagonals',previewTiles:[1,7,13,19,25],basePoints:5},
+  {id:'corners',label:'4 in corners',previewTiles:[1,5,21,25],basePoints:4},
+  {id:'square4',label:'4 in a square',previewTiles:squareTiles(1,1,2),basePoints:4}
 ];
+export const PATTERN_DEFINITIONS = [
+  ...Array.from({length:5},(_,r)=>({id:`row-${r+1}`,type:'row',tiles:Array.from({length:5},(_,c)=>r*5+c+1)})),
+  ...Array.from({length:5},(_,c)=>({id:`column-${c+1}`,type:'column',tiles:Array.from({length:5},(_,r)=>r*5+c+1)})),
+  {id:'diagonal-1',type:'diagonal',tiles:[1,7,13,19,25]},
+  {id:'diagonal-2',type:'diagonal',tiles:[5,9,13,17,21]},
+  {id:'corners',type:'corners',tiles:[1,5,21,25]},
+  ...Array.from({length:16},(_,i)=>({id:`square4-${Math.floor(i/4)+1}-${i%4+1}`,type:'square4',tiles:squareTiles(Math.floor(i/4),i%4,2)}))
+];
+export const PATTERNS = PATTERN_DEFINITIONS.map(pattern=>pattern.tiles);
+export const freshPatternCounts=()=>Object.fromEntries(PATTERN_TYPES.map(({id})=>[id,0]));
+export const completedPatterns=stamps=>PATTERN_DEFINITIONS.filter(({tiles})=>tiles.every(tile=>stamps.has(tile)));
 export const STAGE_TARGETS = [5,10,15,20,30,40,55,70,90,120];
 export const targetFor = stage => STAGE_TARGETS[stage-1];
-export function newStage(stage=1,money=5,paints={}) {
-  return {rulesVersion:2,stampBalls:{},destinations:{},paints:{...paints},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
+export function newStage(stage=1,money=5,paints={},patternCounts={}) {
+  return {rulesVersion:2,patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},destinations:{},paints:{...paints},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
 }
 export function deal(state,random=Math.random,count=3){
   const empty=Array.from({length:25},(_,i)=>i+1).filter(tile=>!state.stamps.has(tile));
@@ -24,7 +38,10 @@ export function choose(state,number) {
   const tile=state.destinations[number];
   if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||tile<1||tile>25||state.stamps.has(tile)) return null;
   state.stamps.add(tile);state.stampBalls[tile]=number;state.bag.delete(number);state.played[number]++;state.calls--;
-  const patterns=PATTERNS.filter(p=>p.every(n=>state.stamps.has(n)));
+  const scoredPatterns=completedPatterns(state.stamps);
+  const patterns=scoredPatterns.map(p=>p.tiles);
+  state.patternCounts??=freshPatternCounts();
+  for(const {type} of scoredPatterns)state.patternCounts[type]=(state.patternCounts[type]||0)+1;
   const cleared=[...new Set(patterns.flat())];
   const multipliers=patterns.map(pattern=>2**pattern.filter(tile=>state.paints[state.stampBalls[tile]]==='red').length);
   const activations=patterns.flatMap((pattern,i)=>pattern.map((tile,j)=>{
@@ -39,7 +56,7 @@ export function choose(state,number) {
   state.offer=[];state.destinations={};
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0)state.status='over';
-  return {tile,patterns,cleared,activations,points,gold,bonusDraws};
+  return {tile,patterns,scoredPatterns,cleared,activations,points,gold,bonusDraws};
 }
 export function redraw(state,random=Math.random) {
   if(state.status!=='playing'||state.money<1)return false;

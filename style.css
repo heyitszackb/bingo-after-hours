@@ -159,3 +159,39 @@ footer button{min-width:74px}#pause-button{min-width:50px;color:#aac9b9;border-c
 .ball[data-paint-preview=gold]{background-image:url('assets/coin.svg?v=cbf54afe4ed5')}
 .ball[data-paint-preview=red]{background-image:url('assets/ball-red.svg?v=63ef3c33b781')}
 .ball[data-paint-preview=blue]{background-image:url('assets/ball-blue.svg?v=d59923407e86')}
+
+/* Run-wide bingo ledger. The small boards explain each shape at a glance. */
+.dashboard .score-panel{color:var(--cream);padding:0 3px}
+.dashboard .score-panel small{color:var(--cream)}
+.dashboard .score-panel:disabled{opacity:1}
+.cell.pattern-active{outline:3px solid #eace88;outline-offset:-3px}
+footer{gap:10px}
+footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
+#patterns-dialog{width:min(94vw,460px);padding:22px 16px 14px;overflow:hidden}
+.patterns-heading{display:flex;justify-content:space-between;align-items:center;margin:0 34px 14px 4px}
+.patterns-heading small{font-size:15px;letter-spacing:2px;color:#9fbbae;display:block}
+.patterns-heading h2{font-size:38px;font-weight:400;letter-spacing:3px;line-height:1;margin:4px 0 0;color:var(--cream);text-shadow:2px 2px #001a20}
+.patterns-total{text-align:right}
+.patterns-total strong{display:block;font-size:37px;font-weight:400;line-height:1;color:var(--gold)}
+.patterns-total small{font-size:13px;margin-top:5px}
+.patterns-columns,.pattern-row{display:grid;grid-template-columns:minmax(0,1fr) 44px 64px;align-items:center;gap:8px}
+.patterns-columns{color:#9fbbae;font-size:14px;letter-spacing:1px;margin:0 8px 7px}
+.patterns-columns span:not(:first-child){text-align:right}
+#patterns-list{display:grid;gap:7px}
+.pattern-row{min-height:59px;padding:7px 8px;border:2px solid #386053;background:#092b2c;box-shadow:2px 3px #001d22}
+.pattern-name{display:flex;align-items:center;gap:10px;min-width:0;font-size:22px;line-height:1}
+.pattern-preview{width:41px;height:41px;flex:0 0 41px;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:2px;align-self:center}
+.pattern-preview i{background:#33564f;box-shadow:inset 1px 1px #476c5e}
+.pattern-preview .filled{background:#e8d4a4;box-shadow:inset 1px 1px #fff0c8,1px 1px #7c7854}
+.pattern-base{color:#b4caba;text-align:right;font-size:25px;line-height:1}
+.pattern-base small{display:block;font-size:14px;margin-top:3px;color:#8baa9c}
+.pattern-count{font-size:29px;font-weight:400;text-align:right;color:#829e92;white-space:nowrap}
+.pattern-count span{font-size:20px;margin-right:4px;color:#638c7d}
+.pattern-row.has-scored .pattern-count{color:var(--cream)}
+.pattern-row.most-scored{border-color:#ac925a;background:#1b3c32}
+.pattern-row.most-scored .pattern-count{color:var(--gold)}
+.pattern-row.most-scored .pattern-preview .filled{background:var(--gold)}
+#patterns-note{text-align:center;font-size:16px;line-height:1.2;margin:14px 0 0;color:#a6bcac}
+@media(max-width:350px){#patterns-dialog{padding:18px 10px 12px}.pattern-name{font-size:19px;gap:7px}.patterns-columns,.pattern-row{grid-template-columns:minmax(0,1fr) 32px 50px;gap:6px}.pattern-count{font-size:25px}.pattern-preview{width:36px;height:36px;flex-basis:36px}.patterns-columns{font-size:12px}}
+@media(max-height:650px){.patterns-heading{margin-bottom:10px}.pattern-row{min-height:53px;padding-top:5px;padding-bottom:5px}#patterns-list{gap:6px}#patterns-note{margin-top:12px}}
+@media(orientation:landscape) and (max-height:500px){#patterns-dialog{width:min(94vw,730px);padding:17px 14px 12px}#patterns-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}.patterns-columns{display:none}.patterns-heading{margin-bottom:12px}.patterns-heading h2{font-size:31px}.patterns-heading small{font-size:12px}.patterns-total strong{font-size:30px}.patterns-total small{font-size:11px}.pattern-name{font-size:20px;gap:8px}.pattern-row{grid-template-columns:minmax(0,1fr) 33px 47px;gap:5px;min-height:56px}.pattern-count{font-size:26px}.pattern-preview{width:36px;height:36px;flex-basis:36px}#patterns-note{margin-top:12px}footer button{gap:10px}}
