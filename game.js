@@ -4,8 +4,8 @@ export const PATTERNS = [
   [1,7,13,19,25],[5,9,13,17,21]
 ];
 export const targetFor = stage => stage * 10;
-export function newStage(stage=1) {
-  return {stage,target:targetFor(stage),score:0,calls:12,redraws:2,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
+export function newStage(stage=1,money=5) {
+  return {stage,target:targetFor(stage),score:0,calls:12,money,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
 }
 export function draw(state=newStage(),random=Math.random,count=3) {
   const bag=[...state.bag];
@@ -28,6 +28,6 @@ export function choose(state,number) {
   return {duplicate,patterns,cleared,activations,points};
 }
 export function redraw(state,random=Math.random) {
-  if(state.status!=='playing'||state.redraws===0)return false;
-  state.redraws--;state.offer=draw(state,random);return true;
+  if(state.status!=='playing'||state.money<1)return false;
+  state.money--;state.offer=draw(state,random);return true;
 }

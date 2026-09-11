@@ -4,10 +4,10 @@ A solo arcade bingo game built for one mobile screen.
 
 - Drag one of three ordinary numbered balls anywhere onto the card; it snaps to its matching square. Tap a ball or board space for an anchored tooltip without spending a call. Space tooltips show “Nothing special” until effects are added. Tap again, tap elsewhere, or press Escape to dismiss. Balls have no powers yet.
 - Each row, column, or diagonal activates its five spaces in order for 1 point each (5 points per bingo). Each activation pops, shows +1, and ticks the score up. Simultaneous lines each activate all five spaces, including shared spaces, then only their stamps clear.
-- 12 calls and two free redraws per stage. The played ball is removed for the rest of the stage, including after its stamp scores and clears. Unchosen balls return; redraws remove nothing. Each new stage refills all 25 balls.
+- 12 calls per stage. Rerolls cost $1 each and spend no calls; they are disabled at $0. The played ball is removed for the rest of the stage, including after its stamp scores and clears. Unchosen balls return; redraws remove nothing. Each new stage refills all 25 balls.
 - Ten stages with targets from 10 to 100. The stage map marks your current stage, completed stages, and locked future stages. Completing stage 10 finishes the run.
 - The bag displays only remaining balls and marks current offers with a cyan dot. Its counter decreases after each play.
-- Compact score, money, and stage counters. Money starts at $0; earning and spending are not implemented.
+- Compact score, money, and stage counters. Runs start with $5. Money carries between stages and resets to $5 on a new run; rerolls cost $1.
 - Original pixel-drawn ball, stamp, and felt SVG assets; strong mint highlights identify the three offered numbers on the board.
 - Rolling, magnetic placement, stamp impacts, pixel particles, synthesized impact sounds, and supported-device haptics. Reduced-motion preferences are respected.
 - Keyboard: Enter inspects a focused ball; Space plays it. All icon controls have accessible labels.
