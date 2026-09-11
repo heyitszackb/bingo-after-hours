@@ -14,7 +14,7 @@ test('gold and blue trigger on scoring in every orientation, never on adjacent p
 test('shared colored spaces trigger per completed pattern and red does not multiply bonuses',()=>{
   for(const color of ['gold','blue']){
     const s=newStage(10,5,{1:color,2:'red'});s.stamps=new Set([2,3,4,5,6,11,16,21,7,13,19,25]);s.offer=[1];
-    const r=choose(s,1);assert.equal(r.points,20);assert.equal(r.gold,color==='gold'?3:0);assert.equal(r.bonusDraws,color==='blue'?9:0);
+    const r=choose(s,1);assert.equal(r.points,150);assert.equal(r.gold,color==='gold'?3:0);assert.equal(r.bonusDraws,color==='blue'?9:0);
     assert.equal(s.calls,color==='blue'?20:11);assert.equal(s.money,color==='gold'?8:5);
   }
 });
@@ -32,7 +32,7 @@ test('running out of playable balls ends a run even with bonus calls left',()=>{
 test('red stacks independently across simultaneous rows, columns and diagonals',()=>{
   const s=newStage(10,5,{1:'red',3:'red',6:'red'});
   s.stamps=new Set([2,3,4,5,6,11,16,21,7,13,19,25]);s.offer=[1];const r=choose(s,1);
-  assert.equal(r.points,50);assert.deepEqual(r.activations.map(a=>a.points),[4,4,4,4,4,4,4,4,4,4,2,2,2,2,2]);
+  assert.equal(r.points,410);assert.deepEqual(r.activations.map(a=>a.points),[4,8,12,16,20,4,24,44,64,84,2,14,26,38,50]);
   assert.equal(r.activations[0].patternMultiplier,4);
 });
 test('shops appear only after non-final stage payout and preserve their offers on revisit',()=>{
@@ -60,8 +60,8 @@ test('every bingo orientation applies red only when the pattern scores',()=>{
     const s=newStage(10,5,{[pattern[0]]:'red',[pattern[2]]:'red'});
     for(const n of pattern.slice(0,4)){s.offer=[n];assert.equal(choose(s,n).points,0);assert.equal(s.score,0);}
     s.offer=[pattern[4]];const r=choose(s,pattern[4]);
-    assert.equal(r.points,20);assert.equal(s.score,20);assert.equal(s.stamps.size,0);
+    assert.equal(r.points,4*pattern.reduce((sum,n)=>sum+n,0));assert.equal(s.score,r.points);assert.equal(s.stamps.size,0);
     assert.deepEqual(r.activations[0].pattern,pattern);assert.equal(r.activations[0].patternMultiplier,4);
-    assert.ok(r.activations.every(a=>a.points===4));
+    assert.ok(r.activations.every(a=>a.points===a.number*4));
   }
 });

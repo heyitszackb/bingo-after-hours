@@ -19,7 +19,7 @@ const ball=await page.locator('#balls .ball').boundingBox(),board=await page.loc
 await page.mouse.move(ball.x+ball.width/2,ball.y+ball.height/2);await page.mouse.down();await page.mouse.move(board.x+board.width/2,board.y+board.height/2,{steps:15});await page.mouse.up();
 await page.locator('.pattern-multiplier').waitFor({state:'visible'});assert.deepEqual(await page.locator('.cell.multiplied').evaluateAll(c=>c.map(n=>Number(n.id.replace('cell-','')))),row);
 assert.ok(await page.locator(`#cell-${row[4]}`).evaluate(c=>c.classList.contains('stamped')));
-await page.locator('#shop-screen').waitFor({state:'visible'});assert.equal(await page.locator('#score').textContent(),'10');assert.equal(await page.locator('.cell.stamped').count(),0);
+await page.locator('#shop-screen').waitFor({state:'visible'});assert.equal(await page.locator('#score').textContent(),String(2*row.reduce((sum,n)=>sum+n,0)));assert.equal(await page.locator('.cell.stamped').count(),0);
 await page.locator('#shop-next').click();await ready();const second=await layout();assert.notDeepEqual(second,first);assert.deepEqual([...second].sort((a,b)=>a-b),ordered);
 assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('binglatro.run.v1')).paints),s.paints);
 await page.locator('#pause-button').click();await page.locator('#restart-button').click();await page.locator('#confirm-restart').click();await ready();assert.notDeepEqual(await layout(),second);

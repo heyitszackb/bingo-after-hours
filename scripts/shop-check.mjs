@@ -33,21 +33,22 @@ await page.locator('#shop-redraw').click();await page.locator('#shop-next:not([d
 await page.locator('#shop-next').click();await page.locator('#balls .ball:not([disabled])').first().waitFor();assert.equal(await page.locator('#stage').textContent(),'2');assert.equal(await page.locator('#money').textContent(),'8');assert.equal(await page.locator('#calls').textContent(),'12');
 assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('binglatro.run.v1')).paints),{1:'gold',7:'red'});
 // Gold and blue animate their bonuses while scoring a vertical bingo.
-const bonus=newStage(4,5,{1:'gold',6:'blue'});bonus.stamps=new Set([1,6,11,16]);bonus.offer=[21];await restore(bonus);await page.locator('#balls .ball:not([disabled])').first().waitFor();
+const bonus=newStage(10,5,{1:'gold',6:'blue'});bonus.stamps=new Set([1,6,11,16]);bonus.offer=[21];await restore(bonus);await page.locator('#balls .ball:not([disabled])').first().waitFor();
+await page.evaluate(()=>{window.drawBonuses=[];new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.classList?.contains('draw-bonus'))window.drawBonuses.push({text:node.textContent,calls:document.querySelector('#calls').textContent});}).observe(document.querySelector('#effects'),{childList:true});});
 await drag(page.locator('#balls .ball'),page.locator('#board'));await page.locator('.cash-flight').waitFor({state:'visible'});assert.equal(await page.locator('#money').textContent(),'5');
-await page.locator('.draw-bonus').waitFor({state:'visible'});assert.equal(await page.locator('.draw-bonus').textContent(),'+3');assert.equal(await page.locator('#calls').textContent(),'11');
-await page.locator('#balls .ball:not([disabled])').first().waitFor();assert.equal(await page.locator('#money').textContent(),'6');assert.equal(await page.locator('#calls').textContent(),'14');
+
+await page.locator('#balls .ball:not([disabled])').first().waitFor();assert.equal(await page.locator('#money').textContent(),'6');assert.equal(await page.locator('#calls').textContent(),'14');assert.deepEqual(await page.evaluate(()=>window.drawBonuses),[{text:'+3',calls:'11'}]);
 await page.reload();await page.locator('#play-button').click();await page.locator('#balls .ball:not([disabled])').first().waitFor();assert.equal(await page.locator('#calls').textContent(),'14');
 // Blue bonus calls are included in the stage payout, even above twelve.
 bonus.stage=1;await restore(bonus);await page.locator('#balls .ball:not([disabled])').first().waitFor();await drag(page.locator('#balls .ball'),page.locator('#board'));await page.locator('#shop-screen').waitFor({state:'visible'});assert.equal(await page.locator('#money').textContent(),'20');assert.equal(await page.locator('#calls').textContent(),'0');
 // Check scoring and the highlighted cells for every line orientation.
 for(const pattern of [[1,2,3,4,5],[1,6,11,16,21],[1,7,13,19,25],[5,9,13,17,21]]){
-const red=newStage(4,5,{[pattern[0]]:'red',[pattern[2]]:'red'});red.stamps=new Set(pattern.slice(0,4));red.offer=[pattern[4]];await restore(red);await page.locator('#balls .ball:not([disabled])').first().waitFor();
+const red=newStage(10,5,{[pattern[0]]:'red',[pattern[2]]:'red'});red.stamps=new Set(pattern.slice(0,4));red.offer=[pattern[4]];await restore(red);await page.locator('#balls .ball:not([disabled])').first().waitFor();
 assert.equal(await page.locator('#score').textContent(),'0');
 await page.evaluate(()=>{window.scoreSteps=[];new MutationObserver(()=>window.scoreSteps.push(Number(document.querySelector('#score').textContent))).observe(document.querySelector('#score'),{childList:true});});
 await drag(page.locator(`#balls [data-number="${pattern[4]}"]`),page.locator('#board'));await page.locator('.pattern-multiplier').waitFor({state:'visible'});assert.equal(await page.locator('.pattern-multiplier').textContent(),'×4');
 assert.deepEqual(await page.locator('.cell.multiplied').evaluateAll(cells=>cells.map(c=>Number(c.id.replace('cell-','')))),pattern);
-await page.locator('#balls .ball:not([disabled])').first().waitFor();assert.equal(await page.locator('#score').textContent(),'20');assert.deepEqual(await page.evaluate(()=>[...new Set(window.scoreSteps.filter(n=>n>0))]),[4,8,12,16,20]);
+await page.locator('#balls .ball:not([disabled])').first().waitFor();assert.equal(await page.locator('#score').textContent(),String(4*pattern.reduce((sum,n)=>sum+n,0)));assert.deepEqual(await page.evaluate(()=>[...new Set(window.scoreSteps.filter(n=>n>0))]),pattern.map((_,i)=>4*pattern.slice(0,i+1).reduce((sum,n)=>sum+n,0)));
 }
 // Tap/keyboard alternative and insufficient funds.
 s.money=3;await restore(s);await page.locator('#shop-screen').waitFor({state:'visible'});await page.locator('[data-paint=blue]').focus();await page.keyboard.press('Enter');await page.locator('#shop-balls [data-number="13"]').click();await page.locator('#shop-next:not([disabled])').waitFor();assert.equal(await page.locator('#money').textContent(),'0');assert.equal(await page.locator('#shop-balls .paint-blue').count(),1);await page.screenshot({path:'/tmp/binglatro-blue-shop.png'});assert.ok(await page.locator('[data-paint=gold]').isDisabled());assert.ok(await page.locator('#shop-redraw').isDisabled());

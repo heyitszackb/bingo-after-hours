@@ -10,7 +10,7 @@ test('shuffle creates a full permutation and uses fresh randomness per stage',()
 test('all visible rows, columns and diagonals score on a shuffled board',()=>{
   for(const positions of PATTERNS){
     const pattern=positions.map(pos=>layout[pos-1]);const s=newStage(10);s.board=[...layout];s.stamps=new Set(pattern.slice(0,4));s.offer=[pattern[4]];
-    const r=choose(s,pattern[4]);assert.equal(r.points,5);assert.deepEqual(r.activations.map(a=>a.number),pattern);assert.equal(s.stamps.size,0);assert.deepEqual(s.board,layout);
+    const r=choose(s,pattern[4]);assert.equal(r.points,pattern.reduce((sum,n)=>sum+n,0));assert.deepEqual(r.activations.map(a=>a.number),pattern);assert.equal(s.stamps.size,0);assert.deepEqual(s.board,layout);
   }
 });
 test('numeric sequences do not score unless their tiles actually form a bingo',()=>{
@@ -20,7 +20,7 @@ test('intersecting shuffled patterns apply paint to the correct numbers and reta
   const s=newStage(10);s.board=[...layout];const patterns=boardPatterns(layout);const lines=[patterns[0],patterns[5],patterns[10]];const shared=layout[0];
   s.paints={[shared]:'red',[layout[1]]:'gold',[layout[5]]:'blue'};
   s.stamps=new Set([...lines.flat().filter(n=>n!==shared),layout[3*5+2]]);s.offer=[shared];const r=choose(s,shared);
-  assert.equal(r.points,30);assert.equal(r.gold,1);assert.equal(r.bonusDraws,3);assert.equal(r.activations.filter(a=>a.number===shared).length,3);assert.deepEqual([...s.stamps],[layout[17]]);
+  assert.equal(r.points,2*lines.flat().reduce((sum,n)=>sum+n,0));assert.equal(r.gold,1);assert.equal(r.bonusDraws,3);assert.equal(r.activations.filter(a=>a.number===shared).length,3);assert.deepEqual([...s.stamps],[layout[17]]);
 });
 test('reroll preserves layout; a stage reset retains number-bound paint',()=>{
   const s=newStage(1,20,{17:'gold'});s.board=[...layout];redraw(s);assert.deepEqual(s.board,layout);

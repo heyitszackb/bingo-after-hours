@@ -26,7 +26,7 @@ export function choose(state,number) {
   const patterns=boardPatterns(state.board).filter(p=>p.every(n=>state.stamps.has(n)));
   const cleared=[...new Set(patterns.flat())];
   const multipliers=patterns.map(pattern=>2**pattern.filter(n=>state.paints[n]==='red').length);
-  const activations=patterns.flatMap((pattern,i)=>pattern.map((number,j)=>({number,points:multipliers[i],gold:state.paints[number]==='gold'?1:0,draws:state.paints[number]==='blue'?3:0,patternMultiplier:j===0?multipliers[i]:1,pattern:j===0?pattern:null})));
+  const activations=patterns.flatMap((pattern,i)=>pattern.map((number,j)=>({number,points:number*multipliers[i],gold:state.paints[number]==='gold'?1:0,draws:state.paints[number]==='blue'?3:0,patternMultiplier:j===0?multipliers[i]:1,pattern:j===0?pattern:null})));
   const points=activations.reduce((total,activation)=>total+activation.points,0);
   const gold=activations.reduce((sum,a)=>sum+a.gold,0),bonusDraws=activations.reduce((sum,a)=>sum+a.draws,0);
   state.money+=gold;state.calls+=bonusDraws;state.callCapacity+=bonusDraws;

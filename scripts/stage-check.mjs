@@ -22,8 +22,8 @@ for(const start of [1,10]){
  assert.equal(await page.locator('.cash-flight').count(),0);
  assert.equal(await page.locator('#call-dots .used').count(),12);
 
- assert.deepEqual(await page.evaluate(()=>window.scoreSteps.filter((n,i,a)=>n>0&&a.indexOf(n)===i)),[1,2,3,4,5]);
- assert.equal(await page.locator('#score').textContent(),'5');assert.equal(await page.locator('.cell.stamped').count(),0);
+ assert.deepEqual(await page.evaluate(()=>window.scoreSteps.filter((n,i,a)=>n>0&&a.indexOf(n)===i)),[1,3,6,10,15]);
+ assert.equal(await page.locator('#score').textContent(),'15');assert.equal(await page.locator('.cell.stamped').count(),0);
  if(start===1){await page.locator('#shop-menu').click();await page.locator('#play-button').click();await page.locator('#shop-screen').waitFor({state:'visible'});assert.equal(await page.locator('#money').textContent(),'15');}
  await page.locator(start===1?'#shop-next':'#continue').click();await page.locator('#balls .ball:not([disabled])').first().waitFor();
  assert.equal(await page.locator('#stage').textContent(),start===10?'1':'2');assert.equal(await page.locator('#calls').textContent(),'12');assert.equal(await page.locator('#money').textContent(),start===10?'5':'15');
