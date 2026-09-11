@@ -103,10 +103,8 @@ footer button{min-width:74px}#pause-button{min-width:50px;color:#aac9b9;border-c
 /* Paint stays with a ball throughout the run. */
 .ball.paint-gold{background-image:url('assets/coin.svg')}
 .ball.paint-orange{background-image:url('assets/ball-orange.svg')}
-.cell.stamped.paint-gold:before,.cell.gold-seal:not(.stamped):before{background-image:url('assets/stamp-gold.svg')}
+.cell.stamped.paint-gold:before{background-image:url('assets/stamp-gold.svg')}
 .cell.stamped.paint-orange:before{background-image:url('assets/stamp-orange.svg')}
-.cell.gold-seal:not(.stamped):before{content:'';position:absolute;width:76%;aspect-ratio:1;background-size:100% 100%;opacity:.55;image-rendering:pixelated;transform:rotate(-12deg)}
-.cell.gold-seal{box-shadow:inset 3px 3px #ffe7a1,inset -3px -3px #b68d33}
 .cell.gold-paying{outline:3px solid #fff0a0;outline-offset:-3px;filter:brightness(1.2);box-shadow:0 0 28px #f4c66c}
 .cell.multiplied{outline:3px solid #ffae5d;outline-offset:-3px;background:#fbb260}
 .pattern-multiplier{position:absolute;font:54px 'VT323',monospace;color:#ffb060;text-shadow:3px 3px #482513,-2px -2px #482513;white-space:nowrap}
@@ -140,3 +138,14 @@ footer button{min-width:74px}#pause-button{min-width:50px;color:#aac9b9;border-c
 @media(max-height:700px){#shop-screen{gap:14px;padding-top:4px}.paint-can{padding:12px 6px 10px;gap:9px}.shop-heading{padding-bottom:5px}.shop-heading h2{font-size:28px}#shop-balls .ball{--size:70px}#shop-balls{min-height:80px}}
 @media(max-width:350px){.paint-can strong{font-size:20px;gap:8px}.paint-can small{font-size:16px}.paint-shelf{gap:12px}}
 @media(orientation:landscape) and (max-height:500px){.cabinet.shopping{display:flex;width:min(94vw,760px);gap:8px}.shopping .dashboard{width:min(100%,470px)}#shop-screen{display:grid;grid-template-columns:1fr 1fr;gap:8px 22px;padding:0}.shop-heading{grid-column:1/3;padding:0;border:0}.shop-heading h2{font-size:24px}.paint-shelf{grid-column:1;grid-row:2/5;gap:12px}.paint-can{padding:12px 4px 8px;gap:9px}.paint-can strong{font-size:20px}.paint-can small{font-size:16px}#shop-hint{grid-column:2;grid-row:2;font-size:15px;margin:0}.painting-bench{grid-column:2;grid-row:3;padding:0 0 10px}#shop-balls{min-height:65px;padding:0 5px 4px}#shop-balls .ball{--size:58px}#shop-balls .face{font-size:28px}.shop-actions{grid-column:2;grid-row:4;gap:10px}.shop-actions .menu-button{min-height:39px;font-size:21px;padding:6px 10px}#shop-bag{position:absolute;bottom:4px;left:15px;font-size:18px;min-height:26px}}
+
+.ball.paint-blue{background-image:url('assets/ball-blue.svg')}
+.cell.stamped.paint-blue:before{background-image:url('assets/stamp-blue.svg')}
+.paint-can.blue,.paint-tin.blue{--paint:#56baff}.paint-can.blue{border-color:#3879a4}
+.paint-splash.blue{background:#56baff}
+.draw-bonus{position:absolute;font:38px 'VT323',monospace;color:#9de4ff;text-shadow:2px 2px #123652,-2px -2px #123652;white-space:nowrap}
+.cell.blue-paying{outline:3px solid #b2ecff;outline-offset:-3px;box-shadow:0 0 25px #55b8ff}
+.paint-shelf{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.paint-can{padding-left:4px;padding-right:4px;min-width:0}.paint-can strong{flex-wrap:wrap;gap:4px 8px;font-size:19px}.paint-can small{font-size:15px;text-align:center;line-height:1.1;min-height:32px}.paint-tin{width:48px;height:58px}
+@media(max-width:350px){.paint-can strong{font-size:17px;gap:4px}.paint-can small{font-size:13px}.paint-shelf{gap:7px}}
+@media(orientation:landscape) and (max-height:500px){.paint-can strong{font-size:17px}.paint-can small{font-size:13px}.paint-shelf{gap:7px}}

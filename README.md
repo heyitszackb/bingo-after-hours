@@ -15,9 +15,11 @@ A solo arcade bingo game built for one mobile screen, with a title screen, pause
 
 ## Paint shop
 
-After each successful stage (except the final stage), three random balls from the full set are offered for painting. Drag gold or orange paint onto a ball for $3; selecting paint then selecting a ball also works with touch or keyboard. Refresh the three balls for $2, or leave for the next stage at any time. Replacing an existing color costs $3; applying the same color again costs nothing and makes no change. Paint persists for the run and appears on the track, board, and bag. Shops and purchases are saved immediately.
+After each successful stage (except the final stage), three random balls from the full set are offered for painting. Drag gold, orange, or blue paint onto a ball for $3; selecting paint then selecting a ball also works with touch or keyboard. Refresh the three balls for $2, or leave for the next stage at any time. Replacing an existing color costs $3; applying the same color again costs nothing and makes no change. Paint persists for the run and appears on the track, board, and bag. Shops and purchases are saved immediately.
 
-- Gold balls leave a gold seal that lasts until the next stage, including after a bingo clears its stamp. Every subsequent play directly above, below, left, or right of a seal pays $1, with a coin flying from each triggered seal into the wallet. Multiple neighboring seals each pay.
+- Gold balls pay $1 each time their space activates in a completed row, column, or diagonal. A coin flies into the wallet during scoring; adjacent plays give no bonus.
+- Blue balls grant 3 extra calls each time their space activates in a completed row, column, or diagonal. The bonus flies into the call counter immediately during scoring. Calls can exceed 12; unused bonus calls are included in the stage payout. New stages start with 12 calls again. If every ball has been played below target, the run ends even with bonus calls remaining.
+- Shared spaces activate once per completed pattern, including their gold or blue bonus. Orange multiplies points only, not money or extra calls.
 - Orange balls double the points of every completed pattern containing them: horizontal rows, vertical columns, and diagonals. Multipliers are calculated only when a pattern scores. Multiple orange balls multiply together (two give ×4), independently for each simultaneously completed pattern. The completed pattern flashes its multiplier before its spaces activate for multiplied points.
 
 ## Navigation and saves

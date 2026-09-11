@@ -7,7 +7,7 @@ const animate=(el,frames,options)=>el.animate(frames,{...options,duration:reduce
 function sound(kind,step=0){if(muted)return;if(!navigator.userActivation?.hasBeenActive)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const t=audio.currentTime;const o=audio.createOscillator(),g=audio.createGain();o.type=kind==='score'?'triangle':'square';o.frequency.setValueAtTime(kind==='activate'?330*2**(Math.min(step,12)/12):kind==='score'?660:kind==='roll'?180:110,t);o.frequency.exponentialRampToValueAtTime(kind==='activate'?220*2**(Math.min(step,12)/12):kind==='score'?1320:40,t+.12);g.gain.setValueAtTime(.035,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);o.connect(g).connect(audio.destination);o.start(t);o.stop(t+.17);}catch{}}
 function burst(rect,scoring=false){if(reduced)return;for(let i=0;i<(scoring?28:12);i++){const p=document.createElement('i');p.className='particle';p.style.left=`${rect.left+rect.width/2}px`;p.style.top=`${rect.top+rect.height/2}px`;p.style.background=scoring?'#f4c66c':i%2?'#f37868':'#f7dfaf';$('effects').append(p);const angle=Math.random()*Math.PI*2,d=25+Math.random()*(scoring?150:65);animate(p,[{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+25}px) scale(0)`,opacity:0}],{duration:450+Math.random()*250,easing:'cubic-bezier(.1,.7,.3,1)'}).then(()=>p.remove());}}
 for(let n=1;n<=25;n++){const c=document.createElement('button');c.type='button';c.id=`cell-${n}`;c.className='cell';c.innerHTML=`<span>${n}</span>`;c.onclick=()=>{if(!busy&&!drag)inspectSpace(n);};$('board').append(c);}
-function render(){$('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);for(const k of ['score','target','calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw').disabled=busy||state.money<1||state.status!=='playing';$('redraw').setAttribute('aria-label',state.money<1?'Reroll costs $1; not enough money':'Reroll for $1 without using a call');$('call-dots').innerHTML=Array.from({length:12},(_,i)=>`<i class="${i>=state.calls?'used':''}"></i>`).join('');document.querySelector('.call-meter').setAttribute('aria-label',`${state.calls} calls remaining`);for(let n=1;n<=25;n++){const c=$(`cell-${n}`);c.className=`cell paint-${state.paints[n]||'red'}${state.goldSeals.has(n)?' gold-seal':''}${state.stamps.has(n)?' stamped':''}${state.offer.includes(n)?' offered':''}`;c.setAttribute('aria-label',`${n}${state.stamps.has(n)?', stamped':''}`);}}
+function render(){$('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);for(const k of ['score','target','calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw').disabled=busy||state.money<1||state.status!=='playing';$('redraw').setAttribute('aria-label',state.money<1?'Reroll costs $1; not enough money':'Reroll for $1 without using a call');renderCalls(state.calls);for(let n=1;n<=25;n++){const c=$(`cell-${n}`);c.className=`cell paint-${state.paints[n]||'red'}${state.stamps.has(n)?' stamped':''}${state.offer.includes(n)?' offered':''}`;c.setAttribute('aria-label',`${n}${state.stamps.has(n)?', stamped':''}`);}}
 function ball(n){const b=document.createElement('button');b.className=`ball paint-${state.paints[n]||'red'}`;b.dataset.number=n;b.innerHTML=`<span class="face">${n}</span>`;b.setAttribute('aria-label',`Inspect ball ${n}`);return b;}
 function hideTooltip(){
   const tip=$('inspect-tooltip');
@@ -38,8 +38,8 @@ function showTooltip(n,anchor,space=false){
   const tip=$('inspect-tooltip');
   (anchor.closest('dialog')||document.body).append(tip);
   $('tooltip-number').textContent=n;
-  const color=space?(state.goldSeals.has(n)?'gold':state.stamps.has(n)?state.paints[n]:null):state.paints[n];
-  $('tooltip-effect').textContent=color==='gold'?'Gold seal · +$1 for each adjacent play':color==='orange'?'×2 to any scoring bingo · stacks':space?'Nothing special':'';
+  const color=space?(state.stamps.has(n)?state.paints[n]:null):state.paints[n];
+  $('tooltip-effect').textContent=color==='gold'?'+$1 when scored':color==='orange'?'×2 to any scoring bingo · stacks':color==='blue'?'+3 draws when scored':space?'Nothing special':'';
   $('tooltip-effect').hidden=!space&&!color;
   tip.classList.toggle('space-tooltip',space);
   tooltipAnchor=anchor;
@@ -143,8 +143,24 @@ function cancelDrag(){
   if(!drag)return;
   const d=drag;drag=null;previewOrder(d,d.original);cleanDrag(d);d.ghost?.remove();commitOrder(d);
 }
+function renderCalls(calls){
+  $('calls').textContent=calls;
+  $('call-dots').innerHTML=Array.from({length:12},(_,i)=>`<i class="${i>=Math.ceil(calls/state.callCapacity*12)?'used':''}"></i>`).join('');
+  document.querySelector('.call-meter').setAttribute('aria-label',`${calls} calls remaining`);
+}
+async function awardDraws(cell,count,before){
+  const from=cell.getBoundingClientRect(),to=$('calls').getBoundingClientRect();
+  const token=document.createElement('span');token.className='draw-bonus';token.textContent=`+${count}`;
+  token.style.left=`${from.left+from.width/2}px`;token.style.top=`${from.top+from.height/2}px`;$('effects').append(token);
+  const dx=to.left+to.width/2-from.left-from.width/2,dy=to.top+to.height/2-from.top-from.height/2;
+  sound('score');cell.classList.add('blue-paying');
+  await animate(token,[{transform:'translate(-50%,-50%) scale(.5)',opacity:0},{transform:'translate(-50%,-100%) scale(1.2)',opacity:1,offset:.25},{transform:`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.6)`,opacity:1}],{duration:440,easing:'cubic-bezier(.2,.7,.35,1)'});
+  token.remove();renderCalls(before+count);cell.classList.remove('blue-paying');
+  animate(document.querySelector('.call-meter'),[{filter:'brightness(2)',transform:'scale(1.03)'},{filter:'brightness(1)',transform:'scale(1)'}],{duration:220});
+  sound('activate');navigator.vibrate?.(12);
+}
 async function activateSpaces(result){
-  let displayedScore=state.score-result.points;
+  let displayedScore=state.score-result.points,displayedMoney=state.money-result.gold,displayedCalls=state.calls-result.bonusDraws;
   for(const [index,activation] of result.activations.entries()){
     const cell=$(`cell-${activation.number}`);
     if(activation.patternMultiplier>1){
@@ -182,6 +198,8 @@ async function activateSpaces(result){
     $('score').textContent=displayedScore;
     $('progress').style.width=`${Math.min(100,displayedScore/state.target*100)}%`;
     animate($('score'),[{transform:'scale(1.3)',color:'#fff5d5'},{transform:'scale(1)',color:'#f4c66c'}],{duration:150});
+    if(activation.gold){cell.classList.add('gold-paying');await cashInCall(cell,index,displayedMoney,()=>1,false);displayedMoney++;cell.classList.remove('gold-paying');}
+    if(activation.draws){await awardDraws(cell,activation.draws,displayedCalls);displayedCalls+=activation.draws;}
     cell.classList.remove('activating');
     await wait(35);
   }
@@ -191,14 +209,7 @@ async function activateSpaces(result){
   result.cleared.forEach(n=>$(`cell-${n}`).classList.add('clearing'));
   await wait(250);
 }
-async function play(n,b,ghost){if(busy){ghost?.remove();return;}lock();const result=choose(state,n);if(!result){ghost?.remove();unlock();return;}saveRun();$('calls').textContent=state.calls;$('bag-count').textContent=state.bag.size;$('call-dots').children[state.calls]?.classList.add('used');document.querySelector('.call-meter').setAttribute('aria-label',`${state.calls} calls remaining`);$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);const cell=$(`cell-${n}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.classList.add('leave');});if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}cell.classList.add('stamped','just-stamped');if(state.goldSeals.has(n))cell.classList.add('gold-seal');pulseBackground();sound('stamp');navigator.vibrate?.(18);burst(r);animate(document.querySelector('.board-frame'),[{transform:'translate(0,0)'},{transform:'translate(0,3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});$('announcer').textContent=result.duplicate?`${n} already stamped. One call used.`:`Stamped ${n}.`;await wait(220);if(result.goldEarnings.length){
-  let collected=0;const before=state.money-result.goldEarnings.length;
-  for(const seal of result.goldEarnings){
-    const source=$(`cell-${seal}`);source.classList.add('gold-paying');sound('activate',collected);
-    await cashInCall(source,collected,before,()=>++collected,false);source.classList.remove('gold-paying');
-  }
-  $('announcer').textContent=`Gold seals paid $${collected}.`;
-}await wait(150);if(result.points)await activateSpaces(result);await wait(120);render();refreshBag();if(state.status!=='playing'){showResult();return;}await nextDraw();}
+async function play(n,b,ghost){if(busy){ghost?.remove();return;}lock();const result=choose(state,n);if(!result){ghost?.remove();unlock();return;}saveRun();renderCalls(state.calls-result.bonusDraws);$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);const cell=$(`cell-${n}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.classList.add('leave');});if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}cell.classList.add('stamped','just-stamped');pulseBackground();sound('stamp');navigator.vibrate?.(18);burst(r);animate(document.querySelector('.board-frame'),[{transform:'translate(0,0)'},{transform:'translate(0,3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});$('announcer').textContent=result.duplicate?`${n} already stamped. One call used.`:`Stamped ${n}.`;await wait(370);if(result.points)await activateSpaces(result);await wait(120);render();refreshBag();if(state.status!=='playing'){showResult();return;}await nextDraw();}
 function showStages(){hideTooltip();$('stage-grid').innerHTML=Array.from({length:10},(_,i)=>{const n=i+1,current=n===state.stage,done=n<state.stage;return `<div class="stage-node ${current?'current':done?'complete':'locked'}" ${current?'aria-current="step"':''} aria-label="Stage ${n}, ${current?'current':done?'completed':'locked'}"><span>${n}<small>${STAGE_TARGETS[i].toLocaleString()} pts</small></span>${current?'<span>◆</span>':done?'<span>✓</span>':'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'}</div>`;}).join('');$('stage-dialog').showModal();}
 function resetResultUI(){
   $('stage-result').hidden=true;
@@ -265,9 +276,9 @@ async function showResult(){
   let collected=0;
   const flights=[];
   for(let i=0;i<bonus;i++){
-    const dot=$('call-dots').children[bonus-i-1];
+    const dot=$('call-dots').children[Math.min(11,Math.floor((bonus-i-1)/state.callCapacity*12))];
     flights.push(cashInCall(dot,i,before,()=>++collected));
-    $('calls').textContent=bonus-i-1;
+    renderCalls(bonus-i-1);
     await wait(110);
   }
   await Promise.all(flights);
@@ -343,7 +354,7 @@ async function applyPaint(n,color,target){
   }
   busy=true;selectedPaint=null;saveRun();
   document.querySelectorAll('#shop-screen button').forEach(b=>b.disabled=true);
-  target.classList.remove('paint-red','paint-gold','paint-orange');target.classList.add(`paint-${color}`);
+  target.classList.remove('paint-red','paint-gold','paint-orange','paint-blue');target.classList.add(`paint-${color}`);
   const r=target.getBoundingClientRect();
   for(let i=0;i<18&&!reduced;i++){
     const drop=document.createElement('i');drop.className=`paint-splash ${color}`;drop.style.left=`${r.left+r.width/2}px`;drop.style.top=`${r.top+r.height/2}px`;$('effects').append(drop);
@@ -376,18 +387,20 @@ $('shop-bag').onclick=()=>{if(busy)return;refreshBag();$('bag-dialog').showModal
 const SAVE_KEY='binglatro.run.v1';
 function saveRun(){
   if(!hasRun)return;
-  try{localStorage.setItem(SAVE_KEY,JSON.stringify({...state,stamps:[...state.stamps],bag:[...state.bag],goldSeals:[...state.goldSeals]}));}catch{}
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify({...state,stamps:[...state.stamps],bag:[...state.bag]}));}catch{}
 }
 function loadRun(){
   try{
     const saved=JSON.parse(localStorage.getItem(SAVE_KEY));
     if(!saved)return;
     const numbers=a=>Array.isArray(a)&&a.every(n=>Number.isInteger(n)&&n>=1&&n<=25)&&new Set(a).size===a.length;
-    if(!Number.isInteger(saved.stage)||saved.stage<1||saved.stage>10||!numbers(saved.stamps)||!numbers(saved.bag)||!numbers(saved.offer)||!saved.offer.every(n=>saved.bag.includes(n))||!Number.isInteger(saved.calls)||saved.calls<0||saved.calls>12||!Number.isInteger(saved.money)||saved.money<0||!Number.isInteger(saved.score)||saved.score<0||!['playing','passed','over'].includes(saved.status)||!Array.isArray(saved.played)||saved.played.length!==26)throw new Error('Invalid save');
-    if(saved.goldSeals!==undefined&&!numbers(saved.goldSeals))throw new Error('Invalid seals');
-    if(saved.paints!==undefined&&(!saved.paints||Array.isArray(saved.paints)||typeof saved.paints!=='object'||!Object.entries(saved.paints).every(([n,c])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&['gold','orange'].includes(c))))throw new Error('Invalid paint');
+    if(!Number.isInteger(saved.stage)||saved.stage<1||saved.stage>10||!numbers(saved.stamps)||!numbers(saved.bag)||!numbers(saved.offer)||!saved.offer.every(n=>saved.bag.includes(n))||!Number.isInteger(saved.calls)||saved.calls<0||saved.calls>192||!Number.isInteger(saved.money)||saved.money<0||!Number.isInteger(saved.score)||saved.score<0||!['playing','passed','over'].includes(saved.status)||!Array.isArray(saved.played)||saved.played.length!==26)throw new Error('Invalid save');
+    delete saved.goldSeals;
+    saved.callCapacity??=Math.max(12,saved.calls);
+    if(!Number.isInteger(saved.callCapacity)||saved.callCapacity<12||saved.callCapacity>192||saved.calls>saved.callCapacity)throw new Error('Invalid call capacity');
+    if(saved.paints!==undefined&&(!saved.paints||Array.isArray(saved.paints)||typeof saved.paints!=='object'||!Object.entries(saved.paints).every(([n,c])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&['gold','orange','blue'].includes(c))))throw new Error('Invalid paint');
     if(saved.shopOffer!=null&&(!numbers(saved.shopOffer)||saved.shopOffer.length!==3||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
-    state={...newStage(saved.stage,saved.money),...saved,goldSeals:new Set(saved.goldSeals||[]),target:STAGE_TARGETS[saved.stage-1],stamps:new Set(saved.stamps),bag:new Set(saved.bag)};
+    state={...newStage(saved.stage,saved.money),...saved,target:STAGE_TARGETS[saved.stage-1],stamps:new Set(saved.stamps),bag:new Set(saved.bag)};
     hasRun=true;
   }catch{try{localStorage.removeItem(SAVE_KEY);}catch{}}
 }
