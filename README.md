@@ -9,6 +9,7 @@ A solo arcade bingo game built for one mobile screen.
 - The bag displays only remaining balls and marks current offers with a cyan dot. Its counter decreases after each play.
 - Compact score, money, and stage counters. Runs start with $5. Money carries between stages and resets to $5 on a new run; rerolls cost $1.
 - Original pixel-drawn ball, stamp, and felt SVG assets; strong mint highlights identify the three offered numbers on the board.
+- A low-resolution teal-and-blue swirl drifts behind the game and ripples with a brief vibration on each played ball. Background movement is disabled for reduced-motion preferences.
 - Rolling, magnetic placement, stamp impacts, pixel particles, synthesized impact sounds, and supported-device haptics. Reduced-motion preferences are respected.
 - Keyboard: Enter inspects a focused ball; Space plays it. All icon controls have accessible labels.
 

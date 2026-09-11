@@ -54,3 +54,6 @@ dialog{border-width:3px;background:#103731;box-shadow:5px 0 0 #001a21,0 6px 0 #0
 #balls.reordering .ball.held{opacity:.16;filter:drop-shadow(0 0 8px #a4ffdc)}
 #balls.reordering .ball:not(.held){will-change:transform}
 .drag-ghost{cursor:grabbing}
+
+#felt-background{position:fixed;inset:0;width:100%;height:100%;transform:scale(1.06);image-rendering:pixelated;pointer-events:none;z-index:0}
+.cabinet{position:relative;z-index:1}

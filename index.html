@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#06282c"><title>Bingo After Hours</title><link rel="stylesheet" href="style.css"></head><body>
+<canvas id="felt-background" aria-hidden="true"></canvas>
 <main class="cabinet">
 <header class="dashboard"><div class="score-panel" aria-label="Score"><span id="score">0</span><span class="dim">/</span><span id="target">10</span><small>pts</small><i id="progress"></i></div><div class="money-panel" aria-label="Money"><span>$</span><span id="money">5</span></div><button id="stages" aria-label="View stages"><svg viewBox="0 0 24 24"><path d="M3 20h6v-6h6V8h6V3M17 3h4v4"/></svg><span id="stage">1</span><small>/10</small></button></header>
 <div class="call-meter" aria-label="Calls remaining"><svg viewBox="0 0 24 24"><path d="M12 3v9l5 3"/><circle cx="12" cy="12" r="9"/></svg><div id="call-dots"></div><span id="calls">12</span></div>
