@@ -18,7 +18,7 @@ A solo arcade bingo game built for one mobile screen, with a title screen, pause
 After each successful stage (except the final stage), three random balls from the full set are offered for painting. Drag gold or orange paint onto a ball for $3; selecting paint then selecting a ball also works with touch or keyboard. Refresh the three balls for $2, or leave for the next stage at any time. Replacing an existing color costs $3; applying the same color again costs nothing and makes no change. Paint persists for the run and appears on the track, board, and bag. Shops and purchases are saved immediately.
 
 - Gold balls leave a gold seal that lasts until the next stage, including after a bingo clears its stamp. Every subsequent play directly above, below, left, or right of a seal pays $1, with a coin flying from each triggered seal into the wallet. Multiple neighboring seals each pay.
-- Orange balls double the points of their scoring horizontal row. Multiple orange balls multiply together (two give ×4); columns and diagonals retain their base points. A row multiplier appears before each space activates for its multiplied points.
+- Orange balls double the points of every completed pattern containing them: horizontal rows, vertical columns, and diagonals. Multipliers are calculated only when a pattern scores. Multiple orange balls multiply together (two give ×4), independently for each simultaneously completed pattern. The completed pattern flashes its multiplier before its spaces activate for multiplied points.
 
 ## Navigation and saves
 

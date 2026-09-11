@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newStage,choose,openShop,paintBall,redrawShop,settleStage} from '../game.js';
+import {newStage,choose,openShop,paintBall,redrawShop,settleStage,PATTERNS} from '../game.js';
 const shop=()=>{const s=newStage(1,20);s.status='passed';settleStage(s);openShop(s);return s;};
 test('gold pays per orthogonal seal, never diagonal or across a row edge',()=>{
   for(const [seal,n,payout] of [[7,2,1],[7,6,1],[7,8,1],[7,12,1],[7,1,0],[5,6,0],[6,5,0]]){
@@ -17,11 +17,11 @@ test('gold seals survive bingo clearing, reset next stage; paint persists indepe
   const next=newStage(4,s.money,s.paints);assert.equal(next.goldSeals.size,0);assert.deepEqual(next.paints,{1:'gold',7:'orange'});
   next.paints[1]='orange';assert.equal(s.paints[1],'gold');assert.deepEqual(newStage().paints,{});
 });
-test('orange doubles entire horizontal row and stacks, leaving other patterns at base points',()=>{
+test('orange stacks independently across simultaneous rows, columns and diagonals',()=>{
   const s=newStage(10,5,{1:'orange',3:'orange',6:'orange'});
   s.stamps=new Set([2,3,4,5,6,11,16,21,7,13,19,25]);s.offer=[1];const r=choose(s,1);
-  assert.equal(r.points,30);assert.deepEqual(r.activations.map(a=>a.points),[4,4,4,4,4,1,1,1,1,1,1,1,1,1,1]);
-  assert.equal(r.activations[0].rowMultiplier,4);
+  assert.equal(r.points,50);assert.deepEqual(r.activations.map(a=>a.points),[4,4,4,4,4,4,4,4,4,4,2,2,2,2,2]);
+  assert.equal(r.activations[0].patternMultiplier,4);
 });
 test('shops appear only after non-final stage payout and preserve their offers on revisit',()=>{
   const s=newStage();assert.equal(openShop(s),false);s.status='passed';assert.equal(openShop(s),false);
@@ -41,4 +41,15 @@ test('painting charges $3 only for valid purchases; replacing paint is allowed',
   assert.ok(paintBall(s,1,'orange'));assert.equal(s.money,before-6);assert.equal(s.paints[1],'orange');
   s.money=2;assert.equal(paintBall(s,2,'gold'),false);assert.equal(s.money,2);
   s.money=10;s.status='playing';assert.equal(paintBall(s,2,'gold'),false);assert.equal(redrawShop(s),false);
+});
+
+test('every bingo orientation applies orange only when the pattern scores',()=>{
+  for(const pattern of PATTERNS){
+    const s=newStage(10,5,{[pattern[0]]:'orange',[pattern[2]]:'orange'});
+    for(const n of pattern.slice(0,4)){s.offer=[n];assert.equal(choose(s,n).points,0);assert.equal(s.score,0);}
+    s.offer=[pattern[4]];const r=choose(s,pattern[4]);
+    assert.equal(r.points,20);assert.equal(s.score,20);assert.equal(s.stamps.size,0);
+    assert.deepEqual(r.activations[0].pattern,pattern);assert.equal(r.activations[0].patternMultiplier,4);
+    assert.ok(r.activations.every(a=>a.points===4));
+  }
 });

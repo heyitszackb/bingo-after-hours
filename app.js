@@ -39,7 +39,7 @@ function showTooltip(n,anchor,space=false){
   (anchor.closest('dialog')||document.body).append(tip);
   $('tooltip-number').textContent=n;
   const color=space?(state.goldSeals.has(n)?'gold':state.stamps.has(n)?state.paints[n]:null):state.paints[n];
-  $('tooltip-effect').textContent=color==='gold'?'Gold seal · +$1 for each adjacent play':color==='orange'?'×2 to a scoring row · stacks':space?'Nothing special':'';
+  $('tooltip-effect').textContent=color==='gold'?'Gold seal · +$1 for each adjacent play':color==='orange'?'×2 to any scoring bingo · stacks':space?'Nothing special':'';
   $('tooltip-effect').hidden=!space&&!color;
   tip.classList.toggle('space-tooltip',space);
   tooltipAnchor=anchor;
@@ -147,14 +147,14 @@ async function activateSpaces(result){
   let displayedScore=state.score-result.points;
   for(const [index,activation] of result.activations.entries()){
     const cell=$(`cell-${activation.number}`);
-    if(activation.rowMultiplier>1){
-      const row=Array.from({length:5},(_,i)=>$(`cell-${Math.floor((activation.number-1)/5)*5+i+1}`));
-      row.forEach(c=>c.classList.add('multiplied'));
-      const badge=document.createElement('span');badge.className='row-multiplier';badge.textContent=`×${activation.rowMultiplier}`;
-      const r=row[2].getBoundingClientRect();badge.style.left=`${r.left+r.width/2}px`;badge.style.top=`${r.top+r.height/2}px`;$('effects').append(badge);
+    if(activation.patternMultiplier>1){
+      const line=activation.pattern.map(n=>$(`cell-${n}`));
+      line.forEach(c=>c.classList.add('multiplied'));
+      const badge=document.createElement('span');badge.className='pattern-multiplier';badge.textContent=`×${activation.patternMultiplier}`;
+      const r=line[2].getBoundingClientRect();badge.style.left=`${r.left+r.width/2}px`;badge.style.top=`${r.top+r.height/2}px`;$('effects').append(badge);
       sound('score');pulseBackground();
       await animate(badge,[{transform:'translate(-50%,-50%) scale(.5)',opacity:0},{transform:'translate(-50%,-70%) scale(1.2)',opacity:1,offset:.25},{transform:'translate(-50%,-100%) scale(1)',opacity:0}],{duration:550});
-      badge.remove();row.forEach(c=>c.classList.remove('multiplied'));
+      badge.remove();line.forEach(c=>c.classList.remove('multiplied'));
     }
     cell.classList.add('activating','charged');
     sound('activate',index);

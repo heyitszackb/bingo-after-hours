@@ -22,8 +22,8 @@ export function choose(state,number) {
   state.stamps.add(number);state.bag.delete(number);state.played[number]++;state.calls--;
   const patterns=PATTERNS.filter(p=>p.every(n=>state.stamps.has(n)));
   const cleared=[...new Set(patterns.flat())];
-  const multipliers=patterns.map(pattern=>pattern[1]===pattern[0]+1?2**pattern.filter(n=>state.paints[n]==='orange').length:1);
-  const activations=patterns.flatMap((pattern,i)=>pattern.map((number,j)=>({number,points:multipliers[i],rowMultiplier:j===0?multipliers[i]:1})));
+  const multipliers=patterns.map(pattern=>2**pattern.filter(n=>state.paints[n]==='orange').length);
+  const activations=patterns.flatMap((pattern,i)=>pattern.map((number,j)=>({number,points:multipliers[i],patternMultiplier:j===0?multipliers[i]:1,pattern:j===0?pattern:null})));
   const points=activations.reduce((total,activation)=>total+activation.points,0);
   state.score+=points;
   cleared.forEach(n=>state.stamps.delete(n));

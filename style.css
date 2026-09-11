@@ -109,7 +109,7 @@ footer button{min-width:74px}#pause-button{min-width:50px;color:#aac9b9;border-c
 .cell.gold-seal{box-shadow:inset 3px 3px #ffe7a1,inset -3px -3px #b68d33}
 .cell.gold-paying{outline:3px solid #fff0a0;outline-offset:-3px;filter:brightness(1.2);box-shadow:0 0 28px #f4c66c}
 .cell.multiplied{outline:3px solid #ffae5d;outline-offset:-3px;background:#fbb260}
-.row-multiplier{position:absolute;font:54px 'VT323',monospace;color:#ffb060;text-shadow:3px 3px #482513,-2px -2px #482513;white-space:nowrap}
+.pattern-multiplier{position:absolute;font:54px 'VT323',monospace;color:#ffb060;text-shadow:3px 3px #482513,-2px -2px #482513;white-space:nowrap}
 #inspect-tooltip p{white-space:normal;max-width:230px;line-height:1.1}
 .cabinet.shopping>.call-meter,.cabinet.shopping>.board-frame,.cabinet.shopping>.draw-area,.cabinet.shopping>footer{display:none}
 .cabinet.shopping{gap:16px}
