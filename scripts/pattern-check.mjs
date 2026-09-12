@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {newStage} from '../game.js';
 
 const url=process.env.GAME_URL||'http://localhost:5173';
-const ids=['row','column','diagonal','corners','square4'];
-const labels=['5 in a row','5 in a col','Diagonals','4 in corners','4 in a square'];
-const basePoints=[5,5,5,4,4];
+const ids=['row','column','diagonal'];
+const labels=['5 in a row','5 in a col','Diagonals'];
+const basePoints=[10,10,10];
 const zeroCounts=Object.fromEntries(ids.map(id=>[id,0]));
 const browser=await chromium.launch({channel:'chrome'});
 const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'});
@@ -56,9 +56,8 @@ try{
     assert.ok((await row.locator('.pattern-name').textContent()).includes(labels[i]));
     assert.equal((await row.locator('.pattern-base').textContent()).replace(/\s/g,''),`${basePoints[i]}pts`);
     assert.equal(await row.locator('.pattern-preview i').count(),25);
-    assert.equal(await row.locator('.pattern-preview .filled').count(),basePoints[i]);
+    assert.equal(await row.locator('.pattern-preview .filled').count(),5);
   }
-  assert.deepEqual(await page.locator('[data-pattern="corners"] .pattern-preview i').evaluateAll(cells=>cells.flatMap((cell,index)=>cell.classList.contains('filled')?[index+1]:[])),[1,5,21,25]);
   await checkCounts(zeroCounts);
   await closePatterns();
   await openPatterns('#score-patterns');
@@ -75,7 +74,6 @@ try{
     });
     assert.ok(bounds.scrollHeight<=height+1&&bounds.scrollWidth<=width+1,JSON.stringify({width,height,...bounds}));
     for(const box of [bounds.footer,bounds.score,...bounds.buttons])assert.ok(box.left>=-1&&box.top>=-1&&box.right<=width+1&&box.bottom<=height+1,JSON.stringify({width,height,box}));
-    for(let i=1;i<bounds.buttons.length;i++)assert.ok(bounds.buttons[i-1].right<=bounds.buttons[i].left+1,JSON.stringify(bounds.buttons));
     await openPatterns();
     const modal=await page.locator('#patterns-dialog').evaluate(dialog=>{
       const r=dialog.getBoundingClientRect();
@@ -92,7 +90,7 @@ try{
   }
   await page.setViewportSize({width:390,height:844});
 
-  // Actually complete an adjacent 2×2: four points, one counted pattern, clear its stamps.
+  // Actually complete an adjacent 2×2: no points, no counted pattern, stamps remain.
   const square=newStage();
   square.stamps=new Set([1,2,6]);
   square.stampBalls={1:1,2:2,6:3};
@@ -101,19 +99,19 @@ try{
   square.offer=[4,5,6];square.destinations={4:7,5:15,6:24};
   await restore(square);
   await play(4);
-  await page.waitForFunction(()=>document.querySelector('#score').textContent==='4'&&!document.querySelector('#pause-button').disabled);
+  await page.waitForFunction(()=>document.querySelector('#score').textContent==='0'&&!document.querySelector('#pause-button').disabled);
   await ready();
   assert.equal(await page.locator('#calls').textContent(),'11');
-  assert.equal(await page.locator('.cell.stamped').count(),0);
+  assert.equal(await page.locator('.cell.stamped').count(),4);
   assert.ok(await page.locator('#shop-screen').isHidden());
   assert.equal((await read()).status,'playing');
-  const squareCounts={...zeroCounts,square4:1};
+  const squareCounts={...zeroCounts};
   await openPatterns();await checkCounts(squareCounts);await closePatterns();
   await page.reload();await page.locator('#play-button').click();await ready();
   await openPatterns('#score-patterns');await checkCounts(squareCounts);await closePatterns();
 
   // A later row completion increments its own count; shop progression retains the run totals.
-  const row=newStage(1,5,{},squareCounts);
+  const row=newStage(1,5,{},squareCounts,['row','column']);
   row.stamps=new Set([1,2,3,4]);row.stampBalls={1:1,2:2,3:3,4:4};
   row.bag=new Set([...row.bag].filter(number=>number>4));
   for(const number of [1,2,3,4])row.played[number]=1;
@@ -123,20 +121,20 @@ try{
   assert.equal(await page.locator('#money').textContent(),'16');
   assert.deepEqual((await read()).patternCounts,{...squareCounts,row:1});
   await page.locator('#shop-next').click();await ready();
-  assert.equal(await page.locator('#stage').textContent(),'2');
+  assert.equal(await page.locator('#stage').textContent(),'2');assert.deepEqual((await read()).jokers,['row','column']);
   assert.equal(await page.locator('#score').textContent(),'0');
   await openPatterns();await checkCounts({...squareCounts,row:1});await closePatterns();
 
   // Restarting begins new run statistics, while old/malformed statistics safely normalize.
   await page.locator('#pause-button').click();await page.locator('#restart-button').click();await page.locator('#confirm-restart').click();await ready();
   await openPatterns();await checkCounts(zeroCounts);await closePatterns();
-  const oldSave=newStage();delete oldSave.patternCounts;
-  await restore(oldSave);await openPatterns();await checkCounts(zeroCounts);await closePatterns();
+  const oldSave=newStage();delete oldSave.patternCounts;delete oldSave.jokers;
+  await restore(oldSave);assert.equal(await page.locator('[data-joker]').count(),3);await openPatterns();await checkCounts(zeroCounts);await closePatterns();
   const invalidCounts=newStage();invalidCounts.patternCounts={row:-2,column:1.5,diagonal:'3',corners:null,square4:2,square9:4,unknown:9};
-  await restore(invalidCounts);await openPatterns();await checkCounts({...zeroCounts,square4:2});await closePatterns();
-  assert.deepEqual((await read()).patternCounts,{...zeroCounts,square4:2});
+  await restore(invalidCounts);await openPatterns();await checkCounts({...zeroCounts});await closePatterns();
+  assert.deepEqual((await read()).patternCounts,{...zeroCounts});
   assert.deepEqual(errors,[]);
-  console.log('Passed scoring-pattern previews and counts, both menu buttons, three mobile layouts, real 2×2 scoring, saved counts, stage/shop retention, restart reset, and old/invalid count migration.');
+  console.log('Passed scoring-pattern previews and counts, both menu buttons, three mobile layouts, non-scoring 2×2 stamps, saved counts, stage/shop retention, restart reset, and old/invalid count migration.');
 }finally{
   await browser.close();
 }

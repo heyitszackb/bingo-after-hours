@@ -1,5 +1,5 @@
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=8326d8c0905c';
+import {newStage,deal,choose,removeJoker,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=4bf16404bfa6';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,muted=false,paintDrag=null,selectedPaint=null,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
@@ -8,14 +8,54 @@ function sound(kind,step=0){if(muted)return;if(!navigator.userActivation?.hasBee
 function burst(rect,scoring=false){if(reduced)return;for(let i=0;i<(scoring?28:12);i++){const p=document.createElement('i');p.className='particle';p.style.left=`${rect.left+rect.width/2}px`;p.style.top=`${rect.top+rect.height/2}px`;p.style.background=scoring?'#f4c66c':i%2?'#a9b7b8':'#e4e9dd';$('effects').append(p);const angle=Math.random()*Math.PI*2,d=25+Math.random()*(scoring?150:65);animate(p,[{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+25}px) scale(0)`,opacity:0}],{duration:450+Math.random()*250,easing:'cubic-bezier(.1,.7,.3,1)'}).then(()=>p.remove());}}
 for(let n=1;n<=25;n++){const c=document.createElement('button');c.type='button';c.id=`cell-${n}`;c.className='cell';c.innerHTML='<span></span>';c.onclick=()=>{if(!busy&&!drag)inspectSpace(n);};$('board').append(c);}
 function render(){
+  renderJokers();
   $('patterns-button').disabled=busy||payingOut;$('score-patterns').disabled=busy||payingOut;
   $('score-patterns').setAttribute('aria-label',`${state.score} of ${state.target} points. View scoring patterns and run counts`);
   $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);for(const k of ['score','target','calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw').disabled=busy||state.money<1||state.status!=='playing';$('redraw').setAttribute('aria-label',state.money<1?'Reroll costs $1; not enough money':'Reroll for $1 without using a call');renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
     const c=$(`cell-${tile}`),offered=Object.values(state.destinations).includes(tile),number=state.stampBalls[tile];
     c.className=`cell paint-${state.paints[number]||'grey'}${state.stamps.has(tile)?' stamped':''}${offered?' offered':''}`;
     c.querySelector('span').textContent=state.stamps.has(tile)?state.stampBalls[tile]:'';
-    c.setAttribute('aria-label',`Row ${Math.floor((tile-1)/5)+1}, column ${(tile-1)%5+1}${state.stamps.has(tile)?`, stamped with ball ${number}`:offered?', available for any drawn ball':', empty'}. Base score 1 point.`);
+    c.setAttribute('aria-label',`Row ${Math.floor((tile-1)/5)+1}, column ${(tile-1)%5+1}${state.stamps.has(tile)?`, stamped with ball ${number}`:offered?', available for any drawn ball':', empty'}. Scoring is determined by your active cards.`);
   }}
+
+let jokerDrag=null;
+const jokerText={row:'+10 points per row',column:'+10 points per column',diagonal:'+10 points per diagonal'};
+function renderJokers(){
+  const ids=state.jokers||PATTERN_TYPES.map(p=>p.id),rack=$('joker-rack');
+  if(rack.dataset.cards===ids.join('|'))return;
+  rack.dataset.cards=ids.join('|');rack.replaceChildren();
+  for(const id of ids){
+    const card=document.createElement('button'),pattern=PATTERN_TYPES.find(p=>p.id===id);
+    card.className=`joker-card joker-${id}`;card.dataset.joker=id;
+    card.setAttribute('aria-label',`${jokerText[id]}. Drag to trash to disable this scoring pattern, or press Delete.`);
+    card.innerHTML=`<span class="joker-heading">${id==='row'?'ROWS':id==='column'?'COLUMNS':'DIAGONALS'}</span><span class="joker-art" aria-hidden="true">${Array.from({length:25},(_,i)=>`<i class="${pattern.previewTiles.includes(i+1)?'filled':''}"></i>`).join('')}</span><span class="joker-description">${jokerText[id]}</span>`;
+    card.onpointerdown=e=>{
+      if(e.button!==0||jokerDrag||drag||paintDrag)return;
+      e.preventDefault();hideTooltip();card.setPointerCapture(e.pointerId);
+      jokerDrag={card,id,pointer:e.pointerId,x:e.clientX,y:e.clientY,ghost:null};
+    };
+    card.onpointermove=e=>{
+      const d=jokerDrag;if(!d||d.pointer!==e.pointerId)return;
+      if(!d.ghost&&Math.hypot(e.clientX-d.x,e.clientY-d.y)>6){
+        const r=card.getBoundingClientRect();d.ghost=card.cloneNode(true);d.ghost.removeAttribute('data-joker');d.ghost.classList.add('joker-ghost');d.ghost.setAttribute('aria-hidden','true');d.ghost.style.width=`${r.width}px`;d.ghost.style.height=`${r.height}px`;d.w=r.width;d.h=r.height;document.body.append(d.ghost);card.classList.add('held');$('joker-trash').hidden=false;sound('roll');
+      }
+      if(d.ghost){d.ghost.style.transform=`translate(${e.clientX-d.w/2}px,${e.clientY-d.h/2}px) rotate(${Math.max(-12,Math.min(12,(e.clientX-d.x)*.04))}deg)`;$('joker-trash').classList.toggle('ready',overTrash(e.clientX,e.clientY));}
+    };
+    card.onpointerup=async e=>{
+      const d=jokerDrag;if(!d||d.pointer!==e.pointerId)return;
+      const discard=d.ghost&&overTrash(e.clientX,e.clientY),ghost=d.ghost;
+      if(discard){removeJoker(state,id);saveRun();}
+      cancelJokerDrag(false);renderJokers();
+      if(ghost){if(discard){sound('stamp');navigator.vibrate?.(20);await animate(ghost,[{transform:ghost.style.transform,opacity:1},{transform:ghost.style.transform+' scale(.05)',opacity:0}],{duration:220});}else{const r=card.getBoundingClientRect();await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left}px,${r.top}px) rotate(0)`}],{duration:200,easing:'cubic-bezier(.2,.8,.2,1)'});}ghost.remove();}
+      if(discard)$('announcer').textContent=`${id} card removed. That pattern no longer scores.`;
+    };
+    card.onpointercancel=()=>cancelJokerDrag();card.onlostpointercapture=()=>{if(jokerDrag)cancelJokerDrag();};
+    card.onkeydown=e=>{if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeJoker(state,id);saveRun();renderJokers();}};
+    rack.append(card);
+  }
+}
+function overTrash(x,y){const r=$('joker-trash').getBoundingClientRect();return x>=r.left-12&&x<=r.right+12&&y>=r.top-12&&y<=r.bottom+12;}
+function cancelJokerDrag(removeGhost=true){if(!jokerDrag)return;const d=jokerDrag;jokerDrag=null;d.card.classList.remove('held');if(removeGhost)d.ghost?.remove();$('joker-trash').hidden=true;$('joker-trash').classList.remove('ready');if(d.card.hasPointerCapture(d.pointer))d.card.releasePointerCapture(d.pointer);}
 
 function ball(n){const b=document.createElement('button');b.className=`ball paint-${state.paints[n]||'grey'}`;b.dataset.number=n;b.innerHTML=`<span class="face">${n}</span>`;b.setAttribute('aria-label',`Inspect ball ${n}`);return b;}
 function hideTooltip(){
@@ -46,7 +86,7 @@ function showTooltip(n,anchor,space=false){
   hideTooltip();sound('roll');
   const tip=$('inspect-tooltip');
   (anchor.closest('dialog')||document.body).append(tip);
-  $('tooltip-number').textContent=space?'1 pt':n;
+  $('tooltip-number').textContent=space?'STAMP':n;
   const color=state.paints[n];
   $('tooltip-effect').textContent=color==='gold'?'+$1 when scored':color==='red'?'×2 to any scoring bingo · stacks':color==='blue'?'+3 draws when scored':color==='black'?'Place on any empty space':space?'Nothing special':'';
   $('tooltip-effect').hidden=!space&&!color;
@@ -82,7 +122,7 @@ function unlock(){busy=false;saveRun();render();document.querySelectorAll('#ball
 function showBalls(){$('balls').replaceChildren();state.offer.forEach((n,i)=>{const b=ball(n);b.classList.add('enter');b.style.setProperty('--i',i);b.disabled=true;b.setAttribute('aria-label',`Ball ${n}. Tap to inspect. Drag along the track to reorder, or to the card to play. Keyboard: Enter to inspect, Space to play.`);b.addEventListener('pointerdown',e=>startDrag(e,n,b));b.addEventListener('pointermove',moveDrag);b.addEventListener('pointerup',endDrag);b.addEventListener('pointercancel',cancelDrag);b.addEventListener('lostpointercapture',()=>{if(drag)cancelDrag();});b.onclick=e=>{if(e.detail===0&&!busy)inspect(n,b);};b.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();if(!busy&&!drag)play(n,b);} };$('balls').append(b);});refreshBag();}
 async function nextDraw(){resetResultUI();lock();deal(state);render();showBalls();await wait(770);sound('roll');unlock();}
 function startDrag(e,n,b){
-  if(busy||drag||e.button!==0)return;
+  if(busy||drag||jokerDrag||e.button!==0)return;
   e.preventDefault();sound('roll');b.setPointerCapture(e.pointerId);
   const nodes=[...$('balls').children];
   drag={n,tile:state.destinations[n],b,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,ghost:null,
@@ -186,6 +226,9 @@ async function activateSpaces(result){
   for(const [index,activation] of result.activations.entries()){
     const cell=$(`cell-${activation.tile}`);
     if(activation.pattern){
+      const card=document.querySelector(`[data-joker="${activation.type}"]`);
+      if(card){sound('score');animate(card,[{transform:'rotate(-3deg) scale(1)'},{transform:'translateY(-8px) rotate(3deg) scale(1.09)',filter:'brightness(1.5)',offset:.35},{transform:'rotate(0) scale(1)'}],{duration:440,easing:'cubic-bezier(.2,.8,.2,1)'});}
+
       activePattern.forEach(c=>c.classList.remove('pattern-active'));
       activePattern=activation.pattern.map(n=>$(`cell-${n}`));
       activePattern.forEach(c=>c.classList.add('pattern-active'));
@@ -331,7 +374,7 @@ async function showResult(){
   await wait(250);
   finishResult();
 }
-$('continue').onclick=async()=>{if(payingOut)return;const next=state.status==='passed'&&state.stage<10?state.stage+1:1;state=newStage(next,next===1?5:state.money,next===1?{}:state.paints,next===1?{}:state.patternCounts);hasRun=true;saveRun();resetResultUI();await nextDraw();};
+$('continue').onclick=async()=>{if(payingOut)return;const next=state.status==='passed'&&state.stage<10?state.stage+1:1;state=newStage(next,next===1?5:state.money,next===1?{}:state.paints,next===1?{}:state.patternCounts,next===1?undefined:state.jokers);hasRun=true;saveRun();resetResultUI();await nextDraw();};
 $('redraw').onclick=async()=>{if(busy||drag||state.money<1)return;lock();if(!redraw(state)){unlock();return;}saveRun();$('money').textContent=state.money;animate($('money'),[{transform:'scale(1.25)',color:'#fff1c2'},{transform:'scale(1)',color:'#f4c66c'}],{duration:180});sound('roll');document.querySelectorAll('#balls .ball').forEach(b=>b.classList.add('leave'));await wait(480);render();showBalls();await wait(770);unlock();};
 $('bag').onclick=()=>{hideTooltip();refreshBag();$('bag-dialog').showModal();};$('stages').onclick=showStages;
 $('patterns-button').onclick=showPatterns;$('score-patterns').onclick=showPatterns;
@@ -435,7 +478,7 @@ $('shop-redraw').onclick=async()=>{
 $('shop-next').onclick=async()=>{
   if(busy||paintDrag)return;
   hideTooltip();shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;
-  state=newStage(state.stage+1,state.money,state.paints,state.patternCounts);saveRun();await nextDraw();
+  state=newStage(state.stage+1,state.money,state.paints,state.patternCounts,state.jokers);saveRun();await nextDraw();
 };
 $('shop-menu').onclick=()=>{if(!busy&&!paintDrag)showMenu();};
 $('shop-bag').onclick=()=>{if(busy)return;refreshBag();$('bag-dialog').showModal();};
@@ -457,6 +500,7 @@ function loadRun(){
     if(!Number.isInteger(saved.callCapacity)||saved.callCapacity<12||saved.callCapacity>192||saved.calls>saved.callCapacity)throw new Error('Invalid call capacity');
     if(saved.paints!==undefined&&(!saved.paints||Array.isArray(saved.paints)||typeof saved.paints!=='object'||!Object.entries(saved.paints).every(([n,c])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&['gold','red','blue','black'].includes(c))))throw new Error('Invalid paint');
     if(saved.shopOffer!=null&&(!numbers(saved.shopOffer)||saved.shopOffer.length!==3||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
+    saved.jokers=Array.isArray(saved.jokers)?[...new Set(saved.jokers.filter(id=>PATTERN_TYPES.some(p=>p.id===id)))]:PATTERN_TYPES.map(p=>p.id);
     saved.patternCounts=Object.fromEntries(PATTERN_TYPES.map(({id})=>[id,Number.isSafeInteger(saved.patternCounts?.[id])&&saved.patternCounts[id]>=0?saved.patternCounts[id]:0]));
     if(saved.rulesVersion!==2){
       // Keep the collection and wallet; old numbered layouts cannot represent the new rules.
@@ -479,7 +523,7 @@ function updateMenu(){
   $('saved-stage').textContent=`STAGE ${state.stage} · ${state.score}/${state.target.toLocaleString()} pts · $${state.money}`;
 }
 function showMenu(){
-  hideTooltip();cancelDrag();cancelPaintDrag();saveRun();
+  hideTooltip();cancelDrag();cancelPaintDrag();cancelJokerDrag();saveRun();
   document.querySelectorAll('dialog[open]').forEach(d=>d.close());
   $('game-screen').hidden=true;$('title-screen').hidden=false;inMenu=true;
   updateMenu();$('play-button').focus();

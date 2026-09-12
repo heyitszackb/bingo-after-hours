@@ -213,3 +213,41 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .board.free-placement .cell:not(.stamped){outline:2px solid #91aaa5;outline-offset:-4px}
 .board.free-placement .cell.destination{outline:4px solid #fff0cf;outline-offset:-5px;box-shadow:inset 0 0 0 7px #343b4c,0 0 20px #ecfff899}
 @media(max-width:350px){.paint-can strong{font-size:16px}.paint-tin{width:40px}.paint-can small{font-size:12px}}
+
+/* Landscape table: a quiet control rail beside the scoring cards, board and draw. */
+.cabinet:not(.shopping){--board-size:min(53vw,calc(100dvh - 270px),480px);width:min(calc(100% - 48px),1000px);display:grid;grid-template-columns:minmax(140px,220px) minmax(0,1fr);grid-template-rows:145px var(--board-size) 95px;gap:12px 48px;align-content:center;justify-content:center}
+.cabinet:not(.shopping)>.dashboard{grid-column:1;grid-row:1;grid-template-columns:1fr;gap:8px;align-self:start}
+.cabinet:not(.shopping)>.dashboard>div,.cabinet:not(.shopping)>.dashboard>button{height:42px;font-size:29px}
+.cabinet:not(.shopping)>.call-meter{grid-column:1;grid-row:2;align-self:start;margin-top:22px}
+.cabinet:not(.shopping)>footer{grid-column:1;grid-row:2;align-self:end;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cabinet:not(.shopping)>footer button{min-width:0;width:100%;gap:8px}
+.cabinet:not(.shopping)>.board-frame{grid-column:2;grid-row:2;width:var(--board-size);height:var(--board-size);justify-self:center}
+.cabinet:not(.shopping)>.draw-area{grid-column:2;grid-row:3;width:min(100%,480px);justify-self:center}
+#joker-rack{grid-column:2;grid-row:1;display:flex;align-items:center;justify-content:center;gap:16px;align-self:stretch;min-width:0}
+.joker-card{--accent:#61bda5;position:relative;isolation:isolate;width:112px;height:140px;flex:0 1 112px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:8px 7px;border:3px solid #d6ccb0;border-radius:5px;background:repeating-conic-gradient(#f3e5c800 0% 25%,#7c704715 0% 50%) 0 0/5px 5px,#eee1bf;box-shadow:3px 4px #00191e,inset 0 0 0 2px #7e8d7b;color:#182b2d;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;transform:rotate(-2deg);transition:box-shadow .18s,filter .18s}
+.joker-card:nth-child(2){transform:rotate(1deg)}.joker-card:nth-child(3){transform:rotate(3deg)}
+.joker-column{--accent:#638abc}.joker-diagonal{--accent:#bb725e}
+.joker-card:hover:not(.held){transform:translateY(-5px) rotate(0);box-shadow:4px 9px #00191e,0 0 20px #dce5b31f}
+.joker-heading{font-size:16px;letter-spacing:1px;line-height:1}
+.joker-description{font-size:17px;line-height:.95;text-align:center;max-width:96px}
+.joker-art{width:55px;height:55px;display:grid;grid-template-columns:repeat(5,1fr);gap:3px;padding:4px;background:#173833;border:2px solid #466e60;box-shadow:2px 2px #8e987e}
+.joker-art i{background:#39584b;box-shadow:inset 1px 1px #607263}.joker-art .filled{background:var(--accent);box-shadow:inset 1px 1px #f3f1c5,1px 1px #132b2b}
+.joker-card.held{opacity:.2}.joker-ghost{position:fixed;top:0;left:0;margin:0;z-index:110;pointer-events:none;transition:none;box-shadow:7px 12px 0 #00191e88,0 0 30px #fff3}
+#joker-trash{position:fixed;left:max(24px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom));width:86px;height:76px;z-index:109;display:grid;place-items:center;color:#f8d5c2;background:#472c30;border:3px dashed #cf8974;box-shadow:4px 5px #00191e;animation:pop .18s;pointer-events:none;transition:background .15s,transform .15s}
+#joker-trash svg{width:34px;height:34px}#joker-trash.ready{background:#ae4b42;border-style:solid;transform:scale(1.1);color:#fff5d5}
+.cabinet.shopping>#joker-rack{display:none}
+@media(max-height:600px) and (min-width:601px){
+ .cabinet:not(.shopping){--board-size:min(44vw,calc(100dvh - 174px));grid-template-columns:160px minmax(0,1fr);grid-template-rows:80px var(--board-size) 62px;gap:6px 32px;width:min(calc(100% - 44px),850px);padding:8px 0}
+ .joker-card{height:76px;width:110px;flex-basis:110px;padding:5px;display:grid;grid-template-columns:34px 1fr;grid-template-rows:18px 1fr;gap:3px 5px}.joker-heading{grid-column:1/3;font-size:13px}.joker-art{width:34px;height:34px;gap:1px;padding:2px}.joker-description{font-size:15px}
+ .cabinet:not(.shopping)>.dashboard>div,.cabinet:not(.shopping)>.dashboard>button{height:34px;font-size:25px}.cabinet:not(.shopping)>.dashboard{gap:6px}
+ .cabinet:not(.shopping)>.call-meter{margin-top:52px}.cabinet:not(.shopping)>.draw-area .track{height:62px}.cabinet:not(.shopping)>.draw-area .balls{height:58px;padding-bottom:5px}.cabinet:not(.shopping)>.draw-area .ball{--size:50px}.cabinet:not(.shopping)>.draw-area .face{font-size:26px}
+ .cabinet:not(.shopping) .cell{font-size:25px}.cabinet:not(.shopping) #stage-result{height:62px}
+}
+@media(max-width:600px){
+ .cabinet:not(.shopping){--board-size:min(calc(100vw - 132px),calc(100dvh - 224px));width:calc(100% - 20px);grid-template-columns:88px minmax(0,1fr);grid-template-rows:116px var(--board-size) 76px;gap:10px 12px}
+ #joker-rack{gap:5px}.joker-card{height:108px;padding:5px 2px;border-width:2px;flex:1}.joker-heading{font-size:10px;letter-spacing:0}.joker-description{font-size:13px}.joker-art{width:34px;height:34px;gap:1px;padding:2px}
+ .cabinet:not(.shopping)>.dashboard>div,.cabinet:not(.shopping)>.dashboard>button{height:34px;font-size:20px;gap:2px}.cabinet:not(.shopping)>.dashboard small{font-size:13px}.cabinet:not(.shopping)>.dashboard svg{width:13px;margin:0}
+ .cabinet:not(.shopping)>footer{gap:7px}.cabinet:not(.shopping)>footer button{height:38px;font-size:18px;gap:1px;padding:0}.cabinet:not(.shopping)>footer svg{width:16px}.cabinet:not(.shopping)>.call-meter{gap:4px}#call-dots{gap:2px}
+ .cabinet:not(.shopping)>.draw-area .track{height:76px}.cabinet:not(.shopping)>.draw-area .balls{height:70px;gap:8px;padding:4px 2px 6px}.cabinet:not(.shopping)>.draw-area .ball{--size:48px}.cabinet:not(.shopping)>.draw-area .face{font-size:25px}.cabinet:not(.shopping) .cell{font-size:24px}.cabinet:not(.shopping) .board-frame{padding:4px}.cabinet:not(.shopping) #stage-result{height:70px}#joker-trash{width:72px;height:68px}
+}
+@media(max-height:600px) and (min-width:601px){.joker-card{width:130px;flex-basis:130px;grid-template-columns:28px 1fr}.joker-art{width:28px;height:28px}.joker-description{font-size:12px;line-height:1.05}.joker-heading{font-size:12px}}
