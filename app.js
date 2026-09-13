@@ -1,5 +1,5 @@
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,removeJoker,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=4bf16404bfa6';
+import {newStage,deal,choose,removeJoker,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=e97744b7915c';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,muted=false,paintDrag=null,selectedPaint=null,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
@@ -279,8 +279,6 @@ async function activateSpaces(result){
   $('announcer').textContent=`${names.join(', ')}. ${result.activations.length} spaces activated for ${result.points} points.`;
   animate($('patterns-button'),[{color:'#fff1ba',filter:'brightness(1.6)',transform:'scale(1.12)'},{color:'#f5e7c5',filter:'brightness(1)',transform:'scale(1)'}],{duration:300});
   await wait(160);
-  result.cleared.forEach(n=>$(`cell-${n}`).classList.add('clearing'));
-  await wait(250);
 }
 async function play(n,b,ghost,tile=state.destinations[n]){if(busy){ghost?.remove();return;}lock();const result=choose(state,n,tile);if(!result){ghost?.remove();unlock();return;}saveRun();renderCalls(state.calls-result.bonusDraws);$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);const cell=$(`cell-${result.tile}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.classList.add('leave');});if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}document.querySelectorAll('.cell.offered').forEach(c=>{c.className='cell paint-grey';c.querySelector('span').textContent='';});cell.className=`cell paint-${state.paints[n]||'grey'} stamped just-stamped`;cell.querySelector('span').textContent=n;pulseBackground();sound('stamp');navigator.vibrate?.(18);burst(r);animate(document.querySelector('.board-frame'),[{transform:'translate(0,0)'},{transform:'translate(0,3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});$('announcer').textContent=`Played ball ${n}. One call used.`;await wait(370);if(result.points)await activateSpaces(result);await wait(120);render();refreshBag();if(state.status!=='playing'){showResult();return;}await nextDraw();}
 function showStages(){hideTooltip();$('stage-grid').innerHTML=Array.from({length:10},(_,i)=>{const n=i+1,current=n===state.stage,done=n<state.stage;return `<div class="stage-node ${current?'current':done?'complete':'locked'}" ${current?'aria-current="step"':''} aria-label="Stage ${n}, ${current?'current':done?'completed':'locked'}"><span>${n}<small>${STAGE_TARGETS[i].toLocaleString()} pts</small></span>${current?'<span>◆</span>':done?'<span>✓</span>':'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'}</div>`;}).join('');$('stage-dialog').showModal();}
@@ -500,6 +498,7 @@ function loadRun(){
     if(!Number.isInteger(saved.callCapacity)||saved.callCapacity<12||saved.callCapacity>192||saved.calls>saved.callCapacity)throw new Error('Invalid call capacity');
     if(saved.paints!==undefined&&(!saved.paints||Array.isArray(saved.paints)||typeof saved.paints!=='object'||!Object.entries(saved.paints).every(([n,c])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&['gold','red','blue','black'].includes(c))))throw new Error('Invalid paint');
     if(saved.shopOffer!=null&&(!numbers(saved.shopOffer)||saved.shopOffer.length!==3||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
+    saved.scoredLines=Array.isArray(saved.scoredLines)?[...new Set(saved.scoredLines.filter(id=>typeof id==='string'&&/^(row-[1-5]|column-[1-5]|diagonal-[12])$/.test(id)))]:[];
     saved.jokers=Array.isArray(saved.jokers)?[...new Set(saved.jokers.filter(id=>PATTERN_TYPES.some(p=>p.id===id)))]:PATTERN_TYPES.map(p=>p.id);
     saved.patternCounts=Object.fromEntries(PATTERN_TYPES.map(({id})=>[id,Number.isSafeInteger(saved.patternCounts?.[id])&&saved.patternCounts[id]>=0?saved.patternCounts[id]:0]));
     if(saved.rulesVersion!==2){

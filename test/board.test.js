@@ -19,6 +19,7 @@ test('the same three balls get different locations on different deals',()=>{
 test('reordering offered balls does not change their destinations',()=>{
  const s=newStage();deal(s,()=>.5);const number=s.offer[0],tile=s.destinations[number],dest={...s.destinations};s.offer.reverse();assert.deepEqual(s.destinations,dest);assert.equal(choose(s,number).tile,tile);
 });
-test('a cleared location can receive a different ball and its own paint later',()=>{
- const s=newStage(10,5,{1:'red',6:'gold'});for(let n=1;n<=5;n++){s.offer=[n];s.destinations={[n]:n};choose(s,n);}assert.equal(s.stampBalls[1],undefined);s.offer=[6];s.destinations={6:1};choose(s,6);assert.equal(s.stampBalls[1],6);assert.equal(s.paints[6],'gold');assert.equal(s.money,5);
+test('scored locations retain their original ball and reject replacement until a new stage',()=>{
+ const s=newStage(10,5,{1:'red',6:'gold'});for(let n=1;n<=5;n++){s.offer=[n];s.destinations={[n]:n};choose(s,n);}
+ assert.equal(s.stampBalls[1],1);s.offer=[6];s.destinations={6:1};assert.equal(choose(s,6),null);assert.equal(s.stampBalls[1],1);assert.equal(s.calls,7);
 });

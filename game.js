@@ -15,7 +15,7 @@ export const completedPatterns=stamps=>PATTERN_DEFINITIONS.filter(({tiles})=>til
 export const STAGE_TARGETS = [5,10,15,20,30,40,55,70,90,120];
 export const targetFor = stage => STAGE_TARGETS[stage-1];
 export function newStage(stage=1,money=5,paints={},patternCounts={},jokers=PATTERN_TYPES.map(p=>p.id)) {
-  return {rulesVersion:2,jokers:[...jokers],patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},destinations:{},paints:{...paints},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
+  return {rulesVersion:2,scoredLines:[],jokers:[...jokers],patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},destinations:{},paints:{...paints},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
 }
 export function deal(state,random=Math.random,count=3){
   const empty=Array.from({length:25},(_,i)=>i+1).filter(tile=>!state.stamps.has(tile));
@@ -32,11 +32,12 @@ export function draw(state=newStage(),random=Math.random,count=3) {
 export function choose(state,number,tile=state.destinations[number]) {
   if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||(state.paints[number]!=='black'&&!Object.values(state.destinations).includes(tile))||tile<1||tile>25||state.stamps.has(tile)) return null;
   state.stamps.add(tile);state.stampBalls[tile]=number;state.bag.delete(number);state.played[number]++;state.calls--;
-  const scoredPatterns=completedPatterns(state.stamps).filter(p=>(state.jokers??PATTERN_TYPES.map(p=>p.id)).includes(p.type));
+  state.scoredLines??=[];
+  const scoredPatterns=completedPatterns(state.stamps).filter(p=>p.tiles.includes(tile)&&!state.scoredLines.includes(p.id)&&(state.jokers??PATTERN_TYPES.map(p=>p.id)).includes(p.type));
   const patterns=scoredPatterns.map(p=>p.tiles);
   state.patternCounts??=freshPatternCounts();
   for(const {type} of scoredPatterns)state.patternCounts[type]=(state.patternCounts[type]||0)+1;
-  const cleared=[...new Set(patterns.flat())];
+  state.scoredLines.push(...scoredPatterns.map(p=>p.id));
   const multipliers=patterns.map(pattern=>2**pattern.filter(tile=>state.paints[state.stampBalls[tile]]==='red').length);
   const activations=patterns.flatMap((pattern,i)=>pattern.map((tile,j)=>{
     const number=state.stampBalls[tile],color=state.paints[number];
@@ -46,11 +47,10 @@ export function choose(state,number,tile=state.destinations[number]) {
   const gold=activations.reduce((sum,a)=>sum+a.gold,0),bonusDraws=activations.reduce((sum,a)=>sum+a.draws,0);
   state.money+=gold;state.calls+=bonusDraws;state.callCapacity+=bonusDraws;
   state.score+=points;
-  cleared.forEach(tile=>{state.stamps.delete(tile);delete state.stampBalls[tile];});
   state.offer=[];state.destinations={};
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
-  return {tile,patterns,scoredPatterns,cleared,activations,points,gold,bonusDraws};
+  return {tile,patterns,scoredPatterns,activations,points,gold,bonusDraws};
 }
 export function redraw(state,random=Math.random) {
   if(state.status!=='playing'||state.money<1)return false;
