@@ -37,3 +37,5 @@ A solo arcade bingo MVP designed to fit one mobile screen.
 ## Publish
 
 Run `python3 scripts/version-assets.py` before committing a release to fingerprint browser resources. GitHub Pages serves the root of `main`; pushing publishes changes.
+
+Scoring presentation highlights one scoring card for the full line, counts its subtotal, colors the matching tiles, and accelerates the activation rhythm. Sound follows mute settings; reduced motion keeps the card emphasis without the extra travel and crunch. `node scripts/scoring-motion-check.mjs` verifies a three-line scoring sequence and effect cleanup.

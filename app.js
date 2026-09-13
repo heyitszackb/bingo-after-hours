@@ -220,18 +220,39 @@ async function awardDraws(cell,count,before){
   animate(document.querySelector('.call-meter'),[{filter:'brightness(2)',transform:'scale(1.03)'},{filter:'brightness(1)',transform:'scale(1)'}],{duration:220});
   sound('activate');navigator.vibrate?.(12);
 }
+function scoreCrunch(step=0,finish=false){
+  if(muted||reduced||!audio)return;
+  try{
+    const t=audio.currentTime,duration=finish ? .13 : .045,buffer=audio.createBuffer(1,Math.ceil(audio.sampleRate*duration),audio.sampleRate),data=buffer.getChannelData(0);
+    for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(1-i/data.length);
+    const source=audio.createBufferSource(),filter=audio.createBiquadFilter(),gain=audio.createGain();
+    source.buffer=buffer;filter.type='bandpass';filter.frequency.value=650+step*230;filter.Q.value=.7;
+    gain.gain.setValueAtTime(finish ? .055 : .032,t);gain.gain.exponentialRampToValueAtTime(.001,t+duration);
+    source.connect(filter).connect(gain).connect(audio.destination);source.start(t);source.stop(t+duration);
+    source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect();};
+  }catch{}
+}
 async function activateSpaces(result){
   let displayedScore=state.score-result.points,displayedMoney=state.money-result.gold,displayedCalls=state.calls-result.bonusDraws;
-  let activePattern=[];
+  let activePattern=[],activeCard=null,lineTotal=0;
+  const rack=$('joker-rack'),colors={row:'#83e0b5',column:'#91c6ff',diagonal:'#ffb18b'};
+  rack.classList.add('scoring-rack');
   for(const [index,activation] of result.activations.entries()){
-    const cell=$(`cell-${activation.tile}`);
+    const cell=$(`cell-${activation.tile}`),color=colors[activation.type];
     if(activation.pattern){
-      const card=document.querySelector(`[data-joker="${activation.type}"]`);
-      if(card){sound('score');animate(card,[{transform:'rotate(-3deg) scale(1)'},{transform:'translateY(-8px) rotate(3deg) scale(1.09)',filter:'brightness(1.5)',offset:.35},{transform:'rotate(0) scale(1)'}],{duration:440,easing:'cubic-bezier(.2,.8,.2,1)'});}
-
-      activePattern.forEach(c=>c.classList.remove('pattern-active'));
+      activeCard=document.querySelector(`[data-joker="${activation.type}"]`);lineTotal=0;
+      activePattern.forEach(c=>c.classList.remove('pattern-active','charged'));
       activePattern=activation.pattern.map(n=>$(`cell-${n}`));
-      activePattern.forEach(c=>c.classList.add('pattern-active'));
+      activePattern.forEach(c=>{c.style.setProperty('--scoring-color',color);c.classList.add('pattern-active');});
+      if(activeCard){
+        activeCard.classList.add('scoring-card');activeCard.dataset.payout='+0';
+        activeCard.style.setProperty('--scoring-color',color);
+        sound('score');scoreCrunch(0);
+        await animate(activeCard,[{transform:'rotate(-3deg) scale(1)'},{transform:'translateY(-9px) rotate(4deg) scale(1.12)',offset:.32},{transform:'translateY(-5px) rotate(-1deg) scale(1.06)'}],{duration:250,easing:'cubic-bezier(.2,.85,.2,1)',fill:'none'});
+        const from=activeCard.getBoundingClientRect(),to=cell.getBoundingClientRect(),spark=document.createElement('i');
+        spark.className='score-spark';spark.style.background=color;spark.style.left=`${from.left+from.width/2}px`;spark.style.top=`${from.bottom}px`;$('effects').append(spark);
+        await animate(spark,[{transform:'scale(1.6)',opacity:1},{transform:`translate(${to.left+to.width/2-from.left-from.width/2}px,${to.top+to.height/2-from.bottom}px) scale(.6)`,opacity:1}],{duration:180,easing:'cubic-bezier(.5,0,.8,.4)'});spark.remove();
+      }
     }
     if(activation.patternMultiplier>1){
       const line=activation.pattern.map(n=>$(`cell-${n}`));
@@ -243,13 +264,13 @@ async function activateSpaces(result){
       badge.remove();line.forEach(c=>c.classList.remove('multiplied'));
     }
     cell.classList.add('activating','charged');
-    sound('activate',index);
-    navigator.vibrate?.(8);
+    sound('activate',index);scoreCrunch(index%5);
+    navigator.vibrate?.(12);
     animate(cell,[{transform:'scale(1)'},{transform:'translateY(-4px) scale(1.1)',offset:.3},{transform:'scale(.98)',offset:.65},{transform:'scale(1)'}],{duration:250,easing:'cubic-bezier(.2,.8,.3,1)'});
     const r=cell.getBoundingClientRect();
     burst(r);
     const point=document.createElement('span');
-    point.className='activation-point';
+    point.className='activation-point';point.style.color=color;
     point.textContent=`+${activation.points}`;
     point.style.left=`${r.left+r.width/2}px`;
     point.style.top=`${r.top+r.height/2}px`;
@@ -262,17 +283,23 @@ async function activateSpaces(result){
       {transform:'translate(-50%,-90%) scale(1.15)',opacity:1,offset:.25},
       {transform:'translate(-50%,-100%) scale(1)',opacity:1,offset:.55},
       {transform:`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.45)`,opacity:0}
-    ],{duration:330,easing:'cubic-bezier(.2,.7,.35,1)'});
+    ],{duration:Math.max(210,330-(index%5)*25),easing:'cubic-bezier(.2,.7,.35,1)'});
     point.remove();
-    displayedScore+=activation.points;
+    displayedScore+=activation.points;lineTotal+=activation.points;
+    if(activeCard?.isConnected){activeCard.dataset.payout=`+${lineTotal}`;animate(activeCard,[{transform:'translateY(-5px) rotate(-2deg) scale(1.09)'},{transform:'translateY(-5px) rotate(1deg) scale(1.04)'}],{duration:150});}
     $('score').textContent=displayedScore;
     $('progress').style.width=`${Math.min(100,displayedScore/state.target*100)}%`;
     animate($('score'),[{transform:'scale(1.3)',color:'#fff5d5'},{transform:'scale(1)',color:'#f4c66c'}],{duration:150});
     if(activation.gold){cell.classList.add('gold-paying');await cashInCall(cell,index,displayedMoney,()=>1,false);displayedMoney++;cell.classList.remove('gold-paying');}
     if(activation.draws){await awardDraws(cell,activation.draws,displayedCalls);displayedCalls+=activation.draws;}
     cell.classList.remove('activating');
-    await wait(35);
+    if(index%5===4){
+      scoreCrunch(5,true);sound('score');pulseBackground();navigator.vibrate?.([15,25,25]);
+      if(activeCard?.isConnected)await animate(activeCard,[{transform:'translateY(-5px) scale(1.04)'},{transform:'translateY(-10px) rotate(3deg) scale(1.14)',filter:'brightness(1.35)',offset:.3},{transform:'translateY(-5px) scale(1.04)'}],{duration:320});
+      await wait(160);activeCard?.classList.remove('scoring-card');if(activeCard)delete activeCard.dataset.payout;
+    }else await wait(20);
   }
+  rack.classList.remove('scoring-rack');
   activePattern.forEach(c=>c.classList.remove('pattern-active'));
   sound('score');
   const names=result.scoredPatterns.map(p=>PATTERN_TYPES.find(type=>type.id===p.type).label);
