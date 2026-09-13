@@ -21,7 +21,8 @@ Keep up to **five purchased cards alongside Bingo**. Copies stack and activate s
 Ball upgrades are applied to a chosen ball from all 25. A purchase replaces that ball’s previous upgrade; choosing the same upgrade cannot charge money.
 
 - **X:** no numeric value; displays X everywhere and can occupy any empty space. It completes lines and earns positional bonuses, but never qualifies for numeric bonuses or doubling.
-- **Dynamite:** on placement, randomly redistribute all placed stamps, including itself, among the 25 board spaces. Identity and current values travel with each stamp. Check the resulting board for unscored lines after the shuffle.
+- **Tornado:** on placement, randomly redistribute all placed stamps, including itself, among the 25 board spaces. Identity and current values travel with each stamp. Check the resulting board for unscored lines after the shuffle.
+- **Dynamite:** return every neighboring stamp (all eight surrounding spaces) to the bag before scoring. Dynamite remains placed and unavailable in the bag. Returned balls retain upgrades and current values and can be drawn again. Play counts remain historical; bag availability is tracked separately.
 - **Doubler:** on placement, double the current numbers in all eight neighboring spaces, excluding itself and X stamps. This changes eligibility for numeric card bonuses, not the one-point base score. Double before evaluating scoring.
 
 Paints and the former free Single Digits card are removed when migrating older saves. Wallet, stage progress, existing stamps, and run counts remain; the old shop is replaced. New upgrades and purchases persist across reloads.
@@ -32,7 +33,9 @@ Paints and the former free Single Digits card are removed when migrating older s
 
 Browser checks require local Chrome and the installed Playwright dependency. Set `GAME_URL` to verify deployment:
 
-- `node scripts/upgrade-shop-check.mjs`: purchases, responsive shop, five-card limit, touch trash, X placement, Doubler values, Dynamite identity/value preservation, saves, and migration.
+- `node scripts/upgrade-shop-check.mjs`: purchases, responsive shop, five-card limit, touch trash, X placement, Doubler values, Tornado identity/value preservation, saves, and migration.
 - `node scripts/scoring-motion-check.mjs`: sequential line activation, running subtotals, retained stamps, and effect cleanup.
 
 Run `python3 scripts/version-assets.py` before committing to fingerprint browser resources. GitHub Pages publishes the root of `main`.
+
+Existing scramble upgrades and saved scramble shop offers migrate from Dynamite to Tornado. Dynamite is now a separate fourth ball upgrade.

@@ -20,7 +20,8 @@ export const CARD_TYPES={
 };
 export const BALL_UPGRADES={
   x:{name:'X Ball',text:'Place anywhere. Has no numeric value.',icon:'X'},
-  dynamite:{name:'Dynamite',text:'On placement, scatter every stamp across the board.',icon:'✹'},
+  tornado:{name:'Tornado',text:'On placement, scatter every stamp across the board.',icon:'≋'},
+  dynamite:{name:'Dynamite',text:'Return all 8 neighboring stamps to the bag. This ball stays.',icon:'✹'},
   doubler:{name:'Doubler',text:'On placement, double all 8 neighboring numbers.',icon:'×2'}
 };
 export const cardType=id=>id.split(':')[0];
@@ -29,9 +30,9 @@ export const normalizeJokers=jokers=>{
   const cards=[...new Set(jokers.filter(id=>typeof id==='string'&&CARD_TYPES[cardType(id)]))].slice(0,5);
   return [...(jokers.some(id=>['bingo','row','column','diagonal'].includes(id))?['bingo']:[]),...cards];
 };
-export const ballValue=(state,number)=>state.upgrades[number]==='x'?null:number;
+export const ballValue=(state,number)=>state.upgrades[number]==='x'?null:(state.ballValues?.[number]??number);
 export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['bingo']) {
-  return {rulesVersion:3,jokerVersion:3,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:{...upgrades},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
+  return {rulesVersion:3,upgradeVersion:2,ballValues:{},jokerVersion:3,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:{...upgrades},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
 }
 const shuffled=(values,random)=>{
   const result=[...values];for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;
@@ -51,22 +52,33 @@ export function draw(state=newStage(),random=Math.random,count=3) {
 export function choose(state,number,tile=state.destinations[number],random=Math.random) {
   if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||(state.upgrades[number]!=='x'&&!Object.values(state.destinations).includes(tile))||tile<1||tile>25||state.stamps.has(tile))return null;
   state.stamps.add(tile);state.stampBalls[tile]=number;state.stampValues[tile]=ballValue(state,number);state.bag.delete(number);state.played[number]++;state.calls--;
-  const upgrade=state.upgrades[number],moves=[],doubled=[];
+  const upgrade=state.upgrades[number],moves=[],doubled=[],returned=[];
+  state.ballValues??={};
   if(upgrade==='doubler'){
     const row=Math.floor((tile-1)/5),col=(tile-1)%5;
     for(const other of state.stamps){
       const value=state.stampValues[other];
       if(other!==tile&&value!==null&&Math.abs(Math.floor((other-1)/5)-row)<=1&&Math.abs((other-1)%5-col)<=1){
-        state.stampValues[other]=value*2;doubled.push({tile:other,before:value,after:value*2});
+        state.stampValues[other]=value*2;state.ballValues[state.stampBalls[other]]=value*2;doubled.push({tile:other,before:value,after:value*2});
       }
     }
   }
-  if(upgrade==='dynamite'){
+  if(upgrade==='tornado'){
     const destinations=shuffled(Array.from({length:25},(_,i)=>i+1),random),balls={},values={};
     [...state.stamps].forEach((from,i)=>{const to=destinations[i];balls[to]=state.stampBalls[from];values[to]=state.stampValues[from];moves.push({from,to,number:balls[to],value:values[to]});});
     state.stampBalls=balls;state.stampValues=values;state.stamps=new Set(Object.keys(balls).map(Number));
   }
-  const scoredPatterns=completedPatterns(state.stamps).filter(p=>!state.scoredLines.includes(p.id)&&(upgrade==='dynamite'||p.tiles.includes(tile))&&state.jokers.includes('bingo'));
+  if(upgrade==='dynamite'){
+    const row=Math.floor((tile-1)/5),col=(tile-1)%5;
+    for(const other of [...state.stamps]){
+      if(other===tile||Math.abs(Math.floor((other-1)/5)-row)>1||Math.abs((other-1)%5-col)>1)continue;
+      const ball=state.stampBalls[other],value=state.stampValues[other];
+      returned.push({tile:other,number:ball,value});
+      if(value!==null)state.ballValues[ball]=value;
+      state.bag.add(ball);state.stamps.delete(other);delete state.stampBalls[other];delete state.stampValues[other];
+    }
+  }
+  const scoredPatterns=completedPatterns(state.stamps).filter(p=>!state.scoredLines.includes(p.id)&&(upgrade==='tornado'||p.tiles.includes(tile))&&state.jokers.includes('bingo'));
   const patterns=scoredPatterns.map(p=>p.tiles);
   for(const {type} of scoredPatterns)state.patternCounts[type]=(state.patternCounts[type]||0)+1;
   state.scoredLines.push(...scoredPatterns.map(p=>p.id));
@@ -82,7 +94,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   state.offer=[];state.destinations={};
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
-  return {tile,upgrade,moves,doubled,patterns,scoredPatterns,activations,points};
+  return {tile,upgrade,moves,doubled,returned,patterns,scoredPatterns,activations,points};
 }
 export function redraw(state,random=Math.random) {
   if(state.status!=='playing'||state.money<1)return false;

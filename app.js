@@ -1,5 +1,5 @@
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,removeJoker,normalizeJokers,redraw,settleStage,openShop,buyCard,upgradeBall,CARD_TYPES,BALL_UPGRADES,cardType,ballValue,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=8faa212ae448';
+import {newStage,deal,choose,removeJoker,normalizeJokers,redraw,settleStage,openShop,buyCard,upgradeBall,CARD_TYPES,BALL_UPGRADES,cardType,ballValue,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=48f249873e12';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,muted=false,selectedUpgrade=null,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
@@ -117,7 +117,7 @@ function refreshBag(){
   if(tooltipAnchor?.closest('#bag-grid'))hideTooltip();
   $('bag-grid').replaceChildren();
   for(let n=1;n<=25;n++){
-    const b=ball(n),played=state.played[n]>0;
+    const b=ball(n),played=!state.bag.has(n);
     if(played)b.classList.add('played-ball');
     if(state.offer.includes(n))b.classList.add('on-track');
     b.setAttribute('aria-label',`Ball ${ballValue(state,n)??'X'}${played?', already played, unavailable this stage':''}${state.offer.includes(n)?', on track':''}; played ${state.played[n]} times`);
@@ -311,7 +311,7 @@ async function activateSpaces(result){
 }
 async function play(n,b,ghost,tile=state.destinations[n]){
   if(busy){ghost?.remove();return;}lock();const result=choose(state,n,tile);if(!result){ghost?.remove();unlock();return;}
-  saveRun();renderCalls(state.calls);$('bag-count').textContent=state.bag.size;
+  saveRun();renderCalls(state.calls);$('bag-count').textContent=state.bag.size-result.returned.length;
   const cell=$(`cell-${tile}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.classList.add('leave');});
   if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}
   document.querySelectorAll('.cell.offered').forEach(c=>{c.className='cell paint-grey';c.querySelector('span').textContent='';});
@@ -319,7 +319,7 @@ async function play(n,b,ghost,tile=state.destinations[n]){
   pulseBackground();sound('stamp');navigator.vibrate?.(18);burst(r);
   await animate(document.querySelector('.board-frame'),[{transform:'translateY(0)'},{transform:'translateY(3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});
   await wait(180);
-  if(result.upgrade==='dynamite'){
+  if(result.upgrade==='tornado'){
     sound('score');scoreCrunch(5,true);pulseBackground();burst(r,true);
     const flights=result.moves.map(move=>{
       const from=$(`cell-${move.from}`).getBoundingClientRect(),to=$(`cell-${move.to}`).getBoundingClientRect(),token=ball(move.number);
@@ -328,6 +328,18 @@ async function play(n,b,ghost,tile=state.destinations[n]){
     });
     document.querySelectorAll('.cell.stamped').forEach(c=>{c.className='cell paint-grey';c.querySelector('span').textContent='';});
     await Promise.all(flights.map(async({token,from,to})=>{await animate(token,[{transform:'translate(-50%,-50%) scale(.7)'},{transform:'translate(-50%,-110%) scale(1.1) rotate(-15deg)',offset:.25},{transform:`translate(calc(-50% + ${to.left-from.left}px),calc(-50% + ${to.top-from.top}px)) scale(.7) rotate(360deg)`}],{duration:650,easing:'cubic-bezier(.3,.7,.3,1)'});token.remove();}));
+  }
+  if(result.upgrade==='dynamite'){
+    sound('stamp');scoreCrunch(5,true);pulseBackground();navigator.vibrate?.([20,30,30]);burst(r,true);
+    await animate(cell,[{transform:'scale(1)'},{transform:'scale(1.18)',filter:'brightness(1.6)',offset:.35},{transform:'scale(1)'}],{duration:220});
+    const target=$('bag').getBoundingClientRect();let arrived=0;
+    await Promise.all(result.returned.map(async(item,index)=>{
+      const c=$(`cell-${item.tile}`),from=c.getBoundingClientRect(),token=ball(item.number);
+      token.classList.add('return-token');token.querySelector('.face').textContent=item.value??'X';token.style.left=`${from.left+from.width/2}px`;token.style.top=`${from.top+from.height/2}px`;$('effects').append(token);
+      c.className='cell paint-grey';c.querySelector('span').textContent='';
+      await animate(token,[{transform:'translate(-50%,-50%) scale(.7)',opacity:1},{transform:`translate(-50%,-110%) scale(.9) rotate(${index%2?15:-15}deg)`,opacity:1,offset:.25},{transform:`translate(calc(-50% + ${target.left+target.width/2-from.left-from.width/2}px),calc(-50% + ${target.top+target.height/2-from.top-from.height/2}px)) scale(.15)`,opacity:0}],{duration:480+index*25,easing:'cubic-bezier(.3,.7,.3,1)'});token.remove();$('bag-count').textContent=state.bag.size-result.returned.length+(++arrived);
+    }));
+    animate($('bag'),[{transform:'scale(1.15)'},{transform:'scale(1)'}],{duration:180});
   }
   render();$('score').textContent=state.score-result.points;$('progress').style.width=`${Math.min(100,(state.score-result.points)/state.target*100)}%`;
   result.doubled.forEach(change=>$(`cell-${change.tile}`).querySelector('span').textContent=change.before);
@@ -510,6 +522,13 @@ function loadRun(){
       saved.stampValues=Object.fromEntries(Object.entries(saved.stampBalls||{}));
     }
     saved.upgrades??={};
+    if(!old&&saved.upgradeVersion!==2){
+      for(const n of Object.keys(saved.upgrades))if(saved.upgrades[n]==='dynamite')saved.upgrades[n]='tornado';
+      if(saved.shopOffer?.balls)saved.shopOffer.balls=saved.shopOffer.balls.map(type=>type==='dynamite'?'tornado':type);
+    }
+    saved.upgradeVersion=2;
+    saved.ballValues??={};
+    if(typeof saved.ballValues!=='object'||Array.isArray(saved.ballValues)||!Object.entries(saved.ballValues).every(([n,value])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&Number.isSafeInteger(value)&&value>=1))throw new Error('Invalid ball values');
     if(typeof saved.upgrades!=='object'||Array.isArray(saved.upgrades)||!Object.entries(saved.upgrades).every(([n,type])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&BALL_UPGRADES[type]))throw new Error('Invalid upgrades');
     if(saved.shopOffer!=null&&(!['cards','balls'].every(kind=>Array.isArray(saved.shopOffer[kind])&&saved.shopOffer[kind].length===2&&saved.shopOffer[kind].every(type=>type===null||(kind==='cards'?CARD_TYPES:BALL_UPGRADES)[type]))||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
     saved.scoredLines=Array.isArray(saved.scoredLines)?[...new Set(saved.scoredLines.filter(id=>typeof id==='string'&&/^(row-[1-5]|column-[1-5]|diagonal-[12])$/.test(id)))]:[];

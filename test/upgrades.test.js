@@ -21,8 +21,8 @@ test('doubling happens before bonuses and does not raise the base score',()=>{
  const s=newStage(10,5,{25:'doubler'}, {},['bingo','single-digits:1']);[1,2,3,4].forEach(n=>stamp(s,n,n,n===4?5:n));
  const r=place(s,25,5);assert.equal(s.stampValues[4],10);assert.equal(r.points,8);assert.equal(r.activations[3].bonuses.length,0);
 });
-test('Dynamite scatters every stamp without losing identity or values, then scores its resulting lines',()=>{
- const s=newStage(10,5,{25:'dynamite',1:'x'});[6,12,18,24].forEach((t,i)=>stamp(s,i+1,t,i===0?null:(i+1)*4));
+test('Tornado scatters every stamp without losing identity or values, then scores its resulting lines',()=>{
+ const s=newStage(10,5,{25:'tornado',1:'x'});[6,12,18,24].forEach((t,i)=>stamp(s,i+1,t,i===0?null:(i+1)*4));
  const r=place(s,25,13,()=>.999);assert.equal(r.moves.length,5);assert.deepEqual([...s.stamps],[1,2,3,4,5]);assert.deepEqual(Object.values(s.stampBalls),[1,2,3,4,25]);
  assert.deepEqual(Object.values(s.stampValues),[null,8,12,16,25]);assert.equal(r.points,5);assert.equal(s.calls,11);assert.equal(s.bag.size,20);
  deal(s);assert.ok(Object.values(s.destinations).every(t=>t>5));
@@ -42,4 +42,21 @@ test('upgrades replace rather than stack; shop never charges for the same upgrad
  const s=newStage(1,20,{1:'x'});s.status='passed';s.bonusPaid=true;s.shopOffer={cards:['single-digits','outer-layer'],balls:['x','doubler']};
  assert.equal(upgradeBall(s,0,1),false);assert.equal(s.money,20);assert.ok(upgradeBall(s,1,1));assert.equal(s.upgrades[1],'doubler');assert.equal(s.money,17);
  const next=newStage(2,s.money,s.upgrades,s.patternCounts,s.jokers);assert.equal(next.upgrades[1],'doubler');assert.deepEqual(next.stampValues,{});assert.equal(ballValue(next,1),1);
+});
+test('Dynamite returns all eight neighbors, preserving values/upgrades/counts and leaving itself out',()=>{
+ const s=newStage(10,5,{25:'dynamite',1:'x',2:'tornado',3:'dynamite'});
+ const neighbors=[7,8,9,12,14,17,18,19];neighbors.forEach((tile,i)=>{stamp(s,i+1,tile,i===0?null:(i+1)*4);s.played[i+1]=1;});stamp(s,20,1,20);
+ const r=place(s,25,13);assert.equal(r.returned.length,8);assert.deepEqual([...s.stamps],[1,13]);assert.deepEqual(s.stampBalls,{1:20,13:25});assert.deepEqual(s.stampValues,{1:20,13:25});
+ assert.equal(s.bag.size,23);assert.ok(!s.bag.has(25));assert.ok(!s.bag.has(20));assert.equal(s.calls,11);assert.equal(s.played[25],1);assert.equal(r.points,0);
+ for(let n=1;n<=8;n++){assert.ok(s.bag.has(n));assert.equal(s.played[n],1);assert.equal(ballValue(s,n),n===1?null:n*4);}
+ assert.equal(s.upgrades[2],'tornado');assert.equal(s.upgrades[3],'dynamite');
+ // Replay returned X without clearing history, on a newly empty cell.
+ place(s,1,7);assert.equal(s.stampValues[7],null);assert.equal(s.played[1],2);assert.ok(!s.bag.has(1));assert.equal(s.calls,10);
+});
+test('Dynamite corners do not wrap rows, empty blasts are valid, and it destroys before scoring',()=>{
+ const s=newStage(10,5,{25:'dynamite'});[2,5,6,7,11].forEach((tile,i)=>stamp(s,i+1,tile));
+ const r=place(s,25,1);assert.deepEqual(r.returned.map(b=>b.tile),[2,6,7]);assert.deepEqual([...s.stamps],[5,11,1]);
+ const empty=newStage(10,5,{25:'dynamite'});assert.deepEqual(place(empty,25,13).returned,[]);assert.equal(empty.stampValues[13],25);
+ const row=newStage(10,5,{25:'dynamite'});[1,2,3,4].forEach(n=>stamp(row,n,n));const boom=place(row,25,5);
+ assert.equal(boom.points,0);assert.equal(row.stamps.has(4),false);assert.equal(row.stamps.has(5),true);assert.equal(row.patternCounts.row,0);
 });
