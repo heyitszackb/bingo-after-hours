@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newStage as startingStage,deal,choose} from '../game.js';
-// These fixtures isolate line and paint rules from the optional Single Digits bonus.
-const newStage=(stage,money,paints,counts,jokers=['bingo'])=>startingStage(stage,money,paints,counts,jokers);
-test('every offered ball can occupy every offered space, retaining its own identity and paint',()=>{
+// These fixtures isolate line and upgrade rules from the optional Single Digits bonus.
+const newStage=(stage,money,upgrades,counts,jokers=['bingo'])=>startingStage(stage,money,upgrades,counts,jokers);
+test('every offered ball can occupy every offered space, retaining its own identity and upgrade',()=>{
  for(const number of [1,2,3])for(const tile of [1,13,25]){
-  const s=newStage(10,5,{1:'red',2:'gold',3:'blue'});s.offer=[1,2,3];s.destinations={1:1,2:13,3:25};
+  const s=newStage(10,5,{});s.offer=[1,2,3];s.destinations={1:1,2:13,3:25};
   const result=choose(s,number,tile);
   assert.equal(result.tile,tile);assert.equal(s.stampBalls[tile],number);assert.deepEqual([...s.stamps],[tile]);assert.equal(s.calls,11);assert.equal(s.score,0);assert.equal(s.bag.size,24);assert.ok(!s.bag.has(number));assert.equal(s.played[number],1);
  }
@@ -22,6 +22,6 @@ test('reordering offered balls does not change their destinations',()=>{
  const s=newStage();deal(s,()=>.5);const number=s.offer[0],tile=s.destinations[number],dest={...s.destinations};s.offer.reverse();assert.deepEqual(s.destinations,dest);assert.equal(choose(s,number).tile,tile);
 });
 test('scored locations retain their original ball and reject replacement until a new stage',()=>{
- const s=newStage(10,5,{1:'red',6:'gold'});for(let n=1;n<=5;n++){s.offer=[n];s.destinations={[n]:n};choose(s,n);}
+ const s=newStage(10,5,{});for(let n=1;n<=5;n++){s.offer=[n];s.destinations={[n]:n};choose(s,n);}
  assert.equal(s.stampBalls[1],1);s.offer=[6];s.destinations={6:1};assert.equal(choose(s,6),null);assert.equal(s.stampBalls[1],1);assert.equal(s.calls,7);
 });

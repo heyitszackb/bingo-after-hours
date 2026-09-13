@@ -1,43 +1,38 @@
 # Binglatro
 
-A solo arcade bingo MVP designed to fit one mobile screen.
+A solo arcade bingo game with a horizontal table, numbered stamps, a bag, and scoring cards.
 
-## Current prototype
+## Rules
 
-- The 5×5 board starts blank. Tiles have no permanent numbers or ball identities.
-- Every draw offers three random available balls (numbered 1–25) and three distinct random empty tiles. Any offered ball can go to any offered tile. Those destinations glow, but empty tiles have no printed numbers. Rerolling changes both the balls and destinations. Reordering balls does not change the available spaces.
-- Drag a ball over the card: the nearest offered space highlights, and releasing stamps that space. Dropping outside the card cancels placement. The stamp retains the played ball’s number and paint until the next stage. Unchosen tiles become blank again. Played balls leave the bag until the next stage; unchosen balls remain available.
-- Bingo enables horizontal rows, vertical columns, and full diagonals. Each completed line earns 5 base points (five 1-point activations) before paint bonuses. Squares and corners do not score. Each line scores once per stage. Simultaneous enabled lines activate all their stamps; all stamps remain until the next stage. Shared stamps can activate again in a different newly completed line. Trashing Bingo disables all line scoring for the rest of the run; new runs restore it. The Single Digits joker adds +1 for each scored number from 1–9, before red paint multiplies the line. Both cards start in the rack and can be removed independently. Existing scoring cards merge into Bingo, while an empty rack stays empty.
-- Grey is the default paint. Red doubles the entire scoring pattern, stacking per red stamp. Gold pays $1 when its stamp scores. Blue grants 3 extra calls when its stamp scores. Black can be dragged to any empty space; the nearest empty space highlights during dragging. Shared stamps trigger once per completed pattern. Red multiplies points only, not money or calls.
-- Each stage starts with 12 calls. Every play uses one. Rerolls cost $1, without using a call. Start a run with $5. Unused calls, including blue bonuses, fly into the wallet for $1 each after a win. Running out of calls or available balls below target ends the run.
-- Prototype targets: **5, 10, 15, 20, 30, 40, 55, 70, 90, 120**. These are a starting curve for the one-point placement rules and need playtesting.
-- After payout, the paint shop offers three random balls from all 25. Drag gold, red, blue or black paint onto a ball for $3. Refresh the shop’s balls for $2. Paint persists across stages. Repainting the same color makes no purchase. Touch/mouse drops preview their color; selecting paint then selecting a ball also works.
-- The bag shows all 25 balls, with played balls greyed out and current offers marked. Tap a ball or tile for an anchored tooltip. Tile tooltips show their current paint effect.
-- A bingo ledger opens from the grid button or score panel, with mini-board diagrams, base points, and scored counts for each pattern type. Counts persist across stages and reloads and reset on a new run. Overlapping instances count separately; red multipliers and paint activations do not inflate counts. Older saves start with zero counts.
-- Main menu, pause/resume, restart confirmation, sound toggle, stage map and local saves. Saved destinations and placed paint survive reloading. Old numbered-board saves preserve stage, paints and money, but reset an active stage to the new blank board.
-- Pixel ball and stamp sprites, rolling/snapping, sequential scoring, money and draw-bonus flights, background pulses, sound and haptics. Reduced-motion preferences are respected.
+- Each draw offers three available balls and three random empty spaces. Drag any ball toward an offered space; release over the board to use the closest valid space. Drag along the ball track to reorder. Tap a ball, stamp, or card to inspect it.
+- Playing uses one call and removes that ball from the bag until the next stage. Start with 12 calls and $5; in-game rerolls cost $1. Stage targets remain **5, 10, 15, 20, 30, 40, 55, 70, 90, 120**.
+- Start with Bingo. A completed row, column, or full diagonal scores one base point per tile. Each physical line pays once per stage. All stamps remain until the next stage; shared stamps can activate in another newly completed line. Squares and corners alone do not score.
+- Unused calls pay $1 each after a win, then the shop opens. New stages replenish the bag and calls, and reset stamps and their values. Cards, ball upgrades, money, and run pattern counts carry over.
 
-## Run and check
+## Shop
 
-`npm start` serves the game at http://localhost:5173. No production dependencies or build step.
+Each shop offers two random cards and two distinct random ball upgrades. Every purchase costs $3. Sold offers stay sold across reloads. Refresh all offers for $2. The two-card catalog currently means both cards appear, in random order.
 
-`npm test` covers deals, destinations, scoring, paint interactions, resource costs and progression. Browser checks require `npm install` and local Google Chrome. Each accepts `GAME_URL` for a deployed site:
+Keep up to **five purchased cards alongside Bingo**. Copies stack and activate separately. Select a card to inspect it; drag it into the trash to remove that individual copy and free a slot. Bingo can also be removed, disabling line scoring.
 
-- `node scripts/placement-check.mjs`: mouse/touch nearest-space selection, stamp numbers and reload persistence.
-- `node scripts/joker-check.mjs`: horizontal layout, card removal with mouse/touch, persistence, line scoring, retained stamps, and no repeat payouts.
-- `node scripts/pattern-check.mjs`: scoring ledger, non-scoring squares, run count persistence, restart and mobile layout.
-- `node scripts/board-check.mjs`: blank board, random assignments, scoring and save migration.
-- `node scripts/browser-check.mjs`: mobile sizes, touch drag, tooltips, bag and rerolls.
-- `node scripts/reorder-check.mjs`: touch/mouse reordering and drag-to-play.
-- `node scripts/navigation-check.mjs`: menus, pause, saves and stage targets.
-- `node scripts/stage-check.mjs`: scoring, payout, progression and final restart.
-- `node scripts/shop-check.mjs`: shopping, prices, paint bonuses and saved purchases.
-- `node scripts/paint-flow-check.mjs`: paint preview and colors across bag, track, destinations and stamps.
+- **Single Digits:** +1 when a stamp showing 1–9 scores.
+- **Outer Layer:** +5 when a stamp in any of the 16 outermost spaces scores.
 
-## Publish
+Ball upgrades are applied to a chosen ball from all 25. A purchase replaces that ball’s previous upgrade; choosing the same upgrade cannot charge money.
 
-Run `python3 scripts/version-assets.py` before committing a release to fingerprint browser resources. GitHub Pages serves the root of `main`; pushing publishes changes.
+- **X:** no numeric value; displays X everywhere and can occupy any empty space. It completes lines and earns positional bonuses, but never qualifies for numeric bonuses or doubling.
+- **Dynamite:** on placement, randomly redistribute all placed stamps, including itself, among the 25 board spaces. Identity and current values travel with each stamp. Check the resulting board for unscored lines after the shuffle.
+- **Doubler:** on placement, double the current numbers in all eight neighboring spaces, excluding itself and X stamps. This changes eligibility for numeric card bonuses, not the one-point base score. Double before evaluating scoring.
 
-Scoring presentation highlights one scoring card for the full line, counts its subtotal, colors the matching tiles, and accelerates the activation rhythm. Sound follows mute settings; reduced motion keeps the card emphasis without the extra travel and crunch. `node scripts/scoring-motion-check.mjs` verifies a three-line scoring sequence and effect cleanup.
+Paints and the former free Single Digits card are removed when migrating older saves. Wallet, stage progress, existing stamps, and run counts remain; the old shop is replaced. New upgrades and purchases persist across reloads.
 
-`node scripts/single-digits-check.mjs` verifies the 8-point example, per-tile bonus animations, migration and removal.
+## Development and verification
+
+`npm start` serves http://localhost:5173. `npm test` covers line scoring, persistent stamps, numeric and positional bonuses, all upgrades, resource costs, card limits, sold offers, and stage resets.
+
+Browser checks require local Chrome and the installed Playwright dependency. Set `GAME_URL` to verify deployment:
+
+- `node scripts/upgrade-shop-check.mjs`: purchases, responsive shop, five-card limit, touch trash, X placement, Doubler values, Dynamite identity/value preservation, saves, and migration.
+- `node scripts/scoring-motion-check.mjs`: sequential line activation, running subtotals, retained stamps, and effect cleanup.
+
+Run `python3 scripts/version-assets.py` before committing to fingerprint browser resources. GitHub Pages publishes the root of `main`.

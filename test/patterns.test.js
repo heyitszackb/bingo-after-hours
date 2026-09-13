@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {PATTERN_TYPES,PATTERN_DEFINITIONS,completedPatterns,newStage as startingStage,choose,removeJoker,normalizeJokers} from '../game.js';
-// These fixtures isolate line and paint rules from the optional Single Digits bonus.
-const newStage=(stage,money,paints,counts,jokers=['bingo'])=>startingStage(stage,money,paints,counts,jokers);
+// These fixtures isolate line and upgrade rules from the optional Single Digits bonus.
+const newStage=(stage,money,upgrades,counts,jokers=['bingo'])=>startingStage(stage,money,upgrades,counts,jokers);
 const place=(s,n,tile)=>{s.offer=[n];s.destinations={[n]:tile};return choose(s,n,tile);};
 test('only five rows, five columns and two full diagonals score, each worth five',()=>{
  assert.deepEqual(PATTERN_TYPES.map(p=>p.id),['row','column','diagonal']);
@@ -28,19 +28,19 @@ test('Bingo enables all line types; trashing it disables all and persists across
   const p=PATTERN_DEFINITIONS.find(p=>p.type===type.id);
   p.tiles.forEach((tile,i)=>assert.equal(place(s,i+1,tile).points,0));
   assert.equal(s.stamps.size,5);
-  assert.deepEqual(newStage(10,s.money,s.paints,s.patternCounts,s.jokers).jokers,[]);
+  assert.deepEqual(newStage(10,s.money,s.upgrades,s.patternCounts,s.jokers).jokers,[]);
  }
  assert.deepEqual(normalizeJokers(['row','column','diagonal']),['bingo']);
  assert.deepEqual(normalizeJokers(['column']),['bingo']);
  assert.deepEqual(normalizeJokers([]),[]);
 });
 test('overlapping row and column score together; all stamps including the diagonal remain',()=>{
- const s=newStage(10,5,{25:'blue',2:'gold',3:'red'});
+ const s=newStage(10,5,{});
  const tiles=[2,3,4,5,6,11,16,21,7,13,19,25];
- tiles.forEach((tile,i)=>{s.stamps.add(tile);s.stampBalls[tile]=i+1;s.bag.delete(i+1);});
+ tiles.forEach((tile,i)=>{s.stamps.add(tile);s.stampBalls[tile]=i+1;s.stampValues[tile]=i+1;s.bag.delete(i+1);});
  const r=place(s,25,1);
  assert.deepEqual(r.scoredPatterns.map(p=>p.type),['row','column','diagonal']);
- assert.equal(r.points,20);assert.equal(r.gold,1);assert.equal(r.bonusDraws,9);
+ assert.equal(r.points,15);
  assert.equal(r.activations.length,15);assert.deepEqual([...s.stamps],[...tiles,1]);
  assert.deepEqual(s.patternCounts,{row:1,column:1,diagonal:1});
 });
@@ -51,16 +51,16 @@ test('removing every card gives no points, clears no stamps, and still spends ca
 });
 
 test('completed lines pay once, while retained stamps can score in another line; stages reset both',()=>{
- const s=newStage(10,5,{1:'gold',2:'blue'});
+ const s=newStage(10,5,{});
  for(let n=1;n<=5;n++)place(s,n,n);
- assert.equal(s.score,5);assert.equal(s.money,6);assert.equal(s.calls,10);
+ assert.equal(s.score,5);assert.equal(s.money,5);assert.equal(s.calls,7);
  assert.deepEqual(s.scoredLines,['row-1']);
- const nextChoice=place(s,6,6);assert.equal(nextChoice.points,0);assert.equal(nextChoice.gold,0);assert.equal(nextChoice.bonusDraws,0);
+ const nextChoice=place(s,6,6);assert.equal(nextChoice.points,0);
  place(s,7,11);place(s,8,16);const column=place(s,9,21);
- assert.equal(column.points,5);assert.equal(column.gold,1);assert.equal(s.score,10);
+ assert.equal(column.points,5);assert.equal(s.score,10);
  assert.equal(s.stamps.size,9);assert.deepEqual(s.scoredLines,['row-1','column-1']);
  assert.deepEqual(s.patternCounts,{row:1,column:1,diagonal:0});
- const next=newStage(10,s.money,s.paints,s.patternCounts,s.jokers);
+ const next=newStage(10,s.money,s.upgrades,s.patternCounts,s.jokers);
  assert.equal(next.stamps.size,0);assert.deepEqual(next.scoredLines,[]);assert.deepEqual(next.stampBalls,{});
  for(let n=1;n<=5;n++)place(next,n,n);assert.equal(next.score,5);assert.equal(next.patternCounts.row,2);
 });

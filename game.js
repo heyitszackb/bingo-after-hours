@@ -14,13 +14,28 @@ export const freshPatternCounts=()=>Object.fromEntries(PATTERN_TYPES.map(({id})=
 export const completedPatterns=stamps=>PATTERN_DEFINITIONS.filter(({tiles})=>tiles.every(tile=>stamps.has(tile)));
 export const STAGE_TARGETS = [5,10,15,20,30,40,55,70,90,120];
 export const targetFor = stage => STAGE_TARGETS[stage-1];
-export const normalizeJokers=jokers=>{
-  if(!Array.isArray(jokers))return ['bingo','single-digits'];
-  return [...(jokers.some(id=>['bingo','row','column','diagonal'].includes(id))?['bingo']:[]),...(jokers.includes('single-digits')?['single-digits']:[])];
+export const CARD_TYPES={
+  'single-digits':{name:'Single Digits',text:'Single digits get +1 when scored',icon:'1–9'},
+  'outer-layer':{name:'Outer Layer',text:'Outer edge tiles get +5 when scored',icon:'▣'}
 };
-export function newStage(stage=1,money=5,paints={},patternCounts={},jokers=['bingo','single-digits']) {
-  return {rulesVersion:2,jokerVersion:2,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},destinations:{},paints:{...paints},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
+export const BALL_UPGRADES={
+  x:{name:'X Ball',text:'Place anywhere. Has no numeric value.',icon:'X'},
+  dynamite:{name:'Dynamite',text:'On placement, scatter every stamp across the board.',icon:'✹'},
+  doubler:{name:'Doubler',text:'On placement, double all 8 neighboring numbers.',icon:'×2'}
+};
+export const cardType=id=>id.split(':')[0];
+export const normalizeJokers=jokers=>{
+  if(!Array.isArray(jokers))return ['bingo'];
+  const cards=[...new Set(jokers.filter(id=>typeof id==='string'&&CARD_TYPES[cardType(id)]))].slice(0,5);
+  return [...(jokers.some(id=>['bingo','row','column','diagonal'].includes(id))?['bingo']:[]),...cards];
+};
+export const ballValue=(state,number)=>state.upgrades[number]==='x'?null:number;
+export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['bingo']) {
+  return {rulesVersion:3,jokerVersion:3,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:{...upgrades},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
 }
+const shuffled=(values,random)=>{
+  const result=[...values];for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;
+};
 export function deal(state,random=Math.random,count=3){
   const empty=Array.from({length:25},(_,i)=>i+1).filter(tile=>!state.stamps.has(tile));
   state.offer=draw(state,random,Math.min(count,empty.length));
@@ -33,29 +48,41 @@ export function draw(state=newStage(),random=Math.random,count=3) {
   for(let i=bag.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}
   return bag.slice(0,Math.min(count,25));
 }
-export function choose(state,number,tile=state.destinations[number]) {
-  if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||(state.paints[number]!=='black'&&!Object.values(state.destinations).includes(tile))||tile<1||tile>25||state.stamps.has(tile)) return null;
-  state.stamps.add(tile);state.stampBalls[tile]=number;state.bag.delete(number);state.played[number]++;state.calls--;
-  state.scoredLines??=[];
-  const scoredPatterns=completedPatterns(state.stamps).filter(p=>p.tiles.includes(tile)&&!state.scoredLines.includes(p.id)&&normalizeJokers(state.jokers).includes('bingo'));
+export function choose(state,number,tile=state.destinations[number],random=Math.random) {
+  if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||(state.upgrades[number]!=='x'&&!Object.values(state.destinations).includes(tile))||tile<1||tile>25||state.stamps.has(tile))return null;
+  state.stamps.add(tile);state.stampBalls[tile]=number;state.stampValues[tile]=ballValue(state,number);state.bag.delete(number);state.played[number]++;state.calls--;
+  const upgrade=state.upgrades[number],moves=[],doubled=[];
+  if(upgrade==='doubler'){
+    const row=Math.floor((tile-1)/5),col=(tile-1)%5;
+    for(const other of state.stamps){
+      const value=state.stampValues[other];
+      if(other!==tile&&value!==null&&Math.abs(Math.floor((other-1)/5)-row)<=1&&Math.abs((other-1)%5-col)<=1){
+        state.stampValues[other]=value*2;doubled.push({tile:other,before:value,after:value*2});
+      }
+    }
+  }
+  if(upgrade==='dynamite'){
+    const destinations=shuffled(Array.from({length:25},(_,i)=>i+1),random),balls={},values={};
+    [...state.stamps].forEach((from,i)=>{const to=destinations[i];balls[to]=state.stampBalls[from];values[to]=state.stampValues[from];moves.push({from,to,number:balls[to],value:values[to]});});
+    state.stampBalls=balls;state.stampValues=values;state.stamps=new Set(Object.keys(balls).map(Number));
+  }
+  const scoredPatterns=completedPatterns(state.stamps).filter(p=>!state.scoredLines.includes(p.id)&&(upgrade==='dynamite'||p.tiles.includes(tile))&&state.jokers.includes('bingo'));
   const patterns=scoredPatterns.map(p=>p.tiles);
-  state.patternCounts??=freshPatternCounts();
   for(const {type} of scoredPatterns)state.patternCounts[type]=(state.patternCounts[type]||0)+1;
   state.scoredLines.push(...scoredPatterns.map(p=>p.id));
-  const multipliers=patterns.map(pattern=>2**pattern.filter(tile=>state.paints[state.stampBalls[tile]]==='red').length);
   const activations=patterns.flatMap((pattern,i)=>pattern.map((tile,j)=>{
-    const number=state.stampBalls[tile],color=state.paints[number];
-    const bonuses=number>=1&&number<=9&&state.jokers.includes('single-digits')?[{joker:'single-digits',points:multipliers[i]}]:[];
-    return {tile,number,basePoints:multipliers[i],bonuses,points:multipliers[i]+bonuses.reduce((sum,b)=>sum+b.points,0),type:scoredPatterns[i].type,gold:color==='gold'?1:0,draws:color==='blue'?3:0,patternMultiplier:j===0?multipliers[i]:1,pattern:j===0?pattern:null};
+    const number=state.stampValues[tile],bonuses=[];
+    for(const joker of state.jokers){
+      if(cardType(joker)==='single-digits'&&number!==null&&number>=1&&number<=9)bonuses.push({joker,points:1});
+      if(cardType(joker)==='outer-layer'&&(tile<=5||tile>=21||tile%5===1||tile%5===0))bonuses.push({joker,points:5});
+    }
+    return {tile,number,basePoints:1,bonuses,points:1+bonuses.reduce((sum,b)=>sum+b.points,0),type:scoredPatterns[i].type,pattern:j===0?pattern:null};
   }));
-  const points=activations.reduce((total,activation)=>total+activation.points,0);
-  const gold=activations.reduce((sum,a)=>sum+a.gold,0),bonusDraws=activations.reduce((sum,a)=>sum+a.draws,0);
-  state.money+=gold;state.calls+=bonusDraws;state.callCapacity+=bonusDraws;
-  state.score+=points;
+  const points=activations.reduce((sum,a)=>sum+a.points,0);state.score+=points;
   state.offer=[];state.destinations={};
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
-  return {tile,patterns,scoredPatterns,activations,points,gold,bonusDraws};
+  return {tile,upgrade,moves,doubled,patterns,scoredPatterns,activations,points};
 }
 export function redraw(state,random=Math.random) {
   if(state.status!=='playing'||state.money<1)return false;
@@ -72,16 +99,22 @@ export function settleStage(state){
 
 export function openShop(state,random=Math.random){
   if(state.status!=='passed'||!state.bonusPaid||state.stage>=10)return false;
-  state.shopOffer??=draw({bag:new Set(Array.from({length:25},(_,i)=>i+1))},random);
-  return true;
+  state.shopOffer??={cards:shuffled(Object.keys(CARD_TYPES),random).slice(0,2),balls:shuffled(Object.keys(BALL_UPGRADES),random).slice(0,2)};return true;
 }
-export function paintBall(state,number,color){
-  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!state.shopOffer?.includes(number)||!['gold','red','blue','black'].includes(color)||state.money<3||state.paints[number]===color)return false;
-  state.money-=3;state.paints[number]=color;return true;
+export function buyCard(state,index){
+  const type=state.shopOffer?.cards[index];
+  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!CARD_TYPES[type]||state.money<3||state.jokers.filter(id=>id!=='bingo').length>=5)return false;
+  let serial=1;while(state.jokers.includes(`${type}:${serial}`))serial++;
+  state.jokers.push(`${type}:${serial}`);state.shopOffer.cards[index]=null;state.money-=3;return true;
+}
+export function upgradeBall(state,index,number){
+  const type=state.shopOffer?.balls[index];
+  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!BALL_UPGRADES[type]||!Number.isInteger(number)||number<1||number>25||state.money<3||state.upgrades[number]===type)return false;
+  state.upgrades[number]=type;state.shopOffer.balls[index]=null;state.money-=3;return true;
 }
 export function redrawShop(state,random=Math.random){
   if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!state.shopOffer||state.money<2)return false;
-  state.money-=2;state.shopOffer=draw({bag:new Set(Array.from({length:25},(_,i)=>i+1))},random);return true;
+  state.money-=2;state.shopOffer=null;return openShop(state,random);
 }
 
 export function removeJoker(state,type){

@@ -1,7 +1,7 @@
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,removeJoker,normalizeJokers,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=b5b13a63364f';
+import {newStage,deal,choose,removeJoker,normalizeJokers,redraw,settleStage,openShop,buyCard,upgradeBall,CARD_TYPES,BALL_UPGRADES,cardType,ballValue,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=8faa212ae448';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,muted=false,paintDrag=null,selectedPaint=null,shopping=false;
+let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,muted=false,selectedUpgrade=null,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
 const animate=(el,frames,options)=>el.animate(frames,{...options,duration:reduced?1:options.duration}).finished.catch(()=>{});
 function sound(kind,step=0){if(muted)return;if(!navigator.userActivation?.hasBeenActive)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const t=audio.currentTime;const o=audio.createOscillator(),g=audio.createGain();o.type=kind==='score'?'triangle':'square';o.frequency.setValueAtTime(kind==='activate'?330*2**(Math.min(step,12)/12):kind==='score'?660:kind==='roll'?180:110,t);o.frequency.exponentialRampToValueAtTime(kind==='activate'?220*2**(Math.min(step,12)/12):kind==='score'?1320:40,t+.12);g.gain.setValueAtTime(.035,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);o.connect(g).connect(audio.destination);o.start(t);o.stop(t+.17);}catch{}}
@@ -13,51 +13,58 @@ function render(){
   $('score-patterns').setAttribute('aria-label',`${state.score} of ${state.target} points. View scoring patterns and run counts`);
   $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);for(const k of ['score','target','calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw').disabled=busy||state.money<1||state.status!=='playing';$('redraw').setAttribute('aria-label',state.money<1?'Reroll costs $1; not enough money':'Reroll for $1 without using a call');renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
     const c=$(`cell-${tile}`),offered=Object.values(state.destinations).includes(tile),number=state.stampBalls[tile];
-    c.className=`cell paint-${state.paints[number]||'grey'}${state.stamps.has(tile)?' stamped':''}${offered?' offered':''}`;
-    c.querySelector('span').textContent=state.stamps.has(tile)?state.stampBalls[tile]:'';
-    c.setAttribute('aria-label',`Row ${Math.floor((tile-1)/5)+1}, column ${(tile-1)%5+1}${state.stamps.has(tile)?`, stamped with ball ${number}`:offered?', available for any drawn ball':', empty'}. Scoring is determined by your active cards.`);
+    c.className=`cell paint-grey upgrade-${state.upgrades[number]||'plain'}${state.stamps.has(tile)?' stamped':''}${offered?' offered':''}`;
+    c.querySelector('span').textContent=state.stamps.has(tile)?(state.stampValues[tile]??'X'):'';
+    c.classList.toggle('large-value',String(state.stampValues[tile]).length>2);
+    c.setAttribute('aria-label',`Row ${Math.floor((tile-1)/5)+1}, column ${(tile-1)%5+1}${state.stamps.has(tile)?`, stamped ${state.stampValues[tile]??'X'}`:offered?', available for any drawn ball':', empty'}. Scoring is determined by your active cards.`);
   }}
 
 let jokerDrag=null;
-const jokerText={bingo:'Score a row, column, or diagonal', 'single-digits':'Single digits get +1 when scored'};
+const jokerText={bingo:'Score a row, column, or diagonal',...Object.fromEntries(Object.entries(CARD_TYPES).map(([id,c])=>[id,c.text]))};
 function renderJokers(){
   const ids=normalizeJokers(state.jokers),rack=$('joker-rack');
   if(rack.dataset.cards===ids.join('|'))return;
-  rack.dataset.cards=ids.join('|');rack.replaceChildren();
+  rack.dataset.cards=ids.join('|');rack.style.setProperty('--card-count',ids.length);rack.replaceChildren();
   for(const id of ids){
-    const card=document.createElement('button'),pattern={previewTiles:[3,8,11,12,13,14,15,18,23,1,7,19,25]};
-    card.className=`joker-card joker-${id}`;card.dataset.joker=id;
-    card.setAttribute('aria-label',`${jokerText[id]}. Drag to trash to remove this effect, or press Delete.`);
-    card.innerHTML=`<span class="joker-heading">${id==='bingo'?'BINGO':'SINGLE DIGITS'}</span><span class="joker-art ${id==='single-digits'?'digits-art':''}" aria-hidden="true">${id==='single-digits'?'<b>1–9</b>':Array.from({length:25},(_,i)=>`<i class="${pattern.previewTiles.includes(i+1)?'filled':''}"></i>`).join('')}</span><span class="joker-description">${jokerText[id]}</span>`;
+    const type=cardType(id),card=document.createElement('button'),pattern={previewTiles:[3,8,11,12,13,14,15,18,23,1,7,19,25]};
+    card.className=`joker-card joker-${type}`;card.dataset.joker=id;
+    card.setAttribute('aria-label',`${jokerText[type]}. Drag to trash to remove this effect, or press Delete.`);
+    card.innerHTML=`<span class="joker-heading">${type==='bingo'?'BINGO':CARD_TYPES[type].name.toUpperCase()}</span><span class="joker-art ${type!=='bingo'?'digits-art':''}" aria-hidden="true">${type!=='bingo'?`<b>${CARD_TYPES[type].icon}</b>`:Array.from({length:25},(_,i)=>`<i class="${pattern.previewTiles.includes(i+1)?'filled':''}"></i>`).join('')}</span><span class="joker-description">${jokerText[type]}</span>`;
     card.onpointerdown=e=>{
-      if(e.button!==0||jokerDrag||drag||paintDrag)return;
+      if(e.button!==0||jokerDrag||drag)return;
+      const selected=tooltipAnchor===card;
       e.preventDefault();hideTooltip();card.setPointerCapture(e.pointerId);
-      jokerDrag={card,id,pointer:e.pointerId,x:e.clientX,y:e.clientY,ghost:null};
+      jokerDrag={card,id,pointer:e.pointerId,x:e.clientX,y:e.clientY,ghost:null,selected,scrollStart:rack.scrollLeft,scrolling:false};
     };
     card.onpointermove=e=>{
       const d=jokerDrag;if(!d||d.pointer!==e.pointerId)return;
-      if(!d.ghost&&Math.hypot(e.clientX-d.x,e.clientY-d.y)>6){
+      const dx=e.clientX-d.x,dy=e.clientY-d.y;
+      if(!d.ghost&&!d.selected&&Math.abs(dx)>8&&Math.abs(dx)>Math.abs(dy)*1.4)d.scrolling=true;
+      if(d.scrolling){rack.scrollLeft=d.scrollStart-dx;return;}
+      if(!d.ghost&&Math.hypot(dx,dy)>6){
         const r=card.getBoundingClientRect();d.ghost=card.cloneNode(true);d.ghost.removeAttribute('data-joker');d.ghost.classList.add('joker-ghost');d.ghost.setAttribute('aria-hidden','true');d.ghost.style.width=`${r.width}px`;d.ghost.style.height=`${r.height}px`;d.w=r.width;d.h=r.height;document.body.append(d.ghost);card.classList.add('held');$('joker-trash').hidden=false;sound('roll');
       }
       if(d.ghost){d.ghost.style.transform=`translate(${e.clientX-d.w/2}px,${e.clientY-d.h/2}px) rotate(${Math.max(-12,Math.min(12,(e.clientX-d.x)*.04))}deg)`;$('joker-trash').classList.toggle('ready',overTrash(e.clientX,e.clientY));}
     };
     card.onpointerup=async e=>{
       const d=jokerDrag;if(!d||d.pointer!==e.pointerId)return;
+      if(d.scrolling){cancelJokerDrag();return;}
+      if(!d.ghost){showTooltip(null,card);$('tooltip-number').textContent=type==='bingo'?'Bingo':CARD_TYPES[type].name;$('tooltip-effect').textContent=jokerText[type];$('tooltip-effect').hidden=false;positionTooltip();}
       const discard=d.ghost&&overTrash(e.clientX,e.clientY),ghost=d.ghost;
-      if(discard){removeJoker(state,id);saveRun();}
+      if(discard){removeJoker(state,id);saveRun();if(shopping)renderShop();}
       cancelJokerDrag(false);renderJokers();
       if(ghost){if(discard){sound('stamp');navigator.vibrate?.(20);await animate(ghost,[{transform:ghost.style.transform,opacity:1},{transform:ghost.style.transform+' scale(.05)',opacity:0}],{duration:220});}else{const r=card.getBoundingClientRect();await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left}px,${r.top}px) rotate(0)`}],{duration:200,easing:'cubic-bezier(.2,.8,.2,1)'});}ghost.remove();}
       if(discard)$('announcer').textContent=`${id} card removed.`;
     };
     card.onpointercancel=()=>cancelJokerDrag();card.onlostpointercapture=()=>{if(jokerDrag)cancelJokerDrag();};
-    card.onkeydown=e=>{if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeJoker(state,id);saveRun();renderJokers();}};
+    card.onkeydown=e=>{if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeJoker(state,id);saveRun();renderJokers();if(shopping)renderShop();}};
     rack.append(card);
   }
 }
 function overTrash(x,y){const r=$('joker-trash').getBoundingClientRect();return x>=r.left-12&&x<=r.right+12&&y>=r.top-12&&y<=r.bottom+12;}
 function cancelJokerDrag(removeGhost=true){if(!jokerDrag)return;const d=jokerDrag;jokerDrag=null;d.card.classList.remove('held');if(removeGhost)d.ghost?.remove();$('joker-trash').hidden=true;$('joker-trash').classList.remove('ready');if(d.card.hasPointerCapture(d.pointer))d.card.releasePointerCapture(d.pointer);}
 
-function ball(n){const b=document.createElement('button');b.className=`ball paint-${state.paints[n]||'grey'}`;b.dataset.number=n;b.innerHTML=`<span class="face">${n}</span>`;b.setAttribute('aria-label',`Inspect ball ${n}`);return b;}
+function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}`;b.dataset.number=n;b.innerHTML=`<span class="face">${ballValue(state,n)??'X'}</span>`;b.setAttribute('aria-label',state.upgrades[n]==='x'?'X ball, no numeric value':`Inspect ball ${n}`);return b;}
 function hideTooltip(){
   const tip=$('inspect-tooltip');
   if(tip.matches(':popover-open'))tip.hidePopover();
@@ -86,10 +93,10 @@ function showTooltip(n,anchor,space=false){
   hideTooltip();sound('roll');
   const tip=$('inspect-tooltip');
   (anchor.closest('dialog')||document.body).append(tip);
-  $('tooltip-number').textContent=space?'STAMP':n;
-  const color=state.paints[n];
-  $('tooltip-effect').textContent=color==='gold'?'+$1 when scored':color==='red'?'×2 to any scoring bingo · stacks':color==='blue'?'+3 draws when scored':color==='black'?'Place on any empty space':space?'Nothing special':'';
-  $('tooltip-effect').hidden=!space&&!color;
+  $('tooltip-number').textContent=space?(state.stamps.has(Number(anchor.id.replace('cell-','')))?state.stampValues[Number(anchor.id.replace('cell-',''))]??'X':'EMPTY'):(n==null?'':ballValue(state,n)??'X');
+  const upgrade=state.upgrades[n];
+  $('tooltip-effect').textContent=upgrade?BALL_UPGRADES[upgrade].text:space?'Nothing special':'';
+  $('tooltip-effect').hidden=!space&&!upgrade;
   tip.classList.toggle('space-tooltip',space);
   tooltipAnchor=anchor;
   anchor.setAttribute('aria-describedby','inspect-tooltip');
@@ -113,13 +120,13 @@ function refreshBag(){
     const b=ball(n),played=state.played[n]>0;
     if(played)b.classList.add('played-ball');
     if(state.offer.includes(n))b.classList.add('on-track');
-    b.setAttribute('aria-label',`Ball ${n}${played?', already played, unavailable this stage':''}${state.offer.includes(n)?', on track':''}; played ${state.played[n]} times`);
+    b.setAttribute('aria-label',`Ball ${ballValue(state,n)??'X'}${played?', already played, unavailable this stage':''}${state.offer.includes(n)?', on track':''}; played ${state.played[n]} times`);
     b.onclick=()=>inspect(n,b);$('bag-grid').append(b);
   }
 }
 function lock(){hideTooltip();busy=true;render();document.querySelectorAll('#balls .ball').forEach(b=>b.disabled=true);}
 function unlock(){busy=false;saveRun();render();document.querySelectorAll('#balls .ball').forEach(b=>{b.disabled=false;b.classList.remove('enter');});}
-function showBalls(){$('balls').replaceChildren();state.offer.forEach((n,i)=>{const b=ball(n);b.classList.add('enter');b.style.setProperty('--i',i);b.disabled=true;b.setAttribute('aria-label',`Ball ${n}. Tap to inspect. Drag along the track to reorder, or to the card to play. Keyboard: Enter to inspect, Space to play.`);b.addEventListener('pointerdown',e=>startDrag(e,n,b));b.addEventListener('pointermove',moveDrag);b.addEventListener('pointerup',endDrag);b.addEventListener('pointercancel',cancelDrag);b.addEventListener('lostpointercapture',()=>{if(drag)cancelDrag();});b.onclick=e=>{if(e.detail===0&&!busy)inspect(n,b);};b.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();if(!busy&&!drag)play(n,b);} };$('balls').append(b);});refreshBag();}
+function showBalls(){$('balls').replaceChildren();state.offer.forEach((n,i)=>{const b=ball(n);b.classList.add('enter');b.style.setProperty('--i',i);b.disabled=true;b.setAttribute('aria-label',`Ball ${ballValue(state,n)??'X'}. Tap to inspect. Drag along the track to reorder, or to the card to play. Keyboard: Enter to inspect, Space to play.`);b.addEventListener('pointerdown',e=>startDrag(e,n,b));b.addEventListener('pointermove',moveDrag);b.addEventListener('pointerup',endDrag);b.addEventListener('pointercancel',cancelDrag);b.addEventListener('lostpointercapture',()=>{if(drag)cancelDrag();});b.onclick=e=>{if(e.detail===0&&!busy)inspect(n,b);};b.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();if(!busy&&!drag)play(n,b);} };$('balls').append(b);});refreshBag();}
 async function nextDraw(){resetResultUI();lock();deal(state);render();showBalls();await wait(770);sound('roll');unlock();}
 function startDrag(e,n,b){
   if(busy||drag||jokerDrag||e.button!==0)return;
@@ -145,7 +152,7 @@ function previewOrder(d,order){
 function isOnBoard(x,y){const r=$('board').getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;}
 function nearestDestination(x,y,number){
   let nearest=null,distance=Infinity;
-  for(const tile of state.paints[number]==='black'?Array.from({length:25},(_,i)=>i+1):Object.values(state.destinations)){
+  for(const tile of state.upgrades[number]==='x'?Array.from({length:25},(_,i)=>i+1):Object.values(state.destinations)){
     if(state.stamps.has(tile))continue;
     const r=$(`cell-${tile}`).getBoundingClientRect(),d=Math.hypot(x-r.left-r.width/2,y-r.top-r.height/2);
     if(d<distance){nearest=tile;distance=d;}
@@ -157,13 +164,13 @@ function moveDrag(e){
   if(!drag||e.pointerId!==drag.id)return;
   const d=drag;
   if(!d.moved&&Math.hypot(e.clientX-d.x,e.clientY-d.y)>7){
-    d.moved=true;hideTooltip();d.ghost=d.b.cloneNode(true);d.ghost.className=`ball drag-ghost paint-${state.paints[d.n]||'grey'}`;
+    d.moved=true;hideTooltip();d.ghost=d.b.cloneNode(true);d.ghost.className=`ball drag-ghost paint-grey upgrade-${state.upgrades[d.n]||'plain'}`;
     d.ghost.removeAttribute('disabled');d.ghost.setAttribute('aria-hidden','true');d.ghost.tabIndex=-1;
     d.size=d.b.getBoundingClientRect().width;d.ghost.style.setProperty('--size',`${d.size}px`);
     document.body.append(d.ghost);d.b.classList.add('held');
   }
   if(!d.moved)return;
-  $('board').classList.toggle('free-placement',state.paints[d.n]==='black');
+  $('board').classList.toggle('free-placement',state.upgrades[d.n]==='x');
   d.ghost.style.transform=`translate(${e.clientX-d.size/2}px,${e.clientY-d.size/2}px) rotate(${Math.max(-14,Math.min(14,(e.clientX-d.x)*.08))}deg) scale(1.08)`;
   const over=isOnBoard(e.clientX,e.clientY),onTrack=!over&&isOnTrack(e.clientX,e.clientY);
   document.querySelector('.board-frame').classList.toggle('drag-over',over);
@@ -209,17 +216,6 @@ function renderCalls(calls){
   $('call-dots').innerHTML=Array.from({length:12},(_,i)=>`<i class="${i>=Math.ceil(calls/state.callCapacity*12)?'used':''}"></i>`).join('');
   document.querySelector('.call-meter').setAttribute('aria-label',`${calls} calls remaining`);
 }
-async function awardDraws(cell,count,before){
-  const from=cell.getBoundingClientRect(),to=$('calls').getBoundingClientRect();
-  const token=document.createElement('span');token.className='draw-bonus';token.textContent=`+${count}`;
-  token.style.left=`${from.left+from.width/2}px`;token.style.top=`${from.top+from.height/2}px`;$('effects').append(token);
-  const dx=to.left+to.width/2-from.left-from.width/2,dy=to.top+to.height/2-from.top-from.height/2;
-  sound('score');cell.classList.add('blue-paying');
-  await animate(token,[{transform:'translate(-50%,-50%) scale(.5)',opacity:0},{transform:'translate(-50%,-100%) scale(1.2)',opacity:1,offset:.25},{transform:`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.6)`,opacity:1}],{duration:440,easing:'cubic-bezier(.2,.7,.35,1)'});
-  token.remove();renderCalls(before+count);cell.classList.remove('blue-paying');
-  animate(document.querySelector('.call-meter'),[{filter:'brightness(2)',transform:'scale(1.03)'},{filter:'brightness(1)',transform:'scale(1)'}],{duration:220});
-  sound('activate');navigator.vibrate?.(12);
-}
 function scoreCrunch(step=0,finish=false){
   if(muted||reduced||!audio)return;
   try{
@@ -233,7 +229,7 @@ function scoreCrunch(step=0,finish=false){
   }catch{}
 }
 async function activateSpaces(result){
-  let displayedScore=state.score-result.points,displayedMoney=state.money-result.gold,displayedCalls=state.calls-result.bonusDraws;
+  let displayedScore=state.score-result.points;
   let activePattern=[],activeCard=null,lineTotal=0;
   const rack=$('joker-rack'),colors={row:'#83e0b5',column:'#91c6ff',diagonal:'#ffb18b'};
   rack.classList.add('scoring-rack');
@@ -245,6 +241,7 @@ async function activateSpaces(result){
       activePattern=activation.pattern.map(n=>$(`cell-${n}`));
       activePattern.forEach(c=>{c.style.setProperty('--scoring-color',color);c.classList.add('pattern-active');});
       if(activeCard){
+        activeCard.scrollIntoView({block:'nearest',inline:'nearest',behavior:reduced?'instant':'smooth'});
         activeCard.classList.add('scoring-card');activeCard.dataset.pattern=activation.type;activeCard.dataset.payout='+0';
         activeCard.style.setProperty('--scoring-color',color);
         sound('score');scoreCrunch(0);
@@ -253,15 +250,6 @@ async function activateSpaces(result){
         spark.className='score-spark';spark.style.background=color;spark.style.left=`${from.left+from.width/2}px`;spark.style.top=`${from.bottom}px`;$('effects').append(spark);
         await animate(spark,[{transform:'scale(1.6)',opacity:1},{transform:`translate(${to.left+to.width/2-from.left-from.width/2}px,${to.top+to.height/2-from.bottom}px) scale(.6)`,opacity:1}],{duration:180,easing:'cubic-bezier(.5,0,.8,.4)'});spark.remove();
       }
-    }
-    if(activation.patternMultiplier>1){
-      const line=activation.pattern.map(n=>$(`cell-${n}`));
-      line.forEach(c=>c.classList.add('multiplied'));
-      const badge=document.createElement('span');badge.className='pattern-multiplier';badge.textContent=`×${activation.patternMultiplier}`;
-      const r=line[2].getBoundingClientRect();badge.style.left=`${r.left+r.width/2}px`;badge.style.top=`${r.top+r.height/2}px`;$('effects').append(badge);
-      sound('score');pulseBackground();
-      await animate(badge,[{transform:'translate(-50%,-50%) scale(.5)',opacity:0},{transform:'translate(-50%,-70%) scale(1.2)',opacity:1,offset:.25},{transform:'translate(-50%,-100%) scale(1)',opacity:0}],{duration:550});
-      badge.remove();line.forEach(c=>c.classList.remove('multiplied'));
     }
     cell.classList.add('activating','charged');
     sound('activate',index);scoreCrunch(index%5);
@@ -280,6 +268,7 @@ async function activateSpaces(result){
     for(const bonus of activation.bonuses){
       const bonusCard=document.querySelector(`[data-joker="${bonus.joker}"]`);
       if(bonusCard){
+        bonusCard.scrollIntoView({block:'nearest',inline:'nearest',behavior:reduced?'instant':'smooth'});
         bonusCard.classList.add('scoring-card');bonusCard.dataset.payout=`+${bonus.points}`;bonusCard.style.setProperty('--scoring-color','#f4c66c');
         sound('activate',index+4);scoreCrunch(4);navigator.vibrate?.(12);
         await animate(bonusCard,[{transform:'scale(1)'},{transform:'translateY(-8px) rotate(-4deg) scale(1.12)',offset:.35},{transform:'translateY(-4px) rotate(2deg) scale(1.05)'}],{duration:230});
@@ -305,8 +294,6 @@ async function activateSpaces(result){
     $('score').textContent=displayedScore;
     $('progress').style.width=`${Math.min(100,displayedScore/state.target*100)}%`;
     animate($('score'),[{transform:'scale(1.3)',color:'#fff5d5'},{transform:'scale(1)',color:'#f4c66c'}],{duration:150});
-    if(activation.gold){cell.classList.add('gold-paying');await cashInCall(cell,index,displayedMoney,()=>1,false);displayedMoney++;cell.classList.remove('gold-paying');}
-    if(activation.draws){await awardDraws(cell,activation.draws,displayedCalls);displayedCalls+=activation.draws;}
     cell.classList.remove('activating');
     if(index%5===4){
       scoreCrunch(5,true);sound('score');pulseBackground();navigator.vibrate?.([15,25,25]);
@@ -322,10 +309,40 @@ async function activateSpaces(result){
   animate($('patterns-button'),[{color:'#fff1ba',filter:'brightness(1.6)',transform:'scale(1.12)'},{color:'#f5e7c5',filter:'brightness(1)',transform:'scale(1)'}],{duration:300});
   await wait(160);
 }
-async function play(n,b,ghost,tile=state.destinations[n]){if(busy){ghost?.remove();return;}lock();const result=choose(state,n,tile);if(!result){ghost?.remove();unlock();return;}saveRun();renderCalls(state.calls-result.bonusDraws);$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);const cell=$(`cell-${result.tile}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.classList.add('leave');});if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}document.querySelectorAll('.cell.offered').forEach(c=>{c.className='cell paint-grey';c.querySelector('span').textContent='';});cell.className=`cell paint-${state.paints[n]||'grey'} stamped just-stamped`;cell.querySelector('span').textContent=n;pulseBackground();sound('stamp');navigator.vibrate?.(18);burst(r);animate(document.querySelector('.board-frame'),[{transform:'translate(0,0)'},{transform:'translate(0,3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});$('announcer').textContent=`Played ball ${n}. One call used.`;await wait(370);if(result.points)await activateSpaces(result);await wait(120);render();refreshBag();if(state.status!=='playing'){showResult();return;}await nextDraw();}
+async function play(n,b,ghost,tile=state.destinations[n]){
+  if(busy){ghost?.remove();return;}lock();const result=choose(state,n,tile);if(!result){ghost?.remove();unlock();return;}
+  saveRun();renderCalls(state.calls);$('bag-count').textContent=state.bag.size;
+  const cell=$(`cell-${tile}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.classList.add('leave');});
+  if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}
+  document.querySelectorAll('.cell.offered').forEach(c=>{c.className='cell paint-grey';c.querySelector('span').textContent='';});
+  cell.className=`cell paint-grey upgrade-${state.upgrades[n]||'plain'} stamped just-stamped`;cell.querySelector('span').textContent=ballValue(state,n)??'X';
+  pulseBackground();sound('stamp');navigator.vibrate?.(18);burst(r);
+  await animate(document.querySelector('.board-frame'),[{transform:'translateY(0)'},{transform:'translateY(3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});
+  await wait(180);
+  if(result.upgrade==='dynamite'){
+    sound('score');scoreCrunch(5,true);pulseBackground();burst(r,true);
+    const flights=result.moves.map(move=>{
+      const from=$(`cell-${move.from}`).getBoundingClientRect(),to=$(`cell-${move.to}`).getBoundingClientRect(),token=ball(move.number);
+      token.classList.add('scatter-token');token.querySelector('.face').textContent=move.value??'X';token.style.left=`${from.left+from.width/2}px`;token.style.top=`${from.top+from.height/2}px`;$('effects').append(token);
+      return {token,from,to};
+    });
+    document.querySelectorAll('.cell.stamped').forEach(c=>{c.className='cell paint-grey';c.querySelector('span').textContent='';});
+    await Promise.all(flights.map(async({token,from,to})=>{await animate(token,[{transform:'translate(-50%,-50%) scale(.7)'},{transform:'translate(-50%,-110%) scale(1.1) rotate(-15deg)',offset:.25},{transform:`translate(calc(-50% + ${to.left-from.left}px),calc(-50% + ${to.top-from.top}px)) scale(.7) rotate(360deg)`}],{duration:650,easing:'cubic-bezier(.3,.7,.3,1)'});token.remove();}));
+  }
+  render();$('score').textContent=state.score-result.points;$('progress').style.width=`${Math.min(100,(state.score-result.points)/state.target*100)}%`;
+  result.doubled.forEach(change=>$(`cell-${change.tile}`).querySelector('span').textContent=change.before);
+  for(const change of result.doubled){
+    const target=$(`cell-${change.tile}`);target.querySelector('span').textContent=change.before;
+    target.classList.add('doubling');sound('activate');
+    await animate(target,[{transform:'scale(1)'},{transform:'scale(1.15)',offset:.4},{transform:'scale(1)'}],{duration:180});target.querySelector('span').textContent=change.after;target.classList.remove('doubling');
+  }
+  $('announcer').textContent=`${result.upgrade==='x'?'X':n} played. One call used.`;
+  if(result.points)await activateSpaces(result);await wait(120);render();refreshBag();
+  if(state.status!=='playing'){showResult();return;}await nextDraw();
+}
 function showStages(){hideTooltip();$('stage-grid').innerHTML=Array.from({length:10},(_,i)=>{const n=i+1,current=n===state.stage,done=n<state.stage;return `<div class="stage-node ${current?'current':done?'complete':'locked'}" ${current?'aria-current="step"':''} aria-label="Stage ${n}, ${current?'current':done?'completed':'locked'}"><span>${n}<small>${STAGE_TARGETS[i].toLocaleString()} pts</small></span>${current?'<span>◆</span>':done?'<span>✓</span>':'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'}</div>`;}).join('');$('stage-dialog').showModal();}
 function showPatterns(){
-  if(busy||drag||paintDrag||payingOut)return;
+  if(busy||drag||payingOut)return;
   hideTooltip();sound('roll');
   const counts=state.patternCounts||{},most=Math.max(0,...PATTERN_TYPES.map(p=>counts[p.id]||0));
   $('patterns-total').textContent=PATTERN_TYPES.reduce((sum,p)=>sum+(counts[p.id]||0),0).toLocaleString();
@@ -414,7 +431,7 @@ async function showResult(){
   await wait(250);
   finishResult();
 }
-$('continue').onclick=async()=>{if(payingOut)return;const next=state.status==='passed'&&state.stage<10?state.stage+1:1;state=newStage(next,next===1?5:state.money,next===1?{}:state.paints,next===1?{}:state.patternCounts,next===1?undefined:state.jokers);hasRun=true;saveRun();resetResultUI();await nextDraw();};
+$('continue').onclick=async()=>{if(payingOut)return;const next=state.status==='passed'&&state.stage<10?state.stage+1:1;state=newStage(next,next===1?5:state.money,next===1?{}:state.upgrades,next===1?{}:state.patternCounts,next===1?undefined:state.jokers);hasRun=true;saveRun();resetResultUI();await nextDraw();};
 $('redraw').onclick=async()=>{if(busy||drag||state.money<1)return;lock();if(!redraw(state)){unlock();return;}saveRun();$('money').textContent=state.money;animate($('money'),[{transform:'scale(1.25)',color:'#fff1c2'},{transform:'scale(1)',color:'#f4c66c'}],{duration:180});sound('roll');document.querySelectorAll('#balls .ball').forEach(b=>b.classList.add('leave'));await wait(480);render();showBalls();await wait(770);unlock();};
 $('bag').onclick=()=>{hideTooltip();refreshBag();$('bag-dialog').showModal();};$('stages').onclick=showStages;
 $('patterns-button').onclick=showPatterns;$('score-patterns').onclick=showPatterns;
@@ -422,106 +439,55 @@ for(const dialog of document.querySelectorAll('#bag-dialog,#stage-dialog,#help-d
 
 
 function renderShop(){
-  hideTooltip();$('money').textContent=state.money;
-  $('shop-balls').replaceChildren();
-  state.shopOffer.forEach(n=>{
-    const b=ball(n);b.setAttribute('aria-label',`Ball ${n}, ${state.paints[n]||'grey'}. Drop paint here, or select paint then select this ball.`);
-    b.onclick=()=>{if(busy)return;if(selectedPaint)applyPaint(n,selectedPaint,b);else inspect(n,b);};
-    $('shop-balls').append(b);
-  });
-  document.querySelectorAll('.paint-can').forEach(b=>{b.disabled=busy||state.money<3;b.classList.toggle('selected',b.dataset.paint===selectedPaint);b.setAttribute('aria-pressed',String(b.dataset.paint===selectedPaint));});
-  $('shop-redraw').disabled=busy||state.money<2;$('shop-next').disabled=busy;$('shop-menu').disabled=busy;$('shop-bag').disabled=busy;
-  $('shop-hint').textContent=state.money<3?'NEXT →':selectedPaint?'CHOOSE A BALL ↓':'DRAG PAINT ↓ BALL';
+  hideTooltip();$('money').textContent=state.money;renderJokers();
+  $('shop-card-count').textContent=`${state.jokers.filter(id=>id!=='bingo').length}/5`;
+  for(const [kind,catalog] of [['cards',CARD_TYPES],['balls',BALL_UPGRADES]]){
+    const container=$(`shop-${kind}`);container.replaceChildren();
+    state.shopOffer[kind].forEach((type,index)=>{
+      const button=document.createElement('button');button.className='shop-offer';button.dataset.kind=kind;button.dataset.index=index;
+      const item=catalog[type];button.disabled=busy||!item||state.money<3||(kind==='cards'&&state.jokers.filter(id=>id!=='bingo').length>=5);
+      button.innerHTML=item?`<span class="offer-icon">${item.icon}</span><strong>${item.name}</strong><small>${item.text}</small><b>$3${kind==='balls'?' · CHOOSE BALL':''}</b>`:'<span class="offer-sold">SOLD</span>';
+      button.onclick=async()=>{
+        if(kind==='cards'){
+          if(!buyCard(state,index))return;saveRun();sound('score');pulseBackground();renderShop();
+          const card=$('joker-rack').lastElementChild;if(card){card.scrollIntoView({block:'nearest',inline:'nearest'});await animate(card,[{transform:'scale(.5) rotate(-12deg)',opacity:0},{transform:'scale(1.1) rotate(3deg)',opacity:1,offset:.7},{transform:'scale(1)'}],{duration:340});}
+        }else showUpgradeTargets(index);
+      };container.append(button);
+    });
+  }
+  $('shop-redraw').disabled=busy||state.money<2;$('shop-next').disabled=busy;$('shop-menu').disabled=busy;
 }
 function showShop(){
-  openShop(state);shopping=true;busy=false;selectedPaint=null;
+  openShop(state);shopping=true;busy=false;selectedUpgrade=null;
   $('patterns-button').disabled=false;$('score-patterns').disabled=false;
   hideTooltip();$('game-screen').classList.add('shopping');$('shop-screen').hidden=false;
   $('bag').disabled=false;$('stages').disabled=false;renderShop();saveRun();
   animate($('shop-screen'),[{transform:'translateY(24px)',opacity:0},{transform:'translateY(0)',opacity:1}],{duration:350,easing:'cubic-bezier(.2,.8,.3,1)'});
 }
-function paintTarget(x,y){
-  const bench=$('shop-balls').getBoundingClientRect();
-  if(x<bench.left-16||x>bench.right+16||y<bench.top-28||y>bench.bottom+28)return null;
-  return [...$('shop-balls').children].reduce((nearest,b)=>{
-    const r=b.getBoundingClientRect(),distance=Math.abs(x-r.left-r.width/2);
-    return !nearest||distance<nearest.distance?{ball:b,distance}:nearest;
-  },null)?.ball;
-}
-function cancelPaintDrag(){
-  if(!paintDrag)return;
-  const d=paintDrag;paintDrag=null;d.ghost?.remove();d.button.classList.remove('held');
-  document.querySelectorAll('.paint-target').forEach(b=>{b.classList.remove('paint-target');b.removeAttribute('data-paint-preview');});
-  if(d.button.hasPointerCapture(d.id))d.button.releasePointerCapture(d.id);
-}
-for(const button of document.querySelectorAll('.paint-can')){
-  button.addEventListener('dragstart',e=>e.preventDefault());
-  button.addEventListener('pointerdown',e=>{
-    if(busy||paintDrag||e.button!==0||state.money<3)return;
-    e.preventDefault();hideTooltip();button.setPointerCapture(e.pointerId);
-    paintDrag={button,color:button.dataset.paint,id:e.pointerId,x:e.clientX,y:e.clientY,ghost:null,moved:false};
-  });
-  button.addEventListener('pointermove',e=>{
-    const d=paintDrag;if(!d||d.id!==e.pointerId)return;
-    if(!d.moved&&Math.hypot(e.clientX-d.x,e.clientY-d.y)>6){
-      d.moved=true;d.ghost=d.button.querySelector('.paint-tin').cloneNode(true);d.ghost.classList.add('paint-ghost',d.color);d.ghost.setAttribute('aria-hidden','true');document.body.append(d.ghost);d.button.classList.add('held');
-    }
-    if(!d.moved)return;
-    d.ghost.style.transform=`translate(${e.clientX-28}px,${e.clientY-32}px) rotate(-12deg)`;
-    const target=paintTarget(e.clientX,e.clientY);
-    [...$('shop-balls').children].forEach(b=>{b.classList.toggle('paint-target',b===target);if(b===target)b.dataset.paintPreview=d.color;else b.removeAttribute('data-paint-preview');});
-    $('shop-hint').textContent=target?`${target.dataset.number} · ${d.color.toUpperCase()} · $3`:'DROP ON A BALL ↓';
-  });
-  button.addEventListener('pointerup',e=>{
-    const d=paintDrag;if(!d||d.id!==e.pointerId)return;
-    d.moved ||= Math.hypot(e.clientX-d.x,e.clientY-d.y)>6;
-    const target=d.moved?paintTarget(e.clientX,e.clientY):null;
-    cancelPaintDrag();
-    if(target)applyPaint(Number(target.dataset.number),d.color,target);
-    else if(!d.moved){selectedPaint=selectedPaint===d.color?null:d.color;renderShop();sound('roll');}
-    else $('shop-hint').textContent='DROP ON A BALL ↓';
-  });
-  button.addEventListener('pointercancel',cancelPaintDrag);
-  button.addEventListener('lostpointercapture',cancelPaintDrag);
-  button.onclick=e=>{if(e.detail===0&&!busy&&state.money>=3){selectedPaint=selectedPaint===button.dataset.paint?null:button.dataset.paint;renderShop();}};
-}
-async function applyPaint(n,color,target){
-  if(busy)return;
-  if(!paintBall(state,n,color)){
-    $('shop-hint').textContent=state.paints[n]===color?'ALREADY PAINTED': 'NEED $3';
-    animate(target,[{transform:'translateX(-4px)'},{transform:'translateX(4px)'},{transform:'translateX(0)'}],{duration:180});return;
+function showUpgradeTargets(index){
+  selectedUpgrade=index;const type=state.shopOffer.balls[index],item=BALL_UPGRADES[type];
+  $('upgrade-title').textContent=`${item.name} · $3`;$('upgrade-description').textContent=item.text+' Choose a ball. Replaces its current upgrade.';
+  $('upgrade-balls').replaceChildren();
+  for(let n=1;n<=25;n++){
+    const b=ball(n);b.disabled=state.upgrades[n]===type;b.onclick=async()=>{
+      if(busy||!upgradeBall(state,selectedUpgrade,n))return;
+      busy=true;saveRun();sound('stamp');pulseBackground();navigator.vibrate?.(18);
+      b.className=`ball paint-grey upgrade-${type}`;b.querySelector('.face').textContent=ballValue(state,n)??'X';
+      await animate(b,[{transform:'scale(.8)'},{transform:'scale(1.15)',offset:.4},{transform:'scale(1)'}],{duration:280});
+      $('upgrade-dialog').close();selectedUpgrade=null;busy=false;renderShop();refreshBag();
+    };$('upgrade-balls').append(b);
   }
-  busy=true;selectedPaint=null;saveRun();
-  document.querySelectorAll('#shop-screen button').forEach(b=>b.disabled=true);
-  target.classList.remove('paint-grey','paint-gold','paint-red','paint-blue','paint-black');target.classList.add(`paint-${color}`);
-  const r=target.getBoundingClientRect();
-  for(let i=0;i<18&&!reduced;i++){
-    const drop=document.createElement('i');drop.className=`paint-splash ${color}`;drop.style.left=`${r.left+r.width/2}px`;drop.style.top=`${r.top+r.height/2}px`;$('effects').append(drop);
-    const a=i*Math.PI/9,d=25+Math.random()*45;
-    animate(drop,[{transform:'scale(.3)',opacity:1},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px) rotate(90deg)`,opacity:0}],{duration:420}).then(()=>drop.remove());
-  }
-  sound('stamp');pulseBackground();navigator.vibrate?.([12,20,8]);$('money').textContent=state.money;
-  await animate(target,[{transform:'scale(1)'},{transform:'scale(1.17,.85)',offset:.2},{transform:'scale(.94,1.08)',offset:.55},{transform:'scale(1)'}],{duration:380});
-  busy=false;renderShop();refreshBag();render();
-  $('shop-hint').textContent=`${n} · ${color.toUpperCase()} ✓`;
-  $('announcer').textContent=`Ball ${n} painted ${color} for $3. Balance $${state.money}.`;
+  $('upgrade-dialog').showModal();
 }
-$('shop-redraw').onclick=async()=>{
-  if(busy||paintDrag||!redrawShop(state))return;
-  busy=true;selectedPaint=null;saveRun();
-  document.querySelectorAll('#shop-screen button').forEach(b=>b.disabled=true);$('money').textContent=state.money;
-  const balls=[...$('shop-balls').children];balls.forEach((b,i)=>{b.style.setProperty('--i',i);b.classList.add('leave');});
-  sound('roll');await wait(420);renderShop();
-  [...$('shop-balls').children].forEach((b,i)=>{b.style.setProperty('--i',i);b.classList.add('enter');b.disabled=true;});
-  await wait(770);busy=false;renderShop();
-};
+$('upgrade-dialog').querySelector('.close').onclick=()=>{if(!busy)$('upgrade-dialog').close();};
+$('upgrade-dialog').addEventListener('cancel',e=>{if(busy)e.preventDefault();});
+$('upgrade-dialog').addEventListener('close',()=>{selectedUpgrade=null;});
+$('shop-redraw').onclick=()=>{if(busy||!redrawShop(state))return;saveRun();sound('roll');renderShop();};
 $('shop-next').onclick=async()=>{
-  if(busy||paintDrag)return;
-  hideTooltip();shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;
-  state=newStage(state.stage+1,state.money,state.paints,state.patternCounts,state.jokers);saveRun();await nextDraw();
+  if(busy)return;hideTooltip();shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;
+  state=newStage(state.stage+1,state.money,state.upgrades,state.patternCounts,state.jokers);saveRun();await nextDraw();
 };
-$('shop-menu').onclick=()=>{if(!busy&&!paintDrag)showMenu();};
-$('shop-bag').onclick=()=>{if(busy)return;refreshBag();$('bag-dialog').showModal();};
+$('shop-menu').onclick=()=>{if(!busy)showMenu();};
 
 const SAVE_KEY='binglatro.run.v1';
 function saveRun(){
@@ -534,27 +500,31 @@ function loadRun(){
     if(!saved)return;
     const numbers=a=>Array.isArray(a)&&a.every(n=>Number.isInteger(n)&&n>=1&&n<=25)&&new Set(a).size===a.length;
     if(!Number.isInteger(saved.stage)||saved.stage<1||saved.stage>10||!numbers(saved.stamps)||!numbers(saved.bag)||!numbers(saved.offer)||!saved.offer.every(n=>saved.bag.includes(n))||!Number.isInteger(saved.calls)||saved.calls<0||saved.calls>192||!Number.isInteger(saved.money)||saved.money<0||!Number.isInteger(saved.score)||saved.score<0||!['playing','passed','over'].includes(saved.status)||!Array.isArray(saved.played)||saved.played.length!==26)throw new Error('Invalid save');
-    if(saved.paints&&typeof saved.paints==='object'){for(const n of Object.keys(saved.paints))if(saved.paints[n]==='orange')saved.paints[n]='red';}
-    delete saved.goldSeals;
+    const old=saved.rulesVersion!==3;
+    delete saved.paints;delete saved.goldSeals;
     saved.callCapacity??=Math.max(12,saved.calls);
     if(!Number.isInteger(saved.callCapacity)||saved.callCapacity<12||saved.callCapacity>192||saved.calls>saved.callCapacity)throw new Error('Invalid call capacity');
-    if(saved.paints!==undefined&&(!saved.paints||Array.isArray(saved.paints)||typeof saved.paints!=='object'||!Object.entries(saved.paints).every(([n,c])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&['gold','red','blue','black'].includes(c))))throw new Error('Invalid paint');
-    if(saved.shopOffer!=null&&(!numbers(saved.shopOffer)||saved.shopOffer.length!==3||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
+    if(old){
+      saved.upgrades={};saved.shopOffer=null;
+      saved.jokers=normalizeJokers(saved.jokers).filter(id=>id==='bingo');
+      saved.stampValues=Object.fromEntries(Object.entries(saved.stampBalls||{}));
+    }
+    saved.upgrades??={};
+    if(typeof saved.upgrades!=='object'||Array.isArray(saved.upgrades)||!Object.entries(saved.upgrades).every(([n,type])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&BALL_UPGRADES[type]))throw new Error('Invalid upgrades');
+    if(saved.shopOffer!=null&&(!['cards','balls'].every(kind=>Array.isArray(saved.shopOffer[kind])&&saved.shopOffer[kind].length===2&&saved.shopOffer[kind].every(type=>type===null||(kind==='cards'?CARD_TYPES:BALL_UPGRADES)[type]))||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
     saved.scoredLines=Array.isArray(saved.scoredLines)?[...new Set(saved.scoredLines.filter(id=>typeof id==='string'&&/^(row-[1-5]|column-[1-5]|diagonal-[12])$/.test(id)))]:[];
-    saved.jokers=normalizeJokers(saved.jokers);
-    if(saved.jokerVersion!==2&&!saved.jokers.includes('single-digits'))saved.jokers.push('single-digits');
-    saved.jokerVersion=2;
+    saved.jokers=normalizeJokers(saved.jokers);saved.jokerVersion=3;
     saved.patternCounts=Object.fromEntries(PATTERN_TYPES.map(({id})=>[id,Number.isSafeInteger(saved.patternCounts?.[id])&&saved.patternCounts[id]>=0?saved.patternCounts[id]:0]));
-    if(saved.rulesVersion!==2){
-      // Keep the collection and wallet; old numbered layouts cannot represent the new rules.
-      state=newStage(saved.stage,saved.money,saved.paints);
-      if(saved.status==='passed'){state.status='passed';state.bonusPaid=saved.bonusPaid;state.calls=saved.calls;state.callCapacity=saved.callCapacity;state.shopOffer=saved.shopOffer;state.score=state.target;}
+    if(saved.rulesVersion!==2&&saved.rulesVersion!==3){
+      state=newStage(saved.stage,saved.money,{},saved.patternCounts,saved.jokers);
+      if(saved.status==='passed'){state.status='passed';state.bonusPaid=saved.bonusPaid;state.calls=saved.calls;state.callCapacity=saved.callCapacity;state.score=state.target;}
     }else{
-      const stampBalls=saved.stampBalls,destinations=saved.destinations;
-      if(!stampBalls||typeof stampBalls!=='object'||Array.isArray(stampBalls)||!destinations||typeof destinations!=='object'||Array.isArray(destinations))throw new Error('Invalid placements');
+      const {stampBalls,destinations,stampValues}=saved;
+      if(!stampBalls||typeof stampBalls!=='object'||Array.isArray(stampBalls)||!destinations||typeof destinations!=='object'||Array.isArray(destinations)||!stampValues||typeof stampValues!=='object'||Array.isArray(stampValues))throw new Error('Invalid placements');
       if(Object.keys(stampBalls).length!==saved.stamps.length||!numbers(Object.values(stampBalls))||!saved.stamps.every(tile=>stampBalls[tile]&&!saved.bag.includes(stampBalls[tile])))throw new Error('Invalid stamps');
+      if(Object.keys(stampValues).length!==saved.stamps.length||!saved.stamps.every(tile=>stampValues[tile]===null||Number.isSafeInteger(stampValues[tile])&&stampValues[tile]>=1))throw new Error('Invalid values');
       if(Object.keys(destinations).length!==saved.offer.length||!numbers(Object.values(destinations))||!saved.offer.every(n=>destinations[n]&&!saved.stamps.includes(destinations[n])))throw new Error('Invalid destinations');
-      state={...newStage(saved.stage,saved.money),...saved,target:STAGE_TARGETS[saved.stage-1],stamps:new Set(saved.stamps),bag:new Set(saved.bag)};
+      state={...newStage(saved.stage,saved.money),...saved,rulesVersion:3,target:STAGE_TARGETS[saved.stage-1],stamps:new Set(saved.stamps),bag:new Set(saved.bag)};
     }
     hasRun=true;
   }catch{try{localStorage.removeItem(SAVE_KEY);}catch{}}
@@ -566,7 +536,7 @@ function updateMenu(){
   $('saved-stage').textContent=`STAGE ${state.stage} · ${state.score}/${state.target.toLocaleString()} pts · $${state.money}`;
 }
 function showMenu(){
-  hideTooltip();cancelDrag();cancelPaintDrag();cancelJokerDrag();saveRun();
+  hideTooltip();cancelDrag();cancelJokerDrag();saveRun();
   document.querySelectorAll('dialog[open]').forEach(d=>d.close());
   $('game-screen').hidden=true;$('title-screen').hidden=false;inMenu=true;
   updateMenu();$('play-button').focus();
@@ -583,7 +553,7 @@ async function enterGame(fresh=false){
   else await nextDraw();
 }
 function pauseGame(){
-  if(shopping&&!paintDrag&&!busy){showMenu();return;}
+  if(shopping&&!busy){showMenu();return;}
   if(inMenu||busy||payingOut||document.querySelector('dialog[open]'))return;
   cancelDrag();hideTooltip();saveRun();
   $('pause-summary').textContent=`STAGE ${state.stage} · ${state.score}/${state.target.toLocaleString()} pts`;

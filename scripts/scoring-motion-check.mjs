@@ -6,8 +6,8 @@ const browser=await chromium.launch({channel:'chrome'});
 try{
  const page=await browser.newPage({viewport:{width:1000,height:800}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
- const s=newStage(10,5,{25:'black'}),positions=[2,3,4,5,6,11,16,21,7,13,19,25];
- positions.forEach((tile,i)=>{s.stamps.add(tile);s.stampBalls[tile]=i+1;s.bag.delete(i+1);});s.offer=[25];s.destinations={25:1};
+ const s=newStage(10,5,{25:'x'}),positions=[2,3,4,5,6,11,16,21,7,13,19,25];
+ positions.forEach((tile,i)=>{s.stamps.add(tile);s.stampBalls[tile]=i+1;s.stampValues[tile]=i+1;s.bag.delete(i+1);});s.offer=[25];s.destinations={25:1};
  await page.addInitScript(s=>localStorage.setItem('binglatro.run.v1',JSON.stringify(s)),{...s,stamps:[...s.stamps],bag:[...s.bag]});
  await page.goto(process.env.GAME_URL||'http://localhost:5173');await page.locator('#play-button').click();await page.locator('#balls .ball:not([disabled])').waitFor();
  await page.evaluate(()=>{window.scoringTrace=[];new MutationObserver(()=>{const cards=[...document.querySelectorAll('.scoring-card')];if(cards.length)window.scoringTrace.push({ids:cards.map(c=>c.dataset.pattern),payout:cards[0].dataset.payout});}).observe(document.querySelector('#joker-rack'),{subtree:true,attributes:true});});
