@@ -16,32 +16,43 @@ export const STAGE_TARGETS = [5,10,15,20,30,40,55,70,90,120];
 export const targetFor = stage => STAGE_TARGETS[stage-1];
 export const CARD_TYPES={
   'single-digits':{name:'Single Digits',text:'Single digits get +1 when scored',icon:'1–9'},
-  'outer-layer':{name:'Outer Layer',text:'Outer edge tiles get +5 when scored',icon:'▣'}
+  'outer-layer':{name:'Outer Layer',text:'Outer edge tiles get +5 when scored',icon:'▣'},
+  'number-cruncher':{name:'Number Cruncher',text:'+number when scored. X adds 0.',icon:'+#',price:7},
+  'call-range':{name:'Second Wind',text:'Scored numbers in this range give +1 call. Max 12.',icon:'↻',price:3}
 };
 export const BALL_UPGRADES={
+  plasma:{name:'Plasma',text:'Next turn, see 3 spaces and choose any ball still in the bag.',icon:'✧'},
   x:{name:'X Ball',text:'Place anywhere. Has no numeric value.',icon:'X'},
   tornado:{name:'Tornado',text:'On placement, scatter every stamp across the board.',icon:'≋'},
   dynamite:{name:'Dynamite',text:'Return all 8 neighboring stamps to the bag. This ball stays.',icon:'✹'},
   doubler:{name:'Doubler',text:'On placement, double all 8 neighboring numbers.',icon:'×2'}
 };
 export const cardType=id=>id.split(':')[0];
+export function cardDetails(id){
+  if(typeof id!=='string')return null;
+  const type=cardType(id),base=CARD_TYPES[type];if(!base)return null;
+  if(type!=='call-range')return {...base,price:base.price??3};
+  const start=Number(id.split(':')[1]);if(!Number.isInteger(start)||start<1||start>21)return null;
+  return {...base,start,end:start+4,icon:`${start}–${start+4}`,text:`${start}–${start+4}: +1 call when scored. Max 12.`};
+}
 export const normalizeJokers=jokers=>{
   if(!Array.isArray(jokers))return ['bingo'];
-  const cards=[...new Set(jokers.filter(id=>typeof id==='string'&&CARD_TYPES[cardType(id)]))].slice(0,5);
+  const cards=[...new Set(jokers.filter(id=>cardDetails(id)))].slice(0,5);
   return [...(jokers.some(id=>['bingo','row','column','diagonal'].includes(id))?['bingo']:[]),...cards];
 };
 export const ballValue=(state,number)=>state.upgrades[number]==='x'?null:(state.ballValues?.[number]??number);
 export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['bingo']) {
-  return {rulesVersion:3,upgradeVersion:2,ballValues:{},jokerVersion:3,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:{...upgrades},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
+  return {plasmaPending:false,plasmaActive:false,rulesVersion:3,upgradeVersion:2,ballValues:{},jokerVersion:3,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:{...upgrades},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
 }
 const shuffled=(values,random)=>{
   const result=[...values];for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;
 };
 export function deal(state,random=Math.random,count=3){
   const empty=Array.from({length:25},(_,i)=>i+1).filter(tile=>!state.stamps.has(tile));
-  state.offer=draw(state,random,Math.min(count,empty.length));
+  state.plasmaActive=!!(state.plasmaPending||state.plasmaActive);state.plasmaPending=false;
+  state.offer=state.plasmaActive&&empty.length?[...state.bag]:draw(state,random,Math.min(count,empty.length));
   for(let i=empty.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[empty[i],empty[j]]=[empty[j],empty[i]];}
-  state.destinations=Object.fromEntries(state.offer.map((number,i)=>[number,empty[i]]));
+  state.destinations=Object.fromEntries(state.offer.map((number,i)=>[number,empty[i%Math.min(count,empty.length)]]));
   return state.offer;
 }
 export function draw(state=newStage(),random=Math.random,count=3) {
@@ -53,6 +64,8 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||(state.upgrades[number]!=='x'&&!Object.values(state.destinations).includes(tile))||tile<1||tile>25||state.stamps.has(tile))return null;
   state.stamps.add(tile);state.stampBalls[tile]=number;state.stampValues[tile]=ballValue(state,number);state.bag.delete(number);state.played[number]++;state.calls--;
   const upgrade=state.upgrades[number],moves=[],doubled=[],returned=[];
+  state.plasmaActive=false;state.plasmaPending=upgrade==='plasma';
+  const callsBeforeBonuses=state.calls;
   state.ballValues??={};
   if(upgrade==='doubler'){
     const row=Math.floor((tile-1)/5),col=(tile-1)%5;
@@ -86,6 +99,13 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
     const number=state.stampValues[tile],bonuses=[];
     for(const joker of state.jokers){
       if(cardType(joker)==='single-digits'&&number!==null&&number>=1&&number<=9)bonuses.push({joker,points:1});
+      if(cardType(joker)==='number-cruncher'&&number!==null)bonuses.push({joker,points:number});
+      if(cardType(joker)==='call-range'){
+        const range=cardDetails(joker);
+        if(number!==null&&number>=range.start&&number<=range.end){
+          const calls=Math.max(0,Math.min(1,12-state.calls));state.calls+=calls;bonuses.push({joker,points:0,calls});
+        }
+      }
       if(cardType(joker)==='outer-layer'&&(tile<=5||tile>=21||tile%5===1||tile%5===0))bonuses.push({joker,points:5});
     }
     return {tile,number,basePoints:1,bonuses,points:1+bonuses.reduce((sum,b)=>sum+b.points,0),type:scoredPatterns[i].type,pattern:j===0?pattern:null};
@@ -94,7 +114,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   state.offer=[];state.destinations={};
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
-  return {tile,upgrade,moves,doubled,returned,patterns,scoredPatterns,activations,points};
+  return {tile,upgrade,moves,doubled,returned,callsBeforeBonuses,patterns,scoredPatterns,activations,points};
 }
 export function redraw(state,random=Math.random) {
   if(state.status!=='playing'||state.money<1)return false;
@@ -111,13 +131,13 @@ export function settleStage(state){
 
 export function openShop(state,random=Math.random){
   if(state.status!=='passed'||!state.bonusPaid||state.stage>=10)return false;
-  state.shopOffer??={cards:shuffled(Object.keys(CARD_TYPES),random).slice(0,2),balls:shuffled(Object.keys(BALL_UPGRADES),random).slice(0,2)};return true;
+  state.shopOffer??={cards:shuffled(Object.keys(CARD_TYPES),random).slice(0,2).map(type=>type==='call-range'?`${type}:${1+Math.floor(random()*21)}`:type),balls:shuffled(Object.keys(BALL_UPGRADES),random).slice(0,2)};return true;
 }
 export function buyCard(state,index){
-  const type=state.shopOffer?.cards[index];
-  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!CARD_TYPES[type]||state.money<3||state.jokers.filter(id=>id!=='bingo').length>=5)return false;
+  const type=state.shopOffer?.cards[index],item=cardDetails(type);
+  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!item||state.money<item.price||state.jokers.filter(id=>id!=='bingo').length>=5)return false;
   let serial=1;while(state.jokers.includes(`${type}:${serial}`))serial++;
-  state.jokers.push(`${type}:${serial}`);state.shopOffer.cards[index]=null;state.money-=3;return true;
+  state.jokers.push(`${type}:${serial}`);state.shopOffer.cards[index]=null;state.money-=item.price;return true;
 }
 export function upgradeBall(state,index,number){
   const type=state.shopOffer?.balls[index];

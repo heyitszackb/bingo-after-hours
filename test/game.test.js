@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newStage as startingStage,draw,deal,choose,redraw,PATTERNS,settleStage,STAGE_TARGETS,openShop,buyCard,upgradeBall,redrawShop} from '../game.js';
+import {newStage as startingStage,draw,deal,choose,redraw,PATTERNS,settleStage,STAGE_TARGETS,openShop,buyCard,upgradeBall,redrawShop,cardDetails} from '../game.js';
 // These fixtures isolate line and paint rules from the optional Single Digits bonus.
 const newStage=(stage,money,upgrades,counts,jokers=['bingo'])=>startingStage(stage,money,upgrades,counts,jokers);
 const place=(s,ball,tile)=>{s.offer=[ball];s.destinations={[ball]:tile};return choose(s,ball);};
@@ -36,7 +36,7 @@ test('stages retain upgrades and money but reset all placements and replenish ba
 test('shop has two cards and two distinct upgrades, sold offers cannot be reused, rerolls cost two',()=>{
  const s=newStage(1,20);assert.equal(openShop(s),false);s.status='passed';settleStage(s);assert.ok(openShop(s));
  assert.equal(s.shopOffer.cards.length,2);assert.equal(s.shopOffer.balls.length,2);assert.equal(new Set(s.shopOffer.balls).size,2);
- const cash=s.money;assert.ok(buyCard(s,0));assert.equal(s.money,cash-3);assert.equal(buyCard(s,0),false);
- assert.ok(upgradeBall(s,0,1));assert.equal(upgradeBall(s,0,2),false);assert.ok(redrawShop(s));assert.equal(s.money,cash-8);
+ const cash=s.money,price=cardDetails(s.shopOffer.cards[0]).price;assert.ok(buyCard(s,0));assert.equal(s.money,cash-price);assert.equal(buyCard(s,0),false);
+ assert.ok(upgradeBall(s,0,1));assert.equal(upgradeBall(s,0,2),false);assert.ok(redrawShop(s));assert.equal(s.money,cash-price-5);
  s.money=1;assert.equal(redrawShop(s),false);assert.equal(buyCard(s,1),false);s.stage=10;assert.equal(openShop(s),false);
 });
