@@ -1,5 +1,5 @@
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,removeJoker,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=e97744b7915c';
+import {newStage,deal,choose,removeJoker,normalizeJokers,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=2c476f5c67ff';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,muted=false,paintDrag=null,selectedPaint=null,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
@@ -19,16 +19,16 @@ function render(){
   }}
 
 let jokerDrag=null;
-const jokerText={row:'+10 points per row',column:'+10 points per column',diagonal:'+10 points per diagonal'};
+const jokerText={bingo:'+10 for row, column, or diagonal'};
 function renderJokers(){
-  const ids=state.jokers||PATTERN_TYPES.map(p=>p.id),rack=$('joker-rack');
+  const ids=normalizeJokers(state.jokers),rack=$('joker-rack');
   if(rack.dataset.cards===ids.join('|'))return;
   rack.dataset.cards=ids.join('|');rack.replaceChildren();
   for(const id of ids){
-    const card=document.createElement('button'),pattern=PATTERN_TYPES.find(p=>p.id===id);
+    const card=document.createElement('button'),pattern={previewTiles:[3,8,11,12,13,14,15,18,23,1,7,19,25]};
     card.className=`joker-card joker-${id}`;card.dataset.joker=id;
-    card.setAttribute('aria-label',`${jokerText[id]}. Drag to trash to disable this scoring pattern, or press Delete.`);
-    card.innerHTML=`<span class="joker-heading">${id==='row'?'ROWS':id==='column'?'COLUMNS':'DIAGONALS'}</span><span class="joker-art" aria-hidden="true">${Array.from({length:25},(_,i)=>`<i class="${pattern.previewTiles.includes(i+1)?'filled':''}"></i>`).join('')}</span><span class="joker-description">${jokerText[id]}</span>`;
+    card.setAttribute('aria-label',`${jokerText[id]}. Drag to trash to disable line scoring, or press Delete.`);
+    card.innerHTML=`<span class="joker-heading">BINGO</span><span class="joker-art" aria-hidden="true">${Array.from({length:25},(_,i)=>`<i class="${pattern.previewTiles.includes(i+1)?'filled':''}"></i>`).join('')}</span><span class="joker-description">${jokerText[id]}</span>`;
     card.onpointerdown=e=>{
       if(e.button!==0||jokerDrag||drag||paintDrag)return;
       e.preventDefault();hideTooltip();card.setPointerCapture(e.pointerId);
@@ -47,7 +47,7 @@ function renderJokers(){
       if(discard){removeJoker(state,id);saveRun();}
       cancelJokerDrag(false);renderJokers();
       if(ghost){if(discard){sound('stamp');navigator.vibrate?.(20);await animate(ghost,[{transform:ghost.style.transform,opacity:1},{transform:ghost.style.transform+' scale(.05)',opacity:0}],{duration:220});}else{const r=card.getBoundingClientRect();await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left}px,${r.top}px) rotate(0)`}],{duration:200,easing:'cubic-bezier(.2,.8,.2,1)'});}ghost.remove();}
-      if(discard)$('announcer').textContent=`${id} card removed. That pattern no longer scores.`;
+      if(discard)$('announcer').textContent=`${id} card removed. Rows, columns, and diagonals no longer score.`;
     };
     card.onpointercancel=()=>cancelJokerDrag();card.onlostpointercapture=()=>{if(jokerDrag)cancelJokerDrag();};
     card.onkeydown=e=>{if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeJoker(state,id);saveRun();renderJokers();}};
@@ -240,12 +240,12 @@ async function activateSpaces(result){
   for(const [index,activation] of result.activations.entries()){
     const cell=$(`cell-${activation.tile}`),color=colors[activation.type];
     if(activation.pattern){
-      activeCard=document.querySelector(`[data-joker="${activation.type}"]`);lineTotal=0;
+      activeCard=document.querySelector('[data-joker="bingo"]');lineTotal=0;
       activePattern.forEach(c=>c.classList.remove('pattern-active','charged'));
       activePattern=activation.pattern.map(n=>$(`cell-${n}`));
       activePattern.forEach(c=>{c.style.setProperty('--scoring-color',color);c.classList.add('pattern-active');});
       if(activeCard){
-        activeCard.classList.add('scoring-card');activeCard.dataset.payout='+0';
+        activeCard.classList.add('scoring-card');activeCard.dataset.pattern=activation.type;activeCard.dataset.payout='+0';
         activeCard.style.setProperty('--scoring-color',color);
         sound('score');scoreCrunch(0);
         await animate(activeCard,[{transform:'rotate(-3deg) scale(1)'},{transform:'translateY(-9px) rotate(4deg) scale(1.12)',offset:.32},{transform:'translateY(-5px) rotate(-1deg) scale(1.06)'}],{duration:250,easing:'cubic-bezier(.2,.85,.2,1)',fill:'none'});
@@ -526,7 +526,7 @@ function loadRun(){
     if(saved.paints!==undefined&&(!saved.paints||Array.isArray(saved.paints)||typeof saved.paints!=='object'||!Object.entries(saved.paints).every(([n,c])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&['gold','red','blue','black'].includes(c))))throw new Error('Invalid paint');
     if(saved.shopOffer!=null&&(!numbers(saved.shopOffer)||saved.shopOffer.length!==3||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
     saved.scoredLines=Array.isArray(saved.scoredLines)?[...new Set(saved.scoredLines.filter(id=>typeof id==='string'&&/^(row-[1-5]|column-[1-5]|diagonal-[12])$/.test(id)))]:[];
-    saved.jokers=Array.isArray(saved.jokers)?[...new Set(saved.jokers.filter(id=>PATTERN_TYPES.some(p=>p.id===id)))]:PATTERN_TYPES.map(p=>p.id);
+    saved.jokers=normalizeJokers(saved.jokers);
     saved.patternCounts=Object.fromEntries(PATTERN_TYPES.map(({id})=>[id,Number.isSafeInteger(saved.patternCounts?.[id])&&saved.patternCounts[id]>=0?saved.patternCounts[id]:0]));
     if(saved.rulesVersion!==2){
       // Keep the collection and wallet; old numbered layouts cannot represent the new rules.

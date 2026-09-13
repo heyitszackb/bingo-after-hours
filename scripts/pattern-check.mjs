@@ -121,7 +121,7 @@ try{
   assert.equal(await page.locator('#money').textContent(),'16');
   assert.deepEqual((await read()).patternCounts,{...squareCounts,row:1});
   await page.locator('#shop-next').click();await ready();
-  assert.equal(await page.locator('#stage').textContent(),'2');assert.deepEqual((await read()).jokers,['row','column']);
+  assert.equal(await page.locator('#stage').textContent(),'2');assert.deepEqual((await read()).jokers,['bingo']);
   assert.equal(await page.locator('#score').textContent(),'0');
   await openPatterns();await checkCounts({...squareCounts,row:1});await closePatterns();
 
@@ -129,7 +129,7 @@ try{
   await page.locator('#pause-button').click();await page.locator('#restart-button').click();await page.locator('#confirm-restart').click();await ready();
   await openPatterns();await checkCounts(zeroCounts);await closePatterns();
   const oldSave=newStage();delete oldSave.patternCounts;delete oldSave.jokers;
-  await restore(oldSave);assert.equal(await page.locator('[data-joker]').count(),3);await openPatterns();await checkCounts(zeroCounts);await closePatterns();
+  await restore(oldSave);assert.equal(await page.locator('[data-joker]').count(),1);await openPatterns();await checkCounts(zeroCounts);await closePatterns();
   const invalidCounts=newStage();invalidCounts.patternCounts={row:-2,column:1.5,diagonal:'3',corners:null,square4:2,square9:4,unknown:9};
   await restore(invalidCounts);await openPatterns();await checkCounts({...zeroCounts});await closePatterns();
   assert.deepEqual((await read()).patternCounts,{...zeroCounts});

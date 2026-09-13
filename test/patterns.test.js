@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {PATTERN_TYPES,PATTERN_DEFINITIONS,completedPatterns,newStage,choose,removeJoker} from '../game.js';
+import {PATTERN_TYPES,PATTERN_DEFINITIONS,completedPatterns,newStage,choose,removeJoker,normalizeJokers} from '../game.js';
 const place=(s,n,tile)=>{s.offer=[n];s.destinations={[n]:tile};return choose(s,n,tile);};
 test('only five rows, five columns and two full diagonals score, each worth ten',()=>{
  assert.deepEqual(PATTERN_TYPES.map(p=>p.id),['row','column','diagonal']);
@@ -19,26 +19,28 @@ test('corners and filled two- or three-square patterns remain on the board',()=>
   assert.deepEqual([...s.stamps],tiles);assert.equal(completedPatterns(s.stamps).length,0);
  }
 });
-test('removing each scoring card disables only that type and persists into the next stage',()=>{
+test('Bingo enables all line types; trashing it disables all and persists across stages',()=>{
+ assert.deepEqual(newStage().jokers,['bingo']);
  for(const type of PATTERN_TYPES){
-  const s=newStage(10);assert.ok(removeJoker(s,type.id));assert.equal(removeJoker(s,type.id),false);
+  const s=newStage(10);assert.ok(removeJoker(s,'bingo'));
   const p=PATTERN_DEFINITIONS.find(p=>p.type===type.id);
   p.tiles.forEach((tile,i)=>assert.equal(place(s,i+1,tile).points,0));
-  assert.equal(s.stamps.size,5);assert.equal(s.patternCounts[type.id],0);
-  const next=newStage(10,s.money,s.paints,s.patternCounts,s.jokers);
-  assert.deepEqual(next.jokers,s.jokers);assert.notEqual(next.jokers,s.jokers);
-  assert.ok(!next.jokers.includes(type.id));assert.equal(newStage().jokers.length,3);
+  assert.equal(s.stamps.size,5);
+  assert.deepEqual(newStage(10,s.money,s.paints,s.patternCounts,s.jokers).jokers,[]);
  }
+ assert.deepEqual(normalizeJokers(['row','column','diagonal']),['bingo']);
+ assert.deepEqual(normalizeJokers(['column']),['bingo']);
+ assert.deepEqual(normalizeJokers([]),[]);
 });
-test('overlapping row and column score together; all stamps including a removed diagonal remain',()=>{
- const s=newStage(10,5,{25:'blue',2:'gold',3:'red'});removeJoker(s,'diagonal');
+test('overlapping row and column score together; all stamps including the diagonal remain',()=>{
+ const s=newStage(10,5,{25:'blue',2:'gold',3:'red'});
  const tiles=[2,3,4,5,6,11,16,21,7,13,19,25];
  tiles.forEach((tile,i)=>{s.stamps.add(tile);s.stampBalls[tile]=i+1;s.bag.delete(i+1);});
  const r=place(s,25,1);
- assert.deepEqual(r.scoredPatterns.map(p=>p.type),['row','column']);
- assert.equal(r.points,30);assert.equal(r.gold,1);assert.equal(r.bonusDraws,6);
- assert.equal(r.activations.length,10);assert.deepEqual([...s.stamps],[...tiles,1]);
- assert.deepEqual(s.patternCounts,{row:1,column:1,diagonal:0});
+ assert.deepEqual(r.scoredPatterns.map(p=>p.type),['row','column','diagonal']);
+ assert.equal(r.points,40);assert.equal(r.gold,1);assert.equal(r.bonusDraws,9);
+ assert.equal(r.activations.length,15);assert.deepEqual([...s.stamps],[...tiles,1]);
+ assert.deepEqual(s.patternCounts,{row:1,column:1,diagonal:1});
 });
 test('removing every card gives no points, clears no stamps, and still spends calls',()=>{
  const s=newStage(10);[...s.jokers].forEach(id=>removeJoker(s,id));

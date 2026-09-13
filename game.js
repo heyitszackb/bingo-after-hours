@@ -14,8 +14,9 @@ export const freshPatternCounts=()=>Object.fromEntries(PATTERN_TYPES.map(({id})=
 export const completedPatterns=stamps=>PATTERN_DEFINITIONS.filter(({tiles})=>tiles.every(tile=>stamps.has(tile)));
 export const STAGE_TARGETS = [5,10,15,20,30,40,55,70,90,120];
 export const targetFor = stage => STAGE_TARGETS[stage-1];
-export function newStage(stage=1,money=5,paints={},patternCounts={},jokers=PATTERN_TYPES.map(p=>p.id)) {
-  return {rulesVersion:2,scoredLines:[],jokers:[...jokers],patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},destinations:{},paints:{...paints},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
+export const normalizeJokers=jokers=>!Array.isArray(jokers)||jokers.some(id=>['bingo','row','column','diagonal'].includes(id))?['bingo']:[];
+export function newStage(stage=1,money=5,paints={},patternCounts={},jokers=['bingo']) {
+  return {rulesVersion:2,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},destinations:{},paints:{...paints},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
 }
 export function deal(state,random=Math.random,count=3){
   const empty=Array.from({length:25},(_,i)=>i+1).filter(tile=>!state.stamps.has(tile));
@@ -33,7 +34,7 @@ export function choose(state,number,tile=state.destinations[number]) {
   if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||(state.paints[number]!=='black'&&!Object.values(state.destinations).includes(tile))||tile<1||tile>25||state.stamps.has(tile)) return null;
   state.stamps.add(tile);state.stampBalls[tile]=number;state.bag.delete(number);state.played[number]++;state.calls--;
   state.scoredLines??=[];
-  const scoredPatterns=completedPatterns(state.stamps).filter(p=>p.tiles.includes(tile)&&!state.scoredLines.includes(p.id)&&(state.jokers??PATTERN_TYPES.map(p=>p.id)).includes(p.type));
+  const scoredPatterns=completedPatterns(state.stamps).filter(p=>p.tiles.includes(tile)&&!state.scoredLines.includes(p.id)&&normalizeJokers(state.jokers).includes('bingo'));
   const patterns=scoredPatterns.map(p=>p.tiles);
   state.patternCounts??=freshPatternCounts();
   for(const {type} of scoredPatterns)state.patternCounts[type]=(state.patternCounts[type]||0)+1;
