@@ -1,11 +1,12 @@
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
-import {newStage} from '../game.js';
+import {newStage as startingStage} from '../game.js';
+const newStage=(stage,money,paints,counts,jokers=['bingo'])=>startingStage(stage,money,paints,counts,jokers);
 
 const url=process.env.GAME_URL||'http://localhost:5173';
 const ids=['row','column','diagonal'];
 const labels=['5 in a row','5 in a col','Diagonals'];
-const basePoints=[10,10,10];
+const basePoints=[5,5,5];
 const zeroCounts=Object.fromEntries(ids.map(id=>[id,0]));
 const browser=await chromium.launch({channel:'chrome'});
 const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'});

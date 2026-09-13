@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newStage,draw,deal,choose,redraw,PATTERNS,settleStage,STAGE_TARGETS,openShop,paintBall,redrawShop} from '../game.js';
+import {newStage as startingStage,draw,deal,choose,redraw,PATTERNS,settleStage,STAGE_TARGETS,openShop,paintBall,redrawShop} from '../game.js';
+// These fixtures isolate line and paint rules from the optional Single Digits bonus.
+const newStage=(stage,money,paints,counts,jokers=['bingo'])=>startingStage(stage,money,paints,counts,jokers);
 const place=(s,ball,tile)=>{s.offer=[ball];s.destinations={[ball]:tile};return choose(s,ball);};
 test('new stages are blank with all balls, 12 calls and no permanent mappings',()=>{
  const s=newStage();assert.equal(s.stamps.size,0);assert.deepEqual(s.stampBalls,{});assert.deepEqual(s.destinations,{});assert.equal(s.bag.size,25);assert.equal(s.calls,12);assert.equal(s.money,5);assert.equal(s.board,undefined);
@@ -14,8 +16,8 @@ test('playing uses the offered destination, removes only that ball, and clears o
 test('invalid, stale and occupied destinations spend nothing',()=>{
  const s=newStage();place(s,1,7);s.offer=[2];s.destinations={2:7};assert.equal(choose(s,2),null);assert.equal(s.calls,11);assert.equal(s.bag.size,24);s.destinations={};assert.equal(choose(s,2),null);s.destinations={2:26};assert.equal(choose(s,2),null);assert.equal(choose(s,1),null);
 });
-test('every geometric pattern scores ten base points per line independent of ball numbers',()=>{
- for(const pattern of PATTERNS){const s=newStage(10);let r;for(let i=0;i<pattern.length;i++)r=place(s,25-i,pattern[i]);assert.equal(r.points,10);assert.deepEqual(r.activations.map(a=>a.tile),pattern);assert.deepEqual(r.activations.map(a=>a.number),pattern.map((_,i)=>25-i));assert.ok(r.activations.every(a=>a.points===2));assert.equal(s.stamps.size,5);assert.equal(Object.keys(s.stampBalls).length,5);assert.equal(s.bag.size,25-pattern.length);}
+test('every geometric pattern scores five base points per line independent of ball numbers',()=>{
+ for(const pattern of PATTERNS){const s=newStage(10);let r;for(let i=0;i<pattern.length;i++)r=place(s,25-i,pattern[i]);assert.equal(r.points,5);assert.deepEqual(r.activations.map(a=>a.tile),pattern);assert.deepEqual(r.activations.map(a=>a.number),pattern.map((_,i)=>25-i));assert.ok(r.activations.every(a=>a.points===1));assert.equal(s.stamps.size,5);assert.equal(Object.keys(s.stampBalls).length,5);assert.equal(s.bag.size,25-pattern.length);}
 });
 test('redraw costs $1, moves destinations, and leaves stamps and calls intact',()=>{
  const s=newStage();place(s,25,1);deal(s,()=>.5);const first={...s.destinations};assert.ok(redraw(s,()=>0));assert.notDeepEqual(s.destinations,first);assert.equal(s.money,4);assert.equal(s.calls,11);assert.equal(s.stampBalls[1],25);for(let i=0;i<4;i++)redraw(s);const offer=[...s.offer],dest={...s.destinations};assert.equal(redraw(s),false);assert.deepEqual(s.offer,offer);assert.deepEqual(s.destinations,dest);

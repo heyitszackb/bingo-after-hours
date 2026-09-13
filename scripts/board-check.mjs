@@ -1,6 +1,7 @@
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
-import {newStage} from '../game.js';
+import {newStage as startingStage} from '../game.js';
+const newStage=(stage,money,paints,counts,jokers=['bingo'])=>startingStage(stage,money,paints,counts,jokers);
 const browser=await chromium.launch({channel:'chrome'}),page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
 await page.addInitScript(()=>{const s=sessionStorage.getItem('fixture');if(s){localStorage.setItem('binglatro.run.v1',s);sessionStorage.removeItem('fixture');}});
@@ -21,7 +22,7 @@ await restore({...s,stamps:[...s.stamps],bag:[...s.bag]});await ready();
 assert.equal(await page.locator('#cell-1 span').textContent(),'25');await page.screenshot({path:'/tmp/binglatro-blank-board.png'});
 const a=await page.locator('#balls [data-number="3"]').boundingBox(),b=await page.locator('#cell-21').boundingBox();await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width-10,b.y+10,{steps:12});assert.ok(await page.locator('#cell-21').evaluate(c=>c.classList.contains('destination')));await page.mouse.up();
 await page.locator('.pattern-multiplier').waitFor({state:'visible'});assert.deepEqual(await page.locator('.cell.multiplied').evaluateAll(c=>c.map(n=>Number(n.id.replace('cell-','')))),[1,6,11,16,21]);assert.equal((await page.locator('#board .cell span').allTextContents()).filter(Boolean).length,5);assert.equal(await page.locator('#cell-21 span').textContent(),'3');
-await page.locator('#shop-screen').waitFor({state:'visible'});assert.equal(await page.locator('#score').textContent(),'20');assert.equal(await page.locator('#money').textContent(),'20');assert.equal(await page.locator('.cell.stamped').count(),5);assert.equal((await page.locator('#board .cell span').allTextContents()).filter(Boolean).length,5);
+await page.locator('#shop-screen').waitFor({state:'visible'});assert.equal(await page.locator('#score').textContent(),'10');assert.equal(await page.locator('#money').textContent(),'20');assert.equal(await page.locator('.cell.stamped').count(),5);assert.equal((await page.locator('#board .cell span').allTextContents()).filter(Boolean).length,5);
 await page.locator('#shop-next').click();await ready();state=await read();assert.deepEqual(state.stampBalls,{});assert.deepEqual(state.paints,s.paints);assert.equal(state.stage,2);assert.equal(await page.locator('.cell.offered').count(),3);
 // Migrate old numbered boards without losing the wallet or collection.
 const legacy={...state,rulesVersion:undefined,board:Array.from({length:25},(_,i)=>i+1),score:80,calls:3,money:17};await restore(legacy);await ready();state=await read();assert.equal(state.score,0);assert.equal(state.calls,12);assert.equal(state.money,17);assert.deepEqual(state.paints,s.paints);assert.deepEqual(state.stamps,[]);

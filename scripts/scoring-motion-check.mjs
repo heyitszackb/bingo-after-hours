@@ -1,6 +1,7 @@
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
-import {newStage} from '../game.js';
+import {newStage as startingStage} from '../game.js';
+const newStage=(stage,money,paints,counts,jokers=['bingo'])=>startingStage(stage,money,paints,counts,jokers);
 const browser=await chromium.launch({channel:'chrome'});
 try{
  const page=await browser.newPage({viewport:{width:1000,height:800}}),errors=[];
@@ -14,15 +15,15 @@ try{
  for(const type of ['row','column','diagonal']){
   await page.locator(`[data-joker=bingo][data-pattern=${type}].scoring-card`).waitFor();
   assert.equal(await page.locator('.scoring-card').count(),1);
-  await page.waitForFunction(type=>document.querySelector(`[data-joker=bingo][data-pattern=${type}]`).dataset.payout==='+4',type);
+  await page.waitForFunction(type=>document.querySelector(`[data-joker=bingo][data-pattern=${type}]`).dataset.payout==='+2',type);
   assert.equal(await page.locator('.cell.pattern-active').count(),5);
   if(type==='row')await page.screenshot({path:'/tmp/binglatro-scoring-activation.png'});
  }
- await page.waitForFunction(()=>!document.querySelector('#pause-button').disabled&&document.querySelector('#score').textContent==='30');
+ await page.waitForFunction(()=>!document.querySelector('#pause-button').disabled&&document.querySelector('#score').textContent==='15');
  const trace=await page.evaluate(()=>window.scoringTrace);
  assert.deepEqual([...new Set(trace.flatMap(t=>t.ids))],['row','column','diagonal']);
  assert.ok(trace.every(t=>t.ids.length===1));
- for(const type of ['row','column','diagonal'])assert.ok(trace.some(t=>t.ids[0]===type&&t.payout==='+10'));
+ for(const type of ['row','column','diagonal'])assert.ok(trace.some(t=>t.ids[0]===type&&t.payout==='+5'));
  assert.equal(await page.locator('.scoring-card,.scoring-rack,.score-spark,.activation-point').count(),0);
  assert.equal(await page.locator('.cell.stamped').count(),13);assert.deepEqual(errors,[]);
  console.log('Passed sequential row/column/diagonal card focus, live subtotals, five-tile highlights, retained stamps, final totals and effect cleanup.');

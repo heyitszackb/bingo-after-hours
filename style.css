@@ -264,3 +264,9 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .joker-bingo{width:128px;flex:0 0 128px}.joker-bingo .joker-description{max-width:114px;font-size:16px}
 @media(max-width:600px){.joker-bingo{flex:0 0 108px}.joker-bingo .joker-description{font-size:13px}}
 @media(max-height:600px) and (min-width:601px){.joker-bingo{width:164px;flex:0 0 164px}.joker-bingo .joker-description{font-size:13px}}
+
+.joker-single-digits{--accent:#f4c66c;width:128px;flex:0 0 128px}.joker-single-digits .joker-description{max-width:114px;font-size:16px}.digits-art{display:grid;place-items:center;background:#294238;color:#f4c66c}.digits-art b{font-size:24px;font-weight:400;white-space:nowrap}
+@media(max-width:600px){#joker-rack{gap:8px}.joker-bingo,.joker-single-digits{flex:0 1 108px}.joker-single-digits .joker-description{font-size:13px}.digits-art b{font-size:18px}.joker-single-digits .joker-heading{font-size:9px}}
+@media(max-height:600px) and (min-width:601px){.joker-single-digits{width:164px;flex:0 0 164px}.joker-single-digits .joker-description{font-size:13px}.digits-art b{font-size:16px}}
+
+.digits-art{grid-template-columns:1fr;grid-template-rows:1fr}

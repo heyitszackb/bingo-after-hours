@@ -1,7 +1,7 @@
 export const PATTERN_TYPES = [
-  {id:'row',label:'5 in a row',previewTiles:[11,12,13,14,15],basePoints:10},
-  {id:'column',label:'5 in a col',previewTiles:[3,8,13,18,23],basePoints:10},
-  {id:'diagonal',label:'Diagonals',previewTiles:[1,7,13,19,25],basePoints:10},
+  {id:'row',label:'5 in a row',previewTiles:[11,12,13,14,15],basePoints:5},
+  {id:'column',label:'5 in a col',previewTiles:[3,8,13,18,23],basePoints:5},
+  {id:'diagonal',label:'Diagonals',previewTiles:[1,7,13,19,25],basePoints:5},
 ];
 export const PATTERN_DEFINITIONS = [
   ...Array.from({length:5},(_,r)=>({id:`row-${r+1}`,type:'row',tiles:Array.from({length:5},(_,c)=>r*5+c+1)})),
@@ -14,9 +14,12 @@ export const freshPatternCounts=()=>Object.fromEntries(PATTERN_TYPES.map(({id})=
 export const completedPatterns=stamps=>PATTERN_DEFINITIONS.filter(({tiles})=>tiles.every(tile=>stamps.has(tile)));
 export const STAGE_TARGETS = [5,10,15,20,30,40,55,70,90,120];
 export const targetFor = stage => STAGE_TARGETS[stage-1];
-export const normalizeJokers=jokers=>!Array.isArray(jokers)||jokers.some(id=>['bingo','row','column','diagonal'].includes(id))?['bingo']:[];
-export function newStage(stage=1,money=5,paints={},patternCounts={},jokers=['bingo']) {
-  return {rulesVersion:2,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},destinations:{},paints:{...paints},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
+export const normalizeJokers=jokers=>{
+  if(!Array.isArray(jokers))return ['bingo','single-digits'];
+  return [...(jokers.some(id=>['bingo','row','column','diagonal'].includes(id))?['bingo']:[]),...(jokers.includes('single-digits')?['single-digits']:[])];
+};
+export function newStage(stage=1,money=5,paints={},patternCounts={},jokers=['bingo','single-digits']) {
+  return {rulesVersion:2,jokerVersion:2,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},destinations:{},paints:{...paints},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
 }
 export function deal(state,random=Math.random,count=3){
   const empty=Array.from({length:25},(_,i)=>i+1).filter(tile=>!state.stamps.has(tile));
@@ -42,7 +45,8 @@ export function choose(state,number,tile=state.destinations[number]) {
   const multipliers=patterns.map(pattern=>2**pattern.filter(tile=>state.paints[state.stampBalls[tile]]==='red').length);
   const activations=patterns.flatMap((pattern,i)=>pattern.map((tile,j)=>{
     const number=state.stampBalls[tile],color=state.paints[number];
-    return {tile,number,points:2*multipliers[i],type:scoredPatterns[i].type,gold:color==='gold'?1:0,draws:color==='blue'?3:0,patternMultiplier:j===0?multipliers[i]:1,pattern:j===0?pattern:null};
+    const bonuses=number>=1&&number<=9&&state.jokers.includes('single-digits')?[{joker:'single-digits',points:multipliers[i]}]:[];
+    return {tile,number,basePoints:multipliers[i],bonuses,points:multipliers[i]+bonuses.reduce((sum,b)=>sum+b.points,0),type:scoredPatterns[i].type,gold:color==='gold'?1:0,draws:color==='blue'?3:0,patternMultiplier:j===0?multipliers[i]:1,pattern:j===0?pattern:null};
   }));
   const points=activations.reduce((total,activation)=>total+activation.points,0);
   const gold=activations.reduce((sum,a)=>sum+a.gold,0),bonusDraws=activations.reduce((sum,a)=>sum+a.draws,0);

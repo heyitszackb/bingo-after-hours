@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newStage,deal,choose} from '../game.js';
+import {newStage as startingStage,deal,choose} from '../game.js';
+// These fixtures isolate line and paint rules from the optional Single Digits bonus.
+const newStage=(stage,money,paints,counts,jokers=['bingo'])=>startingStage(stage,money,paints,counts,jokers);
 test('every offered ball can occupy every offered space, retaining its own identity and paint',()=>{
  for(const number of [1,2,3])for(const tile of [1,13,25]){
   const s=newStage(10,5,{1:'red',2:'gold',3:'blue'});s.offer=[1,2,3];s.destinations={1:1,2:13,3:25};

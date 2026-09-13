@@ -1,5 +1,5 @@
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,removeJoker,normalizeJokers,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=2c476f5c67ff';
+import {newStage,deal,choose,removeJoker,normalizeJokers,redraw,settleStage,openShop,paintBall,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=b5b13a63364f';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,muted=false,paintDrag=null,selectedPaint=null,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
@@ -19,7 +19,7 @@ function render(){
   }}
 
 let jokerDrag=null;
-const jokerText={bingo:'+10 for row, column, or diagonal'};
+const jokerText={bingo:'Score a row, column, or diagonal', 'single-digits':'Single digits get +1 when scored'};
 function renderJokers(){
   const ids=normalizeJokers(state.jokers),rack=$('joker-rack');
   if(rack.dataset.cards===ids.join('|'))return;
@@ -27,8 +27,8 @@ function renderJokers(){
   for(const id of ids){
     const card=document.createElement('button'),pattern={previewTiles:[3,8,11,12,13,14,15,18,23,1,7,19,25]};
     card.className=`joker-card joker-${id}`;card.dataset.joker=id;
-    card.setAttribute('aria-label',`${jokerText[id]}. Drag to trash to disable line scoring, or press Delete.`);
-    card.innerHTML=`<span class="joker-heading">BINGO</span><span class="joker-art" aria-hidden="true">${Array.from({length:25},(_,i)=>`<i class="${pattern.previewTiles.includes(i+1)?'filled':''}"></i>`).join('')}</span><span class="joker-description">${jokerText[id]}</span>`;
+    card.setAttribute('aria-label',`${jokerText[id]}. Drag to trash to remove this effect, or press Delete.`);
+    card.innerHTML=`<span class="joker-heading">${id==='bingo'?'BINGO':'SINGLE DIGITS'}</span><span class="joker-art ${id==='single-digits'?'digits-art':''}" aria-hidden="true">${id==='single-digits'?'<b>1–9</b>':Array.from({length:25},(_,i)=>`<i class="${pattern.previewTiles.includes(i+1)?'filled':''}"></i>`).join('')}</span><span class="joker-description">${jokerText[id]}</span>`;
     card.onpointerdown=e=>{
       if(e.button!==0||jokerDrag||drag||paintDrag)return;
       e.preventDefault();hideTooltip();card.setPointerCapture(e.pointerId);
@@ -47,7 +47,7 @@ function renderJokers(){
       if(discard){removeJoker(state,id);saveRun();}
       cancelJokerDrag(false);renderJokers();
       if(ghost){if(discard){sound('stamp');navigator.vibrate?.(20);await animate(ghost,[{transform:ghost.style.transform,opacity:1},{transform:ghost.style.transform+' scale(.05)',opacity:0}],{duration:220});}else{const r=card.getBoundingClientRect();await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left}px,${r.top}px) rotate(0)`}],{duration:200,easing:'cubic-bezier(.2,.8,.2,1)'});}ghost.remove();}
-      if(discard)$('announcer').textContent=`${id} card removed. Rows, columns, and diagonals no longer score.`;
+      if(discard)$('announcer').textContent=`${id} card removed.`;
     };
     card.onpointercancel=()=>cancelJokerDrag();card.onlostpointercapture=()=>{if(jokerDrag)cancelJokerDrag();};
     card.onkeydown=e=>{if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeJoker(state,id);saveRun();renderJokers();}};
@@ -271,10 +271,25 @@ async function activateSpaces(result){
     burst(r);
     const point=document.createElement('span');
     point.className='activation-point';point.style.color=color;
-    point.textContent=`+${activation.points}`;
+    point.textContent=`+${activation.basePoints}`;
     point.style.left=`${r.left+r.width/2}px`;
     point.style.top=`${r.top+r.height/2}px`;
     $('effects').append(point);
+    point.style.transform='translate(-50%,-90%)';
+    let tilePoints=activation.basePoints;
+    for(const bonus of activation.bonuses){
+      const bonusCard=document.querySelector(`[data-joker="${bonus.joker}"]`);
+      if(bonusCard){
+        bonusCard.classList.add('scoring-card');bonusCard.dataset.payout=`+${bonus.points}`;bonusCard.style.setProperty('--scoring-color','#f4c66c');
+        sound('activate',index+4);scoreCrunch(4);navigator.vibrate?.(12);
+        await animate(bonusCard,[{transform:'scale(1)'},{transform:'translateY(-8px) rotate(-4deg) scale(1.12)',offset:.35},{transform:'translateY(-4px) rotate(2deg) scale(1.05)'}],{duration:230});
+        const from=bonusCard.getBoundingClientRect(),spark=document.createElement('i');spark.className='score-spark';spark.style.background='#f4c66c';spark.style.left=`${from.left+from.width/2}px`;spark.style.top=`${from.bottom}px`;$('effects').append(spark);
+        await animate(spark,[{transform:'scale(1.4)'},{transform:`translate(${r.left+r.width/2-from.left-from.width/2}px,${r.top+r.height/2-from.bottom}px) scale(.6)`}],{duration:150});spark.remove();
+      }
+      tilePoints+=bonus.points;point.textContent=`+${tilePoints}`;sound('activate',index+5);
+      await animate(point,[{transform:'translate(-50%,-90%) scale(1.35)',color:'#f4c66c'},{transform:'translate(-50%,-90%) scale(1)',color}],{duration:160});
+      bonusCard?.classList.remove('scoring-card');if(bonusCard)delete bonusCard.dataset.payout;
+    }
     const scoreRect=$('score').getBoundingClientRect();
     const dx=scoreRect.left+scoreRect.width/2-r.left-r.width/2;
     const dy=scoreRect.top+scoreRect.height/2-r.top-r.height/2;
@@ -527,6 +542,8 @@ function loadRun(){
     if(saved.shopOffer!=null&&(!numbers(saved.shopOffer)||saved.shopOffer.length!==3||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
     saved.scoredLines=Array.isArray(saved.scoredLines)?[...new Set(saved.scoredLines.filter(id=>typeof id==='string'&&/^(row-[1-5]|column-[1-5]|diagonal-[12])$/.test(id)))]:[];
     saved.jokers=normalizeJokers(saved.jokers);
+    if(saved.jokerVersion!==2&&!saved.jokers.includes('single-digits'))saved.jokers.push('single-digits');
+    saved.jokerVersion=2;
     saved.patternCounts=Object.fromEntries(PATTERN_TYPES.map(({id})=>[id,Number.isSafeInteger(saved.patternCounts?.[id])&&saved.patternCounts[id]>=0?saved.patternCounts[id]:0]));
     if(saved.rulesVersion!==2){
       // Keep the collection and wallet; old numbered layouts cannot represent the new rules.

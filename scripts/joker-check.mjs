@@ -1,6 +1,7 @@
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
-import {newStage} from '../game.js';
+import {newStage as startingStage} from '../game.js';
+const newStage=(stage,money,paints,counts,jokers=['bingo'])=>startingStage(stage,money,paints,counts,jokers);
 const browser=await chromium.launch({channel:'chrome'});
 const url=process.env.GAME_URL||'http://localhost:5173';
 try{
@@ -12,7 +13,7 @@ try{
   await p.addInitScript(s=>{if(!sessionStorage.getItem('seeded')){localStorage.setItem('binglatro.run.v1',JSON.stringify(s));sessionStorage.setItem('seeded','1');}},{...s,stamps:[...s.stamps],bag:[...s.bag]});
   await p.goto(url);const ready=()=>p.locator('#balls .ball:not([disabled])').first().waitFor();
   await p.locator('#play-button').click();await ready();
-  assert.equal(await p.locator('[data-joker]').count(),1);assert.equal(await p.locator('.joker-description').textContent(),'+10 for row, column, or diagonal');
+  assert.equal(await p.locator('[data-joker]').count(),1);assert.equal(await p.locator('.joker-description').textContent(),'Score a row, column, or diagonal');
   for(const el of await p.locator('#joker-rack,.board-frame,.draw-area,.dashboard,footer').all()){
    const r=await el.boundingBox();assert.ok(r.x>=0&&r.y>=0&&r.x+r.width<=width+1&&r.y+r.height<=height+1,JSON.stringify({width,height,r}));
   }
@@ -27,7 +28,7 @@ try{
   const start=await center('[data-joker=bingo]');await down(start);await move({x:start.x,y:start.y+22});await p.locator('#joker-trash').waitFor({state:'visible'});
   // Drop away from trash: card springs home and no resources are spent.
   await up();await p.waitForFunction(()=>!document.querySelector('.joker-ghost'));
-  assert.equal(await p.locator('[data-joker]').count(),1);assert.equal(await p.locator('.joker-description').textContent(),'+10 for row, column, or diagonal');
+  assert.equal(await p.locator('[data-joker]').count(),1);assert.equal(await p.locator('.joker-description').textContent(),'Score a row, column, or diagonal');
   await down(start);await move({x:start.x,y:start.y+22});await p.locator('#joker-trash').waitFor({state:'visible'});
   await move(await center('#joker-trash'));await p.waitForFunction(()=>document.querySelector('#joker-trash').classList.contains('ready'));await up();
   await p.locator('[data-joker=bingo]').waitFor({state:'detached'});assert.equal(await p.locator('#calls').textContent(),'12');assert.equal(await p.locator('#money').textContent(),'20');
@@ -43,16 +44,16 @@ try{
  await p.addInitScript(s=>{if(!sessionStorage.getItem('seeded')){localStorage.setItem('binglatro.run.v1',JSON.stringify(s));sessionStorage.setItem('seeded','1');}},{...s,stamps:[...s.stamps],bag:[...s.bag]});
  await p.goto(url);await p.locator('#play-button').click();await p.locator('#balls .ball:not([disabled])').waitFor();
  const a=await p.locator('#balls .ball').boundingBox(),b=await p.locator('#cell-5').boundingBox();await p.mouse.move(a.x+a.width/2,a.y+a.height/2);await p.mouse.down();await p.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:8});await p.mouse.up();
- await p.waitForFunction(()=>document.querySelector('#score').textContent==='10'&&!document.querySelector('#pause-button').disabled);assert.equal(await p.locator('.cell.stamped').count(),5);
+ await p.waitForFunction(()=>document.querySelector('#score').textContent==='5'&&!document.querySelector('#pause-button').disabled);assert.equal(await p.locator('.cell.stamped').count(),5);
  await p.locator('#patterns-button').click();assert.equal(await p.locator('.pattern-row').count(),3);
  assert.equal(await p.locator('.pattern-row[data-pattern=row] .pattern-count').textContent(),'×1');
  await p.locator('#patterns-dialog .close').click();
  await p.reload();await p.locator('#play-button').click();await p.locator('#balls .ball:not([disabled])').first().waitFor();
  assert.equal(await p.locator('.cell.stamped').count(),5);assert.equal(await p.locator('#cell-5 span').textContent(),'5');
- assert.equal(await p.locator('#score').textContent(),'10');
+ assert.equal(await p.locator('#score').textContent(),'5');
  await p.locator('#balls .ball:not([disabled])').first().focus();await p.keyboard.press('Space');
  await p.waitForFunction(()=>document.querySelector('#calls').textContent==='10'&&!document.querySelector('#pause-button').disabled);
- assert.equal(await p.locator('#score').textContent(),'10');assert.equal(await p.locator('.cell.stamped').count(),6);
+ assert.equal(await p.locator('#score').textContent(),'5');assert.equal(await p.locator('.cell.stamped').count(),6);
  const saved=await p.evaluate(()=>JSON.parse(localStorage.getItem('binglatro.run.v1')));assert.deepEqual(saved.scoredLines,['row-1']);assert.equal(saved.patternCounts.row,1);
  await p.close();console.log('Passed desktop/mobile landscape layouts, mouse/touch card trash and cancellation, saved removals, disabled patterns, ten-point scoring and retained scored stamps.');
 }finally{await browser.close();}
