@@ -523,7 +523,10 @@ async function play(n,b,ghost,tile=state.destinations[n]){
   if(ghost&&state.items[n]==='hundred'){ghost.remove();ghost=null;}
   if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}
   document.querySelectorAll('.cell.offered').forEach(c=>{c.className='cell paint-grey';c.querySelector('span').textContent='';});
+  // Board stamps leave ink, never a temporary occupied ball face.
+  if(!result.stampApplied){
   cell.className=`cell paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)} stamped just-stamped`;cell.querySelector('span').textContent=pieceFace(n);cell.classList.toggle('large-value',String(pieceFace(n)).length>2);
+  }
   if(state.items[n]==='hundred')await dropAnvil(n,cell);
   pulseBackground();navigator.vibrate?.(18);burst(r);
   await animate(document.querySelector('.board-frame'),[{transform:'translateY(0)'},{transform:'translateY(3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});
