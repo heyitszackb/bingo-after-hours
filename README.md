@@ -1,13 +1,15 @@
 # Binglatro
 
-A solo arcade bingo game with a horizontal table, numbered stamps, a bag, and scoring cards.
+A solo arcade bingo game with a portrait table, numbered stamps, a bag, and scoring cards.
 
 ## Rules
 
-- Each normal draw offers one available ball and one random empty space. Tap Play (or drag the ball onto the board) to stamp the highlighted space, or tap Pass to draw again. Passing returns the offered ball to the bag, changes the ball and location when alternatives exist, and spends no money or play. Tap a ball, stamp, or card to inspect it.
+- Each normal draw offers one available ball and one random empty space. Swipe the ball up to stamp the highlighted space, or down to pass and draw again. A deliberate vertical swipe commits on release; moving back before release cancels. Arrow Up/Down provide keyboard equivalents, and board dragging still works. Passing returns the offered ball to the bag, changes the ball and location when alternatives exist, and spends no money or play. Tap a ball, stamp, or card to inspect it. Tap the bag below the ball to open the unchanged bag inspection menu; inspecting never spends a resource.
 - Playing uses one play and removes that ball from the bag until the next stage. Start with $5. Each round starts with 15 plays and 10 passes. Running out of passes only disables passing; playing remains available. Stage targets remain **5, 10, 15, 20, 30, 40, 55, 70, 90, 120**.
 - Start with Bingo. A completed row, column, or full diagonal scores one base point per tile. Each physical line pays once per stage. All stamps remain until the next stage; shared stamps can activate in another newly completed line. Squares and corners alone do not score.
 - Unused plays pay $1 each after a win, then the shop opens. New stages replenish the bag, 15 plays and 10 passes, and reset stamps and their values. Cards, ball upgrades, money, and run pattern counts carry over.
+
+The main screen has a compact menu/money header, the card rack, board, and a swipe lane with plays and passes remaining. The rack starts with Bingo and four blank placeholders; it fits additional owned cards without changing purchase limits. Score, stage, and pattern viewers are absent from the main table; the pause summary retains round progress.
 
 ## Shop
 
@@ -36,7 +38,7 @@ Paints and the former free Single Digits card are removed when migrating older s
 
 Browser checks require local Chrome and the installed Playwright dependency. Set `GAME_URL` to verify deployment:
 
-- `node scripts/pass-play-check.mjs`: single draws, pass costs and exhaustion, playing after passes run out, round refill, old-save migration, and mobile layouts. Set `REAL_MOTION=1` to check full animations.
+- `node scripts/swipe-layout-check.mjs`: portrait layout, blank slots, unchanged bag inspection, mouse/touch swipes, release/cancel behavior, depleted passes, pause/reload, scoring payout, card purchases and round refill. Set `REAL_MOTION=1` to check full animations. The older `pass-play-check.mjs` documents the previous button interface.
 - `node scripts/upgrade-shop-check.mjs`: purchases, responsive shop, five-card limit, touch trash, X placement, Doubler values, Tornado identity/value preservation, saves, and migration.
 - `node scripts/number-engines-check.mjs`: new joker pricing, fixed ranges across reload/stage changes, call and point activations, Plasma choice and reload, drag placement, and mobile layouts. Set `REAL_MOTION=1` to check full animations.
 - `node scripts/dynamite-check.mjs`: return flights, bag availability, replay values, and Tornado migration.
