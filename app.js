@@ -9,6 +9,7 @@ function burst(rect,scoring=false){if(reduced)return;for(let i=0;i<(scoring?28:1
 for(let n=1;n<=25;n++){const c=document.createElement('button');c.type='button';c.id=`cell-${n}`;c.className='cell';c.innerHTML='<span></span>';c.onclick=()=>{if(!busy&&!drag)inspectSpace(n);};$('board').append(c);}
 function render(){
   renderJokers();
+  $('play-ball').disabled=busy||!!drag||state.status!=='playing'||!state.offer.length;$('play-ball').setAttribute('aria-label',`Play ball ${ballValue(state,state.offer[0])??'X'} on the highlighted space. ${state.calls} plays remaining.`);
   $('plasma-pick').hidden=!state.plasmaActive||state.status!=='playing';$('plasma-pick').disabled=busy;
   $('patterns-button').disabled=busy||payingOut;$('score-patterns').disabled=busy||payingOut;
   $('score-patterns').setAttribute('aria-label',`${state.score} of ${state.target} points. View scoring patterns and run counts`);
@@ -213,7 +214,7 @@ function cancelDrag(){
   const d=drag;drag=null;previewOrder(d,d.original);cleanDrag(d);d.ghost?.remove();commitOrder(d);
 }
 function renderCalls(calls){
-  $('calls').textContent=calls;
+  $('calls').textContent=calls;$('play-count').textContent=calls;
   $('call-dots').innerHTML=Array.from({length:15},(_,i)=>`<i class="${i>=Math.ceil(calls/state.callCapacity*15)?'used':''}"></i>`).join('');
   document.querySelector('.call-meter').setAttribute('aria-label',`${calls} plays remaining`);
 }
@@ -451,6 +452,12 @@ async function showResult(){
   finishResult();
 }
 $('continue').onclick=async()=>{if(payingOut)return;const next=state.status==='passed'&&state.stage<10?state.stage+1:1;state=newStage(next,next===1?5:state.money,next===1?{}:state.upgrades,next===1?{}:state.patternCounts,next===1?undefined:state.jokers);hasRun=true;saveRun();resetResultUI();await nextDraw();};
+$('play-ball').onclick=()=>{
+  if(busy||drag||jokerDrag||state.status!=='playing'||!state.offer.length)return;
+  const n=state.offer[0],b=$('balls').querySelector(`[data-number="${n}"]`);if(!b)return;
+  const r=b.getBoundingClientRect(),ghost=b.cloneNode(true);ghost.className=b.className.replace(/enter|leave/g,'')+' drag-ghost';ghost.removeAttribute('data-number');ghost.setAttribute('aria-hidden','true');ghost.style.setProperty('--size',`${r.width}px`);ghost.style.transform=`translate(${r.left}px,${r.top}px)`;document.body.append(ghost);
+  play(n,b,ghost);
+};
 $('redraw').onclick=async()=>{if(busy||drag||state.passes<1)return;lock();if(!redraw(state)){unlock();return;}saveRun();$('redraw-cost').textContent=state.passes;animate($('redraw-cost'),[{transform:'scale(1.3)',color:'#fff1c2'},{transform:'scale(1)',color:'#79ded2'}],{duration:180});sound('roll');document.querySelectorAll('#balls .ball').forEach(b=>b.classList.add('leave'));await wait(480);render();showBalls();await wait(770);unlock();$('announcer').textContent=`Passed. ${state.passes} passes and ${state.calls} plays remaining.`;};
 $('bag').onclick=()=>{hideTooltip();refreshBag();$('bag-dialog').showModal();};$('stages').onclick=showStages;
 $('patterns-button').onclick=showPatterns;$('score-patterns').onclick=showPatterns;

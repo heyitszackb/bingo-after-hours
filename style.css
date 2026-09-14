@@ -312,3 +312,8 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 /* Two round resources: plays and passes. */
 .call-meter{position:relative}.call-meter .resource-label{position:absolute;left:0;top:-15px;font-size:13px;line-height:1;letter-spacing:1px;color:#8dc6bb}.pass-resource{display:flex;flex-direction:column;align-items:center;line-height:.85}.pass-resource small{font-size:12px;letter-spacing:1px}.pass-resource #redraw-cost{display:inline-block;font-size:24px}#redraw{gap:7px}
 @media(max-width:600px){.call-meter .resource-label{font-size:10px;top:-12px}.pass-resource small{font-size:9px}.pass-resource #redraw-cost{font-size:19px}footer #redraw svg{display:none}}
+
+/* Play and Pass share the primary action row; utility buttons sit below. */
+.cabinet:not(.shopping)>footer{grid-template-columns:repeat(6,minmax(0,1fr))}.cabinet:not(.shopping)>footer>button{grid-column:span 2}.cabinet:not(.shopping)>footer>#play-ball,.cabinet:not(.shopping)>footer>#redraw{grid-column:span 3}#play-ball{background:#275947;border-color:#9bce9f;color:#e0f3c7}.pass-resource #play-count{font-size:24px}#play-ball .pass-resource small{font-size:15px}#redraw .pass-resource small{font-size:15px}footer #redraw svg{display:none}
+@media(max-width:600px){.cabinet:not(.shopping)>footer{column-gap:4px}#play-ball .pass-resource small,#redraw .pass-resource small{font-size:12px}.pass-resource #play-count{font-size:19px}footer #bag-count{display:none}.cabinet:not(.shopping)>footer #bag{gap:0}}
+.cabinet:not(.shopping)>footer>#bag,.cabinet:not(.shopping)>footer>#patterns-button,.cabinet:not(.shopping)>footer>#pause-button{min-width:0;padding:0;gap:2px}.cabinet:not(.shopping)>footer svg{width:16px;height:20px}footer #bag-count{font-size:20px}

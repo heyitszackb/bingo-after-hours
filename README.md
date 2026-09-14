@@ -4,7 +4,7 @@ A solo arcade bingo game with a horizontal table, numbered stamps, a bag, and sc
 
 ## Rules
 
-- Each normal draw offers one available ball and one random empty space. Drag the ball onto the board to stamp the highlighted space, or spend a pass to draw again. Passing returns the offered ball to the bag, changes the ball and location when alternatives exist, and spends no money or play. Tap a ball, stamp, or card to inspect it.
+- Each normal draw offers one available ball and one random empty space. Tap Play (or drag the ball onto the board) to stamp the highlighted space, or tap Pass to draw again. Passing returns the offered ball to the bag, changes the ball and location when alternatives exist, and spends no money or play. Tap a ball, stamp, or card to inspect it.
 - Playing uses one play and removes that ball from the bag until the next stage. Start with $5. Each round starts with 15 plays and 10 passes. Running out of passes only disables passing; playing remains available. Stage targets remain **5, 10, 15, 20, 30, 40, 55, 70, 90, 120**.
 - Start with Bingo. A completed row, column, or full diagonal scores one base point per tile. Each physical line pays once per stage. All stamps remain until the next stage; shared stamps can activate in another newly completed line. Squares and corners alone do not score.
 - Unused plays pay $1 each after a win, then the shop opens. New stages replenish the bag, 15 plays and 10 passes, and reset stamps and their values. Cards, ball upgrades, money, and run pattern counts carry over.
