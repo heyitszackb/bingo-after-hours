@@ -26,7 +26,7 @@ test('High Five works without Bingo and scores for zero without a point provider
 });
 test('a die rolls before testing High Five, using its value rather than its bag identity',()=>{
  const shop=newStage();shop.status='passed';shop.bonusPaid=true;openShop(shop);const id=buyItem(shop,'d20');
- for(const random of [()=>0,()=>.2,()=>.25,()=>.999]){const s=newStage(10,0,{}, {},['face-value',joker],shop);stamp(s,19,8);const r=play(s,id,13,random);assert.equal(r.points,r.roll<=5?r.roll+19:0);assert.equal(s.stampValues[13],r.roll);}
+ for(const random of Array.from({length:20},(_,i)=>()=>i/20)){const s=newStage(10,0,{}, {},['face-value',joker],shop);stamp(s,19,8);const r=play(s,id,13,random);assert.equal(r.points,r.roll<=5?r.roll+19:0);assert.equal(s.stampValues[13],r.roll);}
 });
 test('fresh low placements can rescore neighbors; duplicate cards each trigger once, even on a winning final play',()=>{
  const s=make(['bingo','face-value',joker,'high-five:2']);stamp(s,20,13);let r=play(s,1,8);assert.equal(r.points,42);r=play(s,2,12);assert.equal(r.points,44);assert.equal(s.stampValues[13],20);
