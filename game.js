@@ -18,10 +18,10 @@ export const CARD_TYPES={
   'single-digits':{name:'Single Digits',text:'Single digits get +1 when scored',icon:'1–9'},
   'outer-layer':{name:'Outer Layer',text:'Outer edge tiles get +5 when scored',icon:'▣'},
   'number-cruncher':{name:'Number Cruncher',text:'+number when scored. X adds 0.',icon:'+#',price:7},
-  'call-range':{name:'Second Wind',text:'Scored numbers in this range give +1 call. Max 12.',icon:'↻',price:3}
+  'call-range':{name:'Second Wind',text:'Scored numbers in this range give +1 play. Max 15.',icon:'↻',price:3}
 };
 export const BALL_UPGRADES={
-  plasma:{name:'Plasma',text:'Next turn, see 3 spaces and choose any ball still in the bag.',icon:'✧'},
+  plasma:{name:'Plasma',text:'Next turn, see the space and choose any ball still in the bag.',icon:'✧'},
   x:{name:'X Ball',text:'Place anywhere. Has no numeric value.',icon:'X'},
   tornado:{name:'Tornado',text:'On placement, scatter every stamp across the board.',icon:'≋'},
   dynamite:{name:'Dynamite',text:'Return all 8 neighboring stamps to the bag. This ball stays.',icon:'✹'},
@@ -33,7 +33,7 @@ export function cardDetails(id){
   const type=cardType(id),base=CARD_TYPES[type];if(!base)return null;
   if(type!=='call-range')return {...base,price:base.price??3};
   const start=Number(id.split(':')[1]);if(!Number.isInteger(start)||start<1||start>21)return null;
-  return {...base,start,end:start+4,icon:`${start}–${start+4}`,text:`${start}–${start+4}: +1 call when scored. Max 12.`};
+  return {...base,start,end:start+4,icon:`${start}–${start+4}`,text:`${start}–${start+4}: +1 play when scored. Max 15.`};
 }
 export const normalizeJokers=jokers=>{
   if(!Array.isArray(jokers))return ['bingo'];
@@ -42,12 +42,12 @@ export const normalizeJokers=jokers=>{
 };
 export const ballValue=(state,number)=>state.upgrades[number]==='x'?null:(state.ballValues?.[number]??number);
 export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['bingo']) {
-  return {plasmaPending:false,plasmaActive:false,rulesVersion:3,upgradeVersion:2,ballValues:{},jokerVersion:3,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:{...upgrades},callCapacity:12,shopOffer:null,stage,target:targetFor(stage),score:0,calls:12,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
+  return {turnVersion:1,passes:10,plasmaPending:false,plasmaActive:false,rulesVersion:3,upgradeVersion:2,ballValues:{},jokerVersion:3,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:{...upgrades},callCapacity:15,shopOffer:null,stage,target:targetFor(stage),score:0,calls:15,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
 }
 const shuffled=(values,random)=>{
   const result=[...values];for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;
 };
-export function deal(state,random=Math.random,count=3){
+export function deal(state,random=Math.random,count=1){
   const empty=Array.from({length:25},(_,i)=>i+1).filter(tile=>!state.stamps.has(tile));
   state.plasmaActive=!!(state.plasmaPending||state.plasmaActive);state.plasmaPending=false;
   state.offer=state.plasmaActive&&empty.length?[...state.bag]:draw(state,random,Math.min(count,empty.length));
@@ -55,7 +55,7 @@ export function deal(state,random=Math.random,count=3){
   state.destinations=Object.fromEntries(state.offer.map((number,i)=>[number,empty[i%Math.min(count,empty.length)]]));
   return state.offer;
 }
-export function draw(state=newStage(),random=Math.random,count=3) {
+export function draw(state=newStage(),random=Math.random,count=1) {
   const bag=[...state.bag];
   for(let i=bag.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}
   return bag.slice(0,Math.min(count,25));
@@ -103,7 +103,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
       if(cardType(joker)==='call-range'){
         const range=cardDetails(joker);
         if(number!==null&&number>=range.start&&number<=range.end){
-          const calls=Math.max(0,Math.min(1,12-state.calls));state.calls+=calls;bonuses.push({joker,points:0,calls});
+          const calls=Math.max(0,Math.min(1,15-state.calls));state.calls+=calls;bonuses.push({joker,points:0,calls});
         }
       }
       if(cardType(joker)==='outer-layer'&&(tile<=5||tile>=21||tile%5===1||tile%5===0))bonuses.push({joker,points:5});
@@ -117,8 +117,18 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   return {tile,upgrade,moves,doubled,returned,callsBeforeBonuses,patterns,scoredPatterns,activations,points};
 }
 export function redraw(state,random=Math.random) {
-  if(state.status!=='playing'||state.money<1)return false;
-  state.money--;deal(state,random);return true;
+  if(state.status!=='playing'||state.passes<1||!state.offer.length)return false;
+  const oldBalls=new Set(state.offer),oldTiles=new Set(Object.values(state.destinations));
+  state.passes--;deal(state,random);
+  // The offered ball is still in the bag. Prefer a fresh ball and space when possible.
+  if(!state.plasmaActive){
+    const candidates=[...state.bag].filter(n=>!oldBalls.has(n));
+    if(candidates.length)state.offer=[candidates[Math.floor(random()*candidates.length)]];
+  }
+  const empty=Array.from({length:25},(_,i)=>i+1).filter(t=>!state.stamps.has(t)&&!oldTiles.has(t));
+  const tile=empty.length?empty[Math.floor(random()*empty.length)]:Object.values(state.destinations)[0];
+  state.destinations=Object.fromEntries(state.offer.map(n=>[n,tile]));
+  return true;
 }
 
 export function settleStage(state){

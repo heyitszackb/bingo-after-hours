@@ -24,7 +24,7 @@ test('doubling happens before bonuses and does not raise the base score',()=>{
 test('Tornado scatters every stamp without losing identity or values, then scores its resulting lines',()=>{
  const s=newStage(10,5,{25:'tornado',1:'x'});[6,12,18,24].forEach((t,i)=>stamp(s,i+1,t,i===0?null:(i+1)*4));
  const r=place(s,25,13,()=>.999);assert.equal(r.moves.length,5);assert.deepEqual([...s.stamps],[1,2,3,4,5]);assert.deepEqual(Object.values(s.stampBalls),[1,2,3,4,25]);
- assert.deepEqual(Object.values(s.stampValues),[null,8,12,16,25]);assert.equal(r.points,5);assert.equal(s.calls,11);assert.equal(s.bag.size,20);
+ assert.deepEqual(Object.values(s.stampValues),[null,8,12,16,25]);assert.equal(r.points,5);assert.equal(s.calls,14);assert.equal(s.bag.size,20);
  deal(s);assert.ok(Object.values(s.destinations).every(t=>t>5));
 });
 test('Outer Layer follows positions and stacks independently with single digits and duplicate cards',()=>{
@@ -47,11 +47,11 @@ test('Dynamite returns all eight neighbors, preserving values/upgrades/counts an
  const s=newStage(10,5,{25:'dynamite',1:'x',2:'tornado',3:'dynamite'});
  const neighbors=[7,8,9,12,14,17,18,19];neighbors.forEach((tile,i)=>{stamp(s,i+1,tile,i===0?null:(i+1)*4);s.played[i+1]=1;});stamp(s,20,1,20);
  const r=place(s,25,13);assert.equal(r.returned.length,8);assert.deepEqual([...s.stamps],[1,13]);assert.deepEqual(s.stampBalls,{1:20,13:25});assert.deepEqual(s.stampValues,{1:20,13:25});
- assert.equal(s.bag.size,23);assert.ok(!s.bag.has(25));assert.ok(!s.bag.has(20));assert.equal(s.calls,11);assert.equal(s.played[25],1);assert.equal(r.points,0);
+ assert.equal(s.bag.size,23);assert.ok(!s.bag.has(25));assert.ok(!s.bag.has(20));assert.equal(s.calls,14);assert.equal(s.played[25],1);assert.equal(r.points,0);
  for(let n=1;n<=8;n++){assert.ok(s.bag.has(n));assert.equal(s.played[n],1);assert.equal(ballValue(s,n),n===1?null:n*4);}
  assert.equal(s.upgrades[2],'tornado');assert.equal(s.upgrades[3],'dynamite');
  // Replay returned X without clearing history, on a newly empty cell.
- place(s,1,7);assert.equal(s.stampValues[7],null);assert.equal(s.played[1],2);assert.ok(!s.bag.has(1));assert.equal(s.calls,10);
+ place(s,1,7);assert.equal(s.stampValues[7],null);assert.equal(s.played[1],2);assert.ok(!s.bag.has(1));assert.equal(s.calls,13);
 });
 test('Dynamite corners do not wrap rows, empty blasts are valid, and it destroys before scoring',()=>{
  const s=newStage(10,5,{25:'dynamite'});[2,5,6,7,11].forEach((tile,i)=>stamp(s,i+1,tile));

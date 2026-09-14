@@ -15,14 +15,14 @@ try{
  await restore(s);await ready();await page.locator('#balls .ball').focus();await page.keyboard.press('Space');
  await page.locator('.return-token').first().waitFor();assert.equal(await page.locator('.return-token').count(),8);assert.equal(await page.locator('#cell-13 span').textContent(),'25');
  await page.screenshot({path:'/tmp/binglatro-dynamite-return.png'});
- await page.waitForFunction(()=>!document.querySelector('#pause-button').disabled&&document.querySelector('#calls').textContent==='11');
+ await page.waitForFunction(()=>!document.querySelector('#pause-button').disabled&&document.querySelector('#calls').textContent==='14');
  assert.equal(await page.locator('.return-token').count(),0);assert.equal(await page.locator('.cell.stamped').count(),2);assert.equal(await page.locator('#bag-count').textContent(),'23');
  await page.locator('#bag').click();
  for(let n=1;n<=8;n++)assert.ok(!(await page.locator(`#bag-grid [data-number="${n}"]`).getAttribute('class')).includes('played-ball'));
  assert.ok((await page.locator('#bag-grid [data-number="25"]').getAttribute('class')).includes('played-ball'));
  assert.equal(await page.locator('#bag-grid [data-number="1"] .face').textContent(),'X');assert.equal(await page.locator('#bag-grid [data-number="4"] .face').textContent(),'16');await page.locator('#bag-dialog .close').click();
  const saved=await read();assert.ok(saved.bag.includes(4));assert.ok(!saved.bag.includes(25));saved.offer=[4];saved.destinations={4:7};
- await restore({...saved,stamps:new Set(saved.stamps),bag:new Set(saved.bag)});await ready();assert.equal(await page.locator('#balls .face').textContent(),'16');await page.locator('#balls .ball').focus();await page.keyboard.press('Space');await page.waitForFunction(()=>!document.querySelector('#pause-button').disabled&&document.querySelector('#calls').textContent==='10');
+ await restore({...saved,stamps:new Set(saved.stamps),bag:new Set(saved.bag)});await ready();assert.equal(await page.locator('#balls .face').textContent(),'16');await page.locator('#balls .ball').focus();await page.keyboard.press('Space');await page.waitForFunction(()=>!document.querySelector('#pause-button').disabled&&document.querySelector('#calls').textContent==='13');
  assert.equal(await page.locator('#cell-7 span').textContent(),'16');assert.equal((await read()).played[4],2);
  // Existing scramble upgrades and saved shop offers become Tornado, once.
  const old=newStage(1,12,{25:'dynamite'});delete old.upgradeVersion;old.status='passed';old.bonusPaid=true;old.shopOffer={cards:['single-digits','outer-layer'],balls:['dynamite','x']};

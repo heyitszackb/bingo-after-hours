@@ -1,5 +1,5 @@
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,removeJoker,normalizeJokers,redraw,settleStage,openShop,buyCard,upgradeBall,CARD_TYPES,BALL_UPGRADES,cardType,cardDetails,ballValue,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=8c51d881bc31';
+import {newStage,deal,choose,removeJoker,normalizeJokers,redraw,settleStage,openShop,buyCard,upgradeBall,CARD_TYPES,BALL_UPGRADES,cardType,cardDetails,ballValue,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=d1044d6304fc';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,muted=false,selectedUpgrade=null,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
@@ -12,7 +12,7 @@ function render(){
   $('plasma-pick').hidden=!state.plasmaActive||state.status!=='playing';$('plasma-pick').disabled=busy;
   $('patterns-button').disabled=busy||payingOut;$('score-patterns').disabled=busy||payingOut;
   $('score-patterns').setAttribute('aria-label',`${state.score} of ${state.target} points. View scoring patterns and run counts`);
-  $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);for(const k of ['score','target','calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw').disabled=busy||state.money<1||state.status!=='playing';$('redraw').setAttribute('aria-label',state.money<1?'Reroll costs $1; not enough money':'Reroll for $1 without using a call');renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
+  $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);for(const k of ['score','target','calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw-cost').textContent=state.passes;$('redraw').disabled=busy||state.passes<1||state.status!=='playing';$('redraw').setAttribute('aria-label',`Pass: ${state.passes} remaining. Return this ball and draw a new ball and space without spending a play.`);renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
     const c=$(`cell-${tile}`),offered=Object.values(state.destinations).includes(tile),number=state.stampBalls[tile];
     c.className=`cell paint-grey upgrade-${state.upgrades[number]||'plain'}${state.stamps.has(tile)?' stamped':''}${offered?' offered':''}`;
     c.querySelector('span').textContent=state.stamps.has(tile)?(state.stampValues[tile]??'X'):'';
@@ -214,8 +214,8 @@ function cancelDrag(){
 }
 function renderCalls(calls){
   $('calls').textContent=calls;
-  $('call-dots').innerHTML=Array.from({length:12},(_,i)=>`<i class="${i>=Math.ceil(calls/state.callCapacity*12)?'used':''}"></i>`).join('');
-  document.querySelector('.call-meter').setAttribute('aria-label',`${calls} calls remaining`);
+  $('call-dots').innerHTML=Array.from({length:15},(_,i)=>`<i class="${i>=Math.ceil(calls/state.callCapacity*15)?'used':''}"></i>`).join('');
+  document.querySelector('.call-meter').setAttribute('aria-label',`${calls} plays remaining`);
 }
 function scoreCrunch(step=0,finish=false){
   if(muted||reduced||!audio)return;
@@ -270,7 +270,7 @@ async function activateSpaces(result){
       const bonusCard=document.querySelector(`[data-joker="${bonus.joker}"]`);
       if(bonusCard){
         bonusCard.scrollIntoView({block:'nearest',inline:'nearest',behavior:reduced?'instant':'smooth'});
-        bonusCard.classList.add('scoring-card');bonusCard.dataset.payout=bonus.calls!==undefined?(bonus.calls?'+1 CALL':'12 MAX'):`+${bonus.points}`;bonusCard.style.setProperty('--scoring-color','#f4c66c');
+        bonusCard.classList.add('scoring-card');bonusCard.dataset.payout=bonus.calls!==undefined?(bonus.calls?'+1 PLAY':'15 MAX'):`+${bonus.points}`;bonusCard.style.setProperty('--scoring-color','#f4c66c');
         sound('activate',index+4);scoreCrunch(4);navigator.vibrate?.(12);
         await animate(bonusCard,[{transform:'scale(1)'},{transform:'translateY(-8px) rotate(-4deg) scale(1.12)',offset:.35},{transform:'translateY(-4px) rotate(2deg) scale(1.05)'}],{duration:230});
         const from=bonusCard.getBoundingClientRect(),spark=document.createElement('i');spark.className='score-spark';spark.style.background='#f4c66c';spark.style.left=`${from.left+from.width/2}px`;spark.style.top=`${from.bottom}px`;$('effects').append(spark);
@@ -278,7 +278,7 @@ async function activateSpaces(result){
       }
       if(bonus.calls!==undefined){
         const meter=document.querySelector('.call-meter'),to=meter.getBoundingClientRect(),token=document.createElement('span');
-        token.className='activation-point call-point';token.textContent=bonus.calls?'+1 CALL':'12 MAX';token.style.left=`${r.left+r.width/2}px`;token.style.top=`${r.top}px`;$('effects').append(token);
+        token.className='activation-point call-point';token.textContent=bonus.calls?'+1 PLAY':'15 MAX';token.style.left=`${r.left+r.width/2}px`;token.style.top=`${r.top}px`;$('effects').append(token);
         await animate(token,[{transform:'translate(-50%,-100%) scale(1.1)',opacity:1},{transform:`translate(calc(-50% + ${to.left+to.width/2-r.left-r.width/2}px),${to.top-r.top}px) scale(.5)`,opacity:0}],{duration:320});token.remove();displayedCalls+=bonus.calls;renderCalls(displayedCalls);
         animate(meter,[{filter:'brightness(1.8)',transform:'scale(1.08)'},{filter:'brightness(1)',transform:'scale(1)'}],{duration:180});
       }
@@ -355,7 +355,7 @@ async function play(n,b,ghost,tile=state.destinations[n]){
     target.classList.add('doubling');sound('activate');
     await animate(target,[{transform:'scale(1)'},{transform:'scale(1.15)',offset:.4},{transform:'scale(1)'}],{duration:180});target.querySelector('span').textContent=change.after;target.classList.remove('doubling');
   }
-  $('announcer').textContent=`${result.upgrade==='x'?'X':n} played. One call used.`;
+  $('announcer').textContent=`${result.upgrade==='x'?'X':n} played. One play used.`;
   if(result.points)await activateSpaces(result);await wait(120);render();refreshBag();
   if(state.status!=='playing'){showResult();return;}await nextDraw();
 }
@@ -438,20 +438,20 @@ async function showResult(){
   let collected=0;
   const flights=[];
   for(let i=0;i<bonus;i++){
-    const dot=$('call-dots').children[Math.min(11,Math.floor((bonus-i-1)/state.callCapacity*12))];
+    const dot=$('call-dots').children[Math.min(14,Math.floor((bonus-i-1)/state.callCapacity*15))];
     flights.push(cashInCall(dot,i,before,()=>++collected));
     renderCalls(bonus-i-1);
     await wait(110);
   }
   await Promise.all(flights);
-  document.querySelector('.call-meter').setAttribute('aria-label',`${bonus} unused calls converted to dollars`);
+  document.querySelector('.call-meter').setAttribute('aria-label',`${bonus} unused plays converted to dollars`);
   sound('score');
-  $('announcer').textContent=`${bonus} unused calls paid $${bonus}. Balance $${state.money}.`;
+  $('announcer').textContent=`${bonus} unused plays paid $${bonus}. Balance $${state.money}.`;
   await wait(250);
   finishResult();
 }
 $('continue').onclick=async()=>{if(payingOut)return;const next=state.status==='passed'&&state.stage<10?state.stage+1:1;state=newStage(next,next===1?5:state.money,next===1?{}:state.upgrades,next===1?{}:state.patternCounts,next===1?undefined:state.jokers);hasRun=true;saveRun();resetResultUI();await nextDraw();};
-$('redraw').onclick=async()=>{if(busy||drag||state.money<1)return;lock();if(!redraw(state)){unlock();return;}saveRun();$('money').textContent=state.money;animate($('money'),[{transform:'scale(1.25)',color:'#fff1c2'},{transform:'scale(1)',color:'#f4c66c'}],{duration:180});sound('roll');document.querySelectorAll('#balls .ball').forEach(b=>b.classList.add('leave'));await wait(480);render();showBalls();await wait(770);unlock();};
+$('redraw').onclick=async()=>{if(busy||drag||state.passes<1)return;lock();if(!redraw(state)){unlock();return;}saveRun();$('redraw-cost').textContent=state.passes;animate($('redraw-cost'),[{transform:'scale(1.3)',color:'#fff1c2'},{transform:'scale(1)',color:'#79ded2'}],{duration:180});sound('roll');document.querySelectorAll('#balls .ball').forEach(b=>b.classList.add('leave'));await wait(480);render();showBalls();await wait(770);unlock();$('announcer').textContent=`Passed. ${state.passes} passes and ${state.calls} plays remaining.`;};
 $('bag').onclick=()=>{hideTooltip();refreshBag();$('bag-dialog').showModal();};$('stages').onclick=showStages;
 $('patterns-button').onclick=showPatterns;$('score-patterns').onclick=showPatterns;
 for(const dialog of document.querySelectorAll('#bag-dialog,#stage-dialog,#help-dialog,#patterns-dialog')){dialog.addEventListener('close',hideTooltip);dialog.querySelector('.close').onclick=()=>dialog.close();dialog.addEventListener('pointerdown',e=>{if(e.target!==dialog)return;const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();});}
@@ -521,9 +521,12 @@ function loadRun(){
     if(!Number.isInteger(saved.stage)||saved.stage<1||saved.stage>10||!numbers(saved.stamps)||!numbers(saved.bag)||!numbers(saved.offer)||!saved.offer.every(n=>saved.bag.includes(n))||!Number.isInteger(saved.calls)||saved.calls<0||saved.calls>192||!Number.isInteger(saved.money)||saved.money<0||!Number.isInteger(saved.score)||saved.score<0||!['playing','passed','over'].includes(saved.status)||!Array.isArray(saved.played)||saved.played.length!==26)throw new Error('Invalid save');
     const old=saved.rulesVersion!==3;
     delete saved.paints;delete saved.goldSeals;
-    saved.calls=Math.min(saved.calls,12);saved.callCapacity=12;
+    const oldTurn=saved.turnVersion!==1;
+    if(oldTurn){if(saved.status==='playing')saved.calls=Math.max(0,15-Math.max(0,(saved.callCapacity??12)-saved.calls));saved.passes=10;}
+    saved.calls=Math.min(saved.calls,15);saved.callCapacity=15;saved.turnVersion=1;
+    if(!Number.isInteger(saved.passes)||saved.passes<0||saved.passes>10)throw new Error('Invalid passes');
     saved.plasmaPending=saved.plasmaPending===true;saved.plasmaActive=saved.plasmaActive===true;
-    if(!Number.isInteger(saved.callCapacity)||saved.callCapacity<12||saved.callCapacity>192||saved.calls>saved.callCapacity)throw new Error('Invalid call capacity');
+    if(!Number.isInteger(saved.callCapacity)||saved.callCapacity<15||saved.callCapacity>192||saved.calls>saved.callCapacity)throw new Error('Invalid call capacity');
     if(old){
       saved.upgrades={};saved.shopOffer=null;
       saved.jokers=normalizeJokers(saved.jokers).filter(id=>id==='bingo');
@@ -553,6 +556,7 @@ function loadRun(){
       if(Object.keys(destinations).length!==saved.offer.length||!(saved.plasmaActive?Object.values(destinations).every(n=>Number.isInteger(n)&&n>=1&&n<=25)&&new Set(Object.values(destinations)).size<=3:numbers(Object.values(destinations)))||!saved.offer.every(n=>destinations[n]&&!saved.stamps.includes(destinations[n])))throw new Error('Invalid destinations');
       state={...newStage(saved.stage,saved.money),...saved,rulesVersion:3,target:STAGE_TARGETS[saved.stage-1],stamps:new Set(saved.stamps),bag:new Set(saved.bag)};
     }
+    if(oldTurn&&state.status==='playing'){state.offer=[];state.destinations={};}
     hasRun=true;
   }catch{try{localStorage.removeItem(SAVE_KEY);}catch{}}
 }

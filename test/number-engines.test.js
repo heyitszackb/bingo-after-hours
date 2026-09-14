@@ -16,10 +16,10 @@ test('Second Wind uses the inclusive five-number range and current values, exclu
  assert.equal(r.points,5);assert.equal(s.calls,2);assert.equal(s.status,'playing');assert.equal(r.callsBeforeBonuses,0);
  assert.deepEqual(r.activations.map(a=>a.bonuses.reduce((v,b)=>v+(b.calls??0),0)),[1,1,0,0,0]);
 });
-test('call bonuses cap at 12 including stacked copies and overlapping lines',()=>{
+test('call bonuses cap at 15 including stacked copies and overlapping lines',()=>{
  const s=newStage(10,5,{}, {},['bingo','call-range:1:1','call-range:1:2']);
  [1,2,3,4].forEach(n=>stamp(s,n,n));const r=place(s,5,5);
- assert.equal(s.calls,12);assert.equal(r.activations.flatMap(a=>a.bonuses).reduce((sum,b)=>sum+b.calls,0),1);
+ assert.equal(s.calls,15);assert.equal(r.activations.flatMap(a=>a.bonuses).reduce((sum,b)=>sum+b.calls,0),1);
  assert.equal(r.activations.flatMap(a=>a.bonuses).length,10);
  // The center stamp restores a call in each of its two newly completed lines.
  const cross=newStage(10,5,{}, {},['bingo','call-range:1:1']);cross.calls=1;
@@ -34,12 +34,12 @@ test('shops have unique card types; ranges roll once per offer, persist on purch
  const next=newStage(2,s.money,s.upgrades,s.patternCounts,s.jokers);assert.equal(cardDetails(next.jokers[2]).start,13);assert.equal(cardDetails(next.jokers[2]).end,17);
  assert.equal(cardDetails('call-range:0'),null);assert.equal(cardDetails('call-range:22'),null);
 });
-test('Plasma reveals three spaces and offers every remaining ball for exactly the next play',()=>{
+test('Plasma reveals one space and offers every remaining ball for exactly the next play',()=>{
  const s=newStage(10,5,{25:'plasma',24:'x'});place(s,25,13);assert.equal(s.plasmaPending,true);assert.equal(s.plasmaActive,false);
- deal(s);assert.equal(s.plasmaPending,false);assert.equal(s.plasmaActive,true);assert.equal(s.offer.length,24);assert.ok(!s.offer.includes(25));assert.equal(new Set(Object.values(s.destinations)).size,3);
+ deal(s);assert.equal(s.plasmaPending,false);assert.equal(s.plasmaActive,true);assert.equal(s.offer.length,24);assert.ok(!s.offer.includes(25));assert.equal(new Set(Object.values(s.destinations)).size,1);
  const calls=s.calls;assert.ok(redraw(s));assert.equal(s.calls,calls);assert.equal(s.plasmaActive,true);assert.equal(s.offer.length,24);
  const locations=[...new Set(Object.values(s.destinations))],unoffered=Array.from({length:25},(_,i)=>i+1).find(t=>t!==13&&!locations.includes(t));
- assert.equal(choose(s,1,unoffered),null);assert.ok(choose(s,1,locations[2]));assert.equal(s.calls,calls-1);assert.equal(s.plasmaActive,false);
- deal(s);assert.equal(s.offer.length,3);assert.equal(new Set(Object.values(s.destinations)).size,3);
+ assert.equal(choose(s,1,unoffered),null);assert.ok(choose(s,1,locations[0]));assert.equal(s.calls,calls-1);assert.equal(s.plasmaActive,false);
+ deal(s);assert.equal(s.offer.length,1);assert.equal(new Set(Object.values(s.destinations)).size,1);
  const next=newStage(2,s.money,s.upgrades,s.patternCounts,s.jokers);assert.equal(next.plasmaPending,false);assert.equal(next.plasmaActive,false);
 });

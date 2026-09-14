@@ -4,10 +4,10 @@ A solo arcade bingo game with a horizontal table, numbered stamps, a bag, and sc
 
 ## Rules
 
-- Each draw offers three available balls and three random empty spaces. Drag any ball toward an offered space; release over the board to use the closest valid space. Drag along the ball track to reorder. Tap a ball, stamp, or card to inspect it.
-- Playing uses one call and removes that ball from the bag until the next stage. Start with 12 calls and $5; in-game rerolls cost $1. Stage targets remain **5, 10, 15, 20, 30, 40, 55, 70, 90, 120**.
+- Each normal draw offers one available ball and one random empty space. Drag the ball onto the board to stamp the highlighted space, or spend a pass to draw again. Passing returns the offered ball to the bag, changes the ball and location when alternatives exist, and spends no money or play. Tap a ball, stamp, or card to inspect it.
+- Playing uses one play and removes that ball from the bag until the next stage. Start with $5. Each round starts with 15 plays and 10 passes. Running out of passes only disables passing; playing remains available. Stage targets remain **5, 10, 15, 20, 30, 40, 55, 70, 90, 120**.
 - Start with Bingo. A completed row, column, or full diagonal scores one base point per tile. Each physical line pays once per stage. All stamps remain until the next stage; shared stamps can activate in another newly completed line. Squares and corners alone do not score.
-- Unused calls pay $1 each after a win, then the shop opens. New stages replenish the bag and calls, and reset stamps and their values. Cards, ball upgrades, money, and run pattern counts carry over.
+- Unused plays pay $1 each after a win, then the shop opens. New stages replenish the bag, 15 plays and 10 passes, and reset stamps and their values. Cards, ball upgrades, money, and run pattern counts carry over.
 
 ## Shop
 
@@ -18,11 +18,11 @@ Keep up to **five purchased cards alongside Bingo**. Copies stack and activate s
 - **Single Digits:** +1 when a stamp showing 1–9 scores.
 - **Outer Layer:** +5 when a stamp in any of the 16 outermost spaces scores.
 - **Number Cruncher ($7):** add the stamp’s current numeric value on top of its base point and other bonuses. X adds no numeric bonus. Doubled values count.
-- **Second Wind ($3):** a random inclusive range of five numbers, starting anywhere from 1 through 21, is rolled for each shop offer. Each matching scored stamp restores one call, capped at 12. The bought range persists across stages. Resolve these bonuses before checking for a last-call loss; a stamp can restore calls again through another newly completed line.
+- **Second Wind ($3):** a random inclusive range of five numbers, starting anywhere from 1 through 21, is rolled for each shop offer. Each matching scored stamp restores one play, capped at 15. The bought range persists across stages. Resolve these bonuses before checking for a last-play loss; a stamp can restore plays again through another newly completed line.
 
 Ball upgrades are applied to a chosen ball from all 25. A purchase replaces that ball’s previous upgrade; choosing the same upgrade cannot charge money.
 
-- **Plasma:** the next turn reveals three empty spaces and makes every remaining bag ball available. The track and Plasma picker allow choosing after seeing those spaces. Picking costs nothing; placement uses one call and consumes the effect. Rerolls still cost $1 and retain the choice for that turn. Playing another Plasma can chain the effect; stage transitions reset it.
+- **Plasma:** the next turn reveals one empty space and makes every remaining bag ball available. The track and Plasma picker allow choosing after seeing that space. Picking costs nothing; placement uses one play and consumes the effect. Passing spends a pass, changes the location, and retains the choice until a ball is played. Playing another Plasma can chain the effect; stage transitions reset it.
 - **X:** no numeric value; displays X everywhere and can occupy any empty space. It completes lines and earns positional bonuses, but never qualifies for numeric bonuses or doubling.
 - **Tornado:** on placement, randomly redistribute all placed stamps, including itself, among the 25 board spaces. Identity and current values travel with each stamp. Check the resulting board for unscored lines after the shuffle.
 - **Dynamite:** return every neighboring stamp (all eight surrounding spaces) to the bag before scoring. Dynamite remains placed and unavailable in the bag. Returned balls retain upgrades and current values and can be drawn again. Play counts remain historical; bag availability is tracked separately.
@@ -36,6 +36,7 @@ Paints and the former free Single Digits card are removed when migrating older s
 
 Browser checks require local Chrome and the installed Playwright dependency. Set `GAME_URL` to verify deployment:
 
+- `node scripts/pass-play-check.mjs`: single draws, pass costs and exhaustion, playing after passes run out, round refill, old-save migration, and mobile layouts. Set `REAL_MOTION=1` to check full animations.
 - `node scripts/upgrade-shop-check.mjs`: purchases, responsive shop, five-card limit, touch trash, X placement, Doubler values, Tornado identity/value preservation, saves, and migration.
 - `node scripts/number-engines-check.mjs`: new joker pricing, fixed ranges across reload/stage changes, call and point activations, Plasma choice and reload, drag placement, and mobile layouts. Set `REAL_MOTION=1` to check full animations.
 - `node scripts/dynamite-check.mjs`: return flights, bag availability, replay values, and Tornado migration.
@@ -44,3 +45,5 @@ Browser checks require local Chrome and the installed Playwright dependency. Set
 Run `python3 scripts/version-assets.py` before committing to fingerprint browser resources. GitHub Pages publishes the root of `main`.
 
 Existing scramble upgrades and saved scramble shop offers migrate from Dynamite to Tornado. Dynamite is a separate ball upgrade.
+
+Old three-ball saves migrate to single draws and receive 10 passes; active rounds keep the number of plays already used against the new 15-play allowance. Finished-round payouts are preserved.
