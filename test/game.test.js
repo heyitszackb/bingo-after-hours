@@ -41,7 +41,7 @@ test('stages retain money but reset all placements and replenish balls',()=>{
 });
 test('empty shop offers cannot consume money or grant effects',()=>{
  const s=newStage(1,20);assert.equal(openShop(s),false);s.status='passed';settleStage(s);assert.ok(openShop(s));
- assert.deepEqual(s.shopOffer,{cards:[null,null],balls:[null,null]});const cash=s.money;
+ assert.deepEqual(s.shopOffer,{cards:[null,null],balls:[null,null],items:['bomb']});const cash=s.money;
  assert.equal(buyCard(s,0),false);assert.equal(upgradeBall(s,0,1),false);assert.equal(redrawShop(s),false);assert.equal(s.money,cash);
  s.stage=10;assert.equal(openShop(s),false);
 });

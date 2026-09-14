@@ -22,20 +22,23 @@ export const isRuleCard=id=>Object.hasOwn(RULE_CARDS,id);
 // Add new definitions here as the shop grows. Empty slots cannot be purchased.
 export const CARD_TYPES={};
 export const BALL_UPGRADES={};
+export const ITEM_TYPES={bomb:{name:'Bomb',text:'After scoring, destroy this bomb and all items in the 8 neighboring spaces for the rest of the run.',price:0}};
+export const isBomb=(state,id)=>state.items?.[id]==='bomb';
 export const cardType=id=>id.split(':')[0];
 export function cardDetails(id){
   if(typeof id!=='string')return null;
   const type=cardType(id),base=RULE_CARDS[id]||CARD_TYPES[type];if(!base)return null;
-  return {...base,price:base.price??3};
+  return {...base,price:0};
 }
 export const normalizeJokers=jokers=>{
   if(!Array.isArray(jokers))return ['bingo','face-value'];
   const cards=[...new Set(jokers.filter(id=>typeof id==='string'&&CARD_TYPES[cardType(id)]&&cardDetails(id)))].slice(0,5);
   return [...(jokers.some(id=>['bingo','row','column','diagonal'].includes(id))?['bingo']:[]),...(jokers.includes('face-value')?['face-value']:[]),...cards];
 };
-export const ballValue=(state,number)=>state.ballValues?.[number]??number;
-export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['bingo','face-value']) {
-  return {shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:15,shopOffer:null,stage,target:targetFor(stage),score:0,calls:15,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
+export const ballValue=(state,number)=>isBomb(state,number)?null:(state.ballValues?.[number]??number);
+export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['bingo','face-value'],inventory=null) {
+  const collection=inventory?[...inventory.collection]:Array.from({length:25},(_,i)=>i+1),items={...inventory?.items},nextItemId=inventory?.nextItemId??26;
+  return {inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:15,shopOffer:null,stage,target:targetFor(stage),score:0,calls:15,money,bonusPaid:false,stamps:new Set(),bag:new Set(collection),played:Array(nextItemId).fill(0),status:collection.length?'playing':'over',offer:[]};
 }
 const shuffled=(values,random)=>{
   const result=[...values];for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;
@@ -50,11 +53,11 @@ export function deal(state,random=Math.random,count=1){
 export function draw(state=newStage(),random=Math.random,count=1) {
   const bag=[...state.bag];
   for(let i=bag.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}
-  return bag.slice(0,Math.min(count,25));
+  return bag.slice(0,Math.min(count,bag.length));
 }
 export function choose(state,number,tile=state.destinations[number],random=Math.random) {
   if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||!Object.values(state.destinations).includes(tile)||tile<1||tile>25||state.stamps.has(tile))return null;
-  state.stamps.add(tile);state.stampBalls[tile]=number;state.stampValues[tile]=ballValue(state,number);state.bag.delete(number);state.played[number]++;state.calls--;
+  state.stamps.add(tile);state.stampBalls[tile]=number;state.stampValues[tile]=ballValue(state,number);state.bag.delete(number);state.played[number]=(state.played[number]||0)+1;state.calls--;
   const callsBeforeBonuses=state.calls;
   const scoredPatterns=completedPatterns(state.stamps).filter(p=>!state.scoredLines.includes(p.id)&&p.tiles.includes(tile)&&state.jokers.includes('bingo'));
   const patterns=scoredPatterns.map(p=>p.tiles);
@@ -68,10 +71,23 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
     return {tile,number,basePoints,bonuses,contributions,points:basePoints+bonuses.reduce((sum,b)=>sum+b.points,0),trigger:'bingo',type:scoredPatterns[i].type,pattern:j===0?pattern:null};
   }));
   const points=activations.reduce((sum,a)=>sum+a.points,0);state.score+=points;
+  // Snapshot scoring before removing any items: the UI plays these phases in order.
+  const scoringBoard=isBomb(state,number)?{stamps:new Set(state.stamps),stampBalls:{...state.stampBalls},stampValues:{...state.stampValues}}:null;
+  const destroyed=[];
+  if(isBomb(state,number)){
+    const row=Math.floor((tile-1)/5),col=(tile-1)%5;
+    for(const occupied of [...state.stamps]){
+      if(Math.abs(Math.floor((occupied-1)/5)-row)>1||Math.abs((occupied-1)%5-col)>1)continue;
+      const id=state.stampBalls[occupied];destroyed.push({tile:occupied,id,value:state.stampValues[occupied]});
+      state.collection=state.collection.filter(n=>n!==id);state.bag.delete(id);
+      state.stamps.delete(occupied);delete state.stampBalls[occupied];delete state.stampValues[occupied];delete state.ballValues[id];delete state.upgrades[id];
+    }
+  }
+
   state.offer=[];state.destinations={};
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
-  return {tile,callsBeforeBonuses,patterns,scoredPatterns,activations,points};
+  return {tile,scoringBoard,destroyed,callsBeforeBonuses,patterns,scoredPatterns,activations,points};
 }
 export function redraw(state,random=Math.random) {
   if(state.status!=='playing'||state.passes<1||!state.offer.length)return false;
@@ -96,23 +112,27 @@ export function settleStage(state){
 
 export function openShop(state,random=Math.random){
   if(state.status!=='passed'||!state.bonusPaid||state.stage>=10)return false;
-  state.shopOffer??=Object.fromEntries([['cards',CARD_TYPES],['balls',BALL_UPGRADES]].map(([kind,catalog])=>{const choices=shuffled(Object.keys(catalog),random);return [kind,[choices[0]??null,choices[1]??null]];}));return true;
+  state.shopOffer??=Object.fromEntries([['cards',CARD_TYPES],['balls',BALL_UPGRADES]].map(([kind,catalog])=>{const choices=shuffled(Object.keys(catalog),random);return [kind,[choices[0]??null,choices[1]??null]];}));state.shopOffer.items??=['bomb'];return true;
+}
+export function buyItem(state,type){
+  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!Object.hasOwn(ITEM_TYPES,type)||!state.shopOffer?.items?.includes(type))return false;
+  const id=state.nextItemId++;state.items[id]=type;state.collection.push(id);state.bag.add(id);state.played[id]=0;return id;
 }
 export function buyCard(state,index){
   const type=state.shopOffer?.cards[index],item=cardDetails(type);
-  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!item||!CARD_TYPES[cardType(type)]||state.money<item.price||state.jokers.filter(id=>!isRuleCard(id)).length>=5)return false;
+  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!item||!CARD_TYPES[cardType(type)]||state.jokers.filter(id=>!isRuleCard(id)).length>=5)return false;
   let serial=1;while(state.jokers.includes(`${type}:${serial}`))serial++;
-  state.jokers.push(`${type}:${serial}`);state.shopOffer.cards[index]=null;state.money-=item.price;return true;
+  state.jokers.push(`${type}:${serial}`);state.shopOffer.cards[index]=null;return true;
 }
 export function upgradeBall(state,index,number){
   const type=state.shopOffer?.balls[index];
-  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!BALL_UPGRADES[type]||!Number.isInteger(number)||number<1||number>25||state.money<3||state.upgrades[number]===type)return false;
-  state.upgrades[number]=type;state.shopOffer.balls[index]=null;state.money-=3;return true;
+  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!BALL_UPGRADES[type]||!Number.isInteger(number)||number<1||number>25||state.upgrades[number]===type)return false;
+  state.upgrades[number]=type;state.shopOffer.balls[index]=null;return true;
 }
 export function redrawShop(state,random=Math.random){
   if(!Object.keys(CARD_TYPES).length&&!Object.keys(BALL_UPGRADES).length)return false;
-  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!state.shopOffer||state.money<2)return false;
-  state.money-=2;state.shopOffer=null;return openShop(state,random);
+  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!state.shopOffer)return false;
+  state.shopOffer=null;return openShop(state,random);
 }
 
 export function removeJoker(state,type){
@@ -131,4 +151,9 @@ export function migrateShop(state){
   state.destinations=Object.fromEntries(state.offer.map(n=>[n,state.destinations?.[n]]));
   delete state.plasmaPending;delete state.plasmaActive;
   state.shopVersion=1;
+}
+
+export function migrateInventory(state){
+  if(state.inventoryVersion===1)return;
+  state.collection=Array.from({length:25},(_,i)=>i+1);state.items={};state.nextItemId=26;state.inventoryVersion=1;
 }
