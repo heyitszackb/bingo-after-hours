@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newStage as startingStage,draw,deal,choose,redraw,PATTERNS,settleStage,STAGE_TARGETS,openShop,buyCard,upgradeBall,redrawShop,cardDetails} from '../game.js';
+import {newStage as startingStage,draw,deal,choose,redraw,PATTERNS,settleStage,STAGE_TARGETS,openShop,buyCard,upgradeBall,redrawShop} from '../game.js';
 // These fixtures isolate line and value rules from the optional Single Digits bonus.
 const newStage=(stage,money,upgrades,counts,jokers=['bingo','face-value'])=>startingStage(stage,money,upgrades,counts,jokers);
 const place=(s,ball,tile)=>{s.offer=[ball];s.destinations={[ball]:tile};return choose(s,ball);};
@@ -36,13 +36,12 @@ test('last-call win takes precedence over failure and settles exactly once',()=>
  const f=newStage();f.calls=1;place(f,2,8);assert.equal(f.status,'over');assert.equal(settleStage(f),0);
  const win=newStage();win.status='passed';win.calls=7;assert.equal(settleStage(win),7);assert.equal(win.money,12);assert.equal(settleStage(win),0);
 });
-test('stages retain upgrades and money but reset all placements and replenish balls',()=>{
- const s=newStage(1,12,{25:'doubler'});place(s,25,1);const next=newStage(2,s.money,s.upgrades);assert.equal(next.money,12);assert.deepEqual(next.upgrades,{25:'doubler'});assert.equal(next.stamps.size,0);assert.deepEqual(next.stampBalls,{});assert.equal(next.bag.size,25);assert.equal(next.calls,15);assert.deepEqual(STAGE_TARGETS,[5,10,15,20,30,40,55,70,90,120]);
+test('stages retain money but reset all placements and replenish balls',()=>{
+ const s=newStage(1,12,{25:'doubler'});place(s,25,1);const next=newStage(2,s.money,s.upgrades);assert.equal(next.money,12);assert.deepEqual(next.upgrades,{});assert.equal(next.stamps.size,0);assert.deepEqual(next.stampBalls,{});assert.equal(next.bag.size,25);assert.equal(next.calls,15);assert.deepEqual(STAGE_TARGETS,[5,10,15,20,30,40,55,70,90,120]);
 });
-test('shop has two cards and two distinct upgrades, sold offers cannot be reused, rerolls cost two',()=>{
+test('empty shop offers cannot consume money or grant effects',()=>{
  const s=newStage(1,20);assert.equal(openShop(s),false);s.status='passed';settleStage(s);assert.ok(openShop(s));
- assert.equal(s.shopOffer.cards.length,2);assert.equal(s.shopOffer.balls.length,2);assert.equal(new Set(s.shopOffer.balls).size,2);
- const cash=s.money,price=cardDetails(s.shopOffer.cards[0]).price;assert.ok(buyCard(s,0));assert.equal(s.money,cash-price);assert.equal(buyCard(s,0),false);
- assert.ok(upgradeBall(s,0,1));assert.equal(upgradeBall(s,0,2),false);assert.ok(redrawShop(s));assert.equal(s.money,cash-price-5);
- s.money=1;assert.equal(redrawShop(s),false);assert.equal(buyCard(s,1),false);s.stage=10;assert.equal(openShop(s),false);
+ assert.deepEqual(s.shopOffer,{cards:[null,null],balls:[null,null]});const cash=s.money;
+ assert.equal(buyCard(s,0),false);assert.equal(upgradeBall(s,0,1),false);assert.equal(redrawShop(s),false);assert.equal(s.money,cash);
+ s.stage=10;assert.equal(openShop(s),false);
 });

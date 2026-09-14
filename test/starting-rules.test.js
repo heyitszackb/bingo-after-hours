@@ -16,9 +16,9 @@ test('removing Bingo prevents activation, points, and on-score resources',()=>{
  const {s,r}=finish(['face-value','call-range:1:1','single-digits:1']);
  assert.deepEqual(r.activations,[]);assert.equal(r.points,0);assert.equal(s.calls,0);assert.equal(s.patternCounts.row,0);
 });
-test('without Face Value, tiles activate for zero points while non-point effects still work',()=>{
+test('without Face Value, tiles activate for zero points',()=>{
  const {s,r}=finish(['bingo','single-digits:1','outer-layer:1','number-cruncher:1','call-range:1:1']);
- assert.equal(r.activations.length,5);assert.equal(r.points,0);assert.equal(s.score,0);assert.equal(s.patternCounts.row,1);assert.equal(s.calls,3);
+ assert.equal(r.activations.length,5);assert.equal(r.points,0);assert.equal(s.score,0);assert.equal(s.patternCounts.row,1);assert.equal(s.calls,0);
  assert.ok(r.activations.every(a=>a.basePoints===0&&a.contributions.every(c=>c.calls!==undefined)));
  assert.deepEqual(s.scoredLines,['row-1']);
 });
