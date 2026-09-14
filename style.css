@@ -517,3 +517,8 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .ball.question-item{filter:sepia(.3)}.question-art{background:url('assets/stamp.svg?v=ff2fb538bdcb') center/contain no-repeat;font-size:30px;color:#233b37}
 
 .joker-square{background:#ddd0e6;border-color:#a18eae}.joker-corners{background:#ecd9b3;border-color:#b99a63}
+/* Familiar overlapping pages, consistent at every Copier size. */
+.copy-mark{display:inline-block;width:1em;height:1em;min-width:14px;min-height:14px;vertical-align:middle;font-size:inherit;font-weight:400;background:url('assets/copy.svg?v=14414f81968a') center/contain no-repeat;color:transparent;overflow:hidden;text-indent:-999px}
+.cell .board-ink{display:flex;align-items:center;justify-content:center;gap:2px;flex-wrap:wrap}.cell.stamped .board-ink{display:block}
+.ball.copier-item .face,.cabinet:not(.shopping)>.draw-area .ball.copier-item .face{font-size:0!important;background:transparent url('assets/copy.svg?v=14414f81968a') center/70% no-repeat}
+#shop-shelf .copier-art{font-size:0;background:#dbcaa0 url('assets/copy.svg?v=14414f81968a') center/80% no-repeat}
