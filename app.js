@@ -3,9 +3,12 @@ import {pulseBackground} from './background.js?v=64709a33df06';
 import {newStage,deal,choose,migrateShop,migrateInventory,buyCard,isRuleCard,buyItem,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openShop,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=fbc1167c0fb2';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
-const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
+// One tempo for animation and sequencing keeps effects and input locks aligned.
+const motionScale=.4;
+document.documentElement.style.setProperty('--motion-scale',motionScale);
+const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms*motionScale));
 const signed=n=>n>=0?`+${n}`:String(n);
-const animate=(el,frames,options)=>el.animate(frames,{...options,duration:reduced?1:options.duration}).finished.catch(()=>{});
+const animate=(el,frames,options)=>el.animate(frames,{...options,duration:reduced?1:options.duration*motionScale}).finished.catch(()=>{});
 function burst(rect,scoring=false){if(reduced)return;for(let i=0;i<(scoring?28:12);i++){const p=document.createElement('i');p.className='particle';p.style.left=`${rect.left+rect.width/2}px`;p.style.top=`${rect.top+rect.height/2}px`;p.style.background=scoring?'#f4c66c':i%2?'#a9b7b8':'#e4e9dd';$('effects').append(p);const angle=Math.random()*Math.PI*2,d=25+Math.random()*(scoring?150:65);animate(p,[{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+25}px) scale(0)`,opacity:0}],{duration:450+Math.random()*250,easing:'cubic-bezier(.1,.7,.3,1)'}).then(()=>p.remove());}}
 for(let n=1;n<=25;n++){const c=document.createElement('button');c.type='button';c.id=`cell-${n}`;c.className='cell';c.innerHTML='<span></span>';c.onclick=()=>{if(!busy&&!drag)inspectSpace(n);};$('board').append(c);}
 function renderScore(value=state.score){
