@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=92cb7888efd1';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=fdff12d501e4';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=daef230b8f4a';
+import {newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=b6fe4d164b10';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 // One tempo for animation and sequencing keeps effects and input locks aligned.
@@ -27,7 +27,7 @@ function render(boardState=state){
     const c=$(`cell-${tile}`),offered=Object.values(state.destinations).includes(tile),number=boardState.stampBalls[tile];
     c.className=`cell paint-grey upgrade-${state.upgrades[number]||'plain'}${itemClass(number)}${boardState.stamps.has(tile)?' stamped':''}${offered?' offered':''}`;
     c.querySelector('span').textContent=boardState.stamps.has(tile)?(boardState.stampValues[tile]??(state.items[number]==='question'?'?':'')):'';
-    const multiplier=state.tileMultipliers?.[tile]||1;c.querySelector('.board-ink').textContent=[state.tileCopiers?.[tile]?'▣':'',...tileStampList(state,tile).filter(t=>t.startsWith('plus')).map(t=>'+'+t.slice(4)),multiplier>1?`×${multiplier}`:''].filter(Boolean).join(' ');c.classList.toggle('inked',tileStampList(state,tile).length>0);
+    const multiplier=state.tileMultipliers?.[tile]||1;c.querySelector('.board-ink').textContent=[...tileStampList(state,tile).filter(t=>t==='copier').map(()=>'▣'),...tileStampList(state,tile).filter(t=>t.startsWith('plus')).map(t=>'+'+t.slice(4)),multiplier>1?`×${multiplier}`:''].filter(Boolean).join(' ');c.classList.toggle('inked',tileStampList(state,tile).length>0);
     c.classList.toggle('large-value',String(boardState.stampValues[tile]).length>2);
     c.setAttribute('aria-label',`Row ${Math.floor((tile-1)/5)+1}, column ${(tile-1)%5+1}${boardState.stamps.has(tile)?`, stamped ${boardState.stampValues[tile]??pieceLabel(number)}`:offered?', available for any drawn ball':', empty'}. ${multiplier>1?`Tile multiplier ×${multiplier}. `:''}Scoring is determined by your active cards.`);
   }}

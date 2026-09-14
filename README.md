@@ -98,7 +98,7 @@ Tile multipliers persist between rounds and reloads, survive Bomb explosions, an
 `node scripts/tile-stamps-check.mjs` checks ink visuals, consumption, reload/round persistence, scoring animation, rewards, and Debug support; add `REAL_MOTION=1` to check full animation timing.
 
 ### Copier Stamp
-A free shop/Debug stamp that permanently marks an empty tile with ▣, costs one play, and consumes itself. Every subsequent item placed there adds one independent exact copy to the bag before placement effects. The first Copier application does not copy itself. Additional Copier stamps do not stack extra copy counts, but an existing Copier can copy a new stamp before that stamp is consumed.
+A free shop/Debug stamp that permanently marks an empty tile with ▣, costs one play, and consumes itself. Every subsequent item placed there adds one independent exact copy to the bag before placement effects. The first Copier application does not copy itself. Each additional Copier adds one copy on future placements, and existing Copiers copy an incoming stamp before it is consumed.
 
 Copies retain item type, custom base value and permanent modifiers; numbered copies receive explicit values independent of their new physical IDs. Copied dice remain dice and roll on their own placement. A Bomb's bag copy survives the original's explosion. Copies are immediately drawable and persist across rounds. Copier ink coexists with multiplier ink, survives explosions and round resets, and resets on a new run or fresh Debug board. Passing, scoring and bag insertion itself never trigger copying.
 
@@ -118,3 +118,5 @@ Each tile records its individual stamps and accepts up to four. A fifth placemen
 
 ### Question Mark
 Question Mark is a numberless shop/Debug item displayed as ?. On scoring, it swaps with one random non-question item still in the bag; stamps are excluded. The physical replacement leaves the bag and the Question Mark returns to it. Each reveal updates the pool immediately, so multiple Question Marks cannot duplicate a scarce item. No eligible item means it remains ?. The replacement scores using its current value; a die rolls to establish its value. Reveal is not placement, so placement powers do not fire. An offered item taken by a manual scoring activation is replaced by a fresh draw afterward. `node scripts/question-check.mjs` covers swapping, shortages, display, persistence and rewards.
+
+Copier ink now displays one ▣ per installed Copier so stacking is visible directly on the board. `node scripts/copier-stack-check.mjs` verifies a second Copier applies and is copied, then a multiplier stamp applies and creates two bag copies.
