@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=8ea77a707573';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=64363ea1fcca';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,migrateShop,migrateInventory,buyCard,isRuleCard,buyItem,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openShop,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=51c6796c7d59';
+import {newStage,deal,choose,migrateShop,migrateInventory,buyCard,isRuleCard,buyItem,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openShop,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=fbc1167c0fb2';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
@@ -85,7 +85,7 @@ function renderJokers(){
 function overTrash(x,y){const r=$('joker-trash').getBoundingClientRect();return x>=r.left-12&&x<=r.right+12&&y>=r.top-12&&y<=r.bottom+12;}
 function cancelJokerDrag(removeGhost=true){if(!jokerDrag)return;const d=jokerDrag;jokerDrag=null;if(removeGhost){const rack=$('joker-rack');for(const id of d.originalOrder){const c=rack.querySelector(`[data-joker="${id}"]`);if(c)rack.insertBefore(c,rack.querySelector('.joker-slot'));}}d.card.classList.remove('held');if(removeGhost)d.ghost?.remove();$('joker-trash').hidden=true;$('joker-trash').classList.remove('ready');if(d.card.hasPointerCapture(d.pointer))d.card.releasePointerCapture(d.pointer);}
 
-const itemClass=n=>isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':'';
+const itemClass=n=>isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':state.items[n]==='seed'?' seed-item':'';
 const pieceLabel=n=>state.items[n]?`${ITEM_TYPES[state.items[n]].name}${ballValue(state,n)!==null?` (${ballValue(state,n)})`:''}`:ballValue(state,n)??'';
 const pieceFace=n=>isDie(state,n)?'?':ballValue(state,n)??'';
 function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)}`;b.classList.toggle('large-value',String(pieceFace(n)).length>2);b.dataset.number=n;b.innerHTML=`<span class="face">${pieceFace(n)}</span>`;b.setAttribute('aria-label',`Inspect ${pieceLabel(n)}`);return b;}
@@ -408,7 +408,7 @@ async function explodeBomb(result){
       const angle=Math.atan2(rect.top-r.top,rect.left-r.left)+(i-2.5)*.45,d=30+Math.random()*70;
       fragments.push(animate(chip,[{transform:'scale(1.3)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+20}px) rotate(${i*65}deg) scale(.2)`,opacity:0}],{duration:360+i*20,easing:'cubic-bezier(.1,.65,.2,1)'}).then(()=>chip.remove()));
     }}
-    cell.classList.remove('stamped','bomb-item','die-item','hundred-item','rock-item','just-stamped');cell.querySelector('span').textContent='';
+    cell.classList.remove('stamped','bomb-item','die-item','hundred-item','rock-item','seed-item','just-stamped');cell.querySelector('span').textContent='';
   }
   if(!reduced){
     const ring=document.createElement('i');ring.className='bomb-wave';ring.style.left=`${r.left+r.width/2}px`;ring.style.top=`${r.top+r.height/2}px`;ring.style.width=`${r.width*2.6}px`;ring.style.height=`${r.height*2.6}px`;$('effects').append(ring);
@@ -430,7 +430,8 @@ async function animateValueChanges(result){
   try{
     pulseBackground();
     await animate(source,reduced?[{opacity:.7},{opacity:1}]:[{transform:'scale(1)'},{transform:'scale(.94)',offset:.2},{transform:'scale(1.13) rotate(-3deg)',offset:.5},{transform:'scale(1)'}],{duration:300});
-    await Promise.all(changes.map(async(change,index)=>{
+    await Promise.all([...new Set(changes.map(c=>c.tile))].map(async(tile,index)=>{
+      for(const change of changes.filter(c=>c.tile===tile)){
       const cell=$(`cell-${change.tile}`),face=cell.querySelector('span'),color=change.delta<0?'#ffaf94':'#99e6bb';
       await wait(index*65);await scoreLink(source,cell,color);
       cell.style.setProperty('--value-color',color);cell.classList.add('value-changing');
@@ -443,6 +444,7 @@ async function animateValueChanges(result){
         await animate(face,reduced?[{opacity:.3},{opacity:1}]:[{transform:'rotate(-12deg) translateY(-9px) scale(1.25)',opacity:0},{transform:'rotate(-12deg) translateY(0) scale(1.15)',opacity:1,offset:.4},{transform:'rotate(-12deg) scale(1)',opacity:1}],{duration:230,easing:'cubic-bezier(.15,.8,.3,1)'});
         await animate(badge,[{transform:'translate(-50%,-100%) scale(1)',opacity:1},{transform:'translate(-50%,-145%) scale(.85)',opacity:0}],{duration:200});
       }finally{badge.remove();face.textContent=change.after;cell.classList.remove('value-changing');delete cell.dataset.valueAfter;}
+      }
     }));
     await wait(180);
   }finally{board.classList.remove('value-effects');source.classList.remove('effect-source');targets.forEach(cell=>cell.classList.remove('value-target'));}
@@ -612,7 +614,7 @@ function renderShop(){
     const owned=isCard?state.jokers.filter(id=>cardType(id)===type).length:state.collection.filter(id=>state.items[id]===type).length;
     const action=sold?'ADDED':isCard&&full?'5 / 5 CARDS':isCard?'FREE · ADD CARD':'FREE · ADD TO BAG';
     card.disabled=busy||sold||(isCard&&full);card.setAttribute('aria-label',`${item.name}. ${item.text} ${action}. ${owned} owned.`);
-    const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='hundred'?'<i class="hundred-art" aria-hidden="true">100</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='d20'?'?':''}</i>`;
+    const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='hundred'?'<i class="hundred-art" aria-hidden="true">100</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='d20'?'?':type==='seed'?'1':''}</i>`;
     card.innerHTML=`<small class="product-kind">${isCard?'CARD':'BAG PIECE'}</small><strong class="product-name">${item.name.toUpperCase()}</strong>${art}<span class="product-description">${item.text}</span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span><b class="product-action">${action}</b>`;
     card.onclick=()=>{
       if(busy)return;const added=isCard?buyCard(state,index):buyItem(state,type);if(added===false)return;

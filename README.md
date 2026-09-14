@@ -71,3 +71,8 @@ Drag the cards above the board to reorder them; nearby cards slide aside to prev
 Encore is a free shop card that retriggers the card immediately to its right. It repeats Bingo/High Five scoring groups or Face Value contributions per tile. Rightward Encore chains are finite; a rightmost Encore does nothing. Each replay animates Encore, then its target card. Physical Bingo history still counts each completed line once.
 
 Checks: `node scripts/encore-check.mjs` (optional `REAL_MOTION=1`) covers reordering, saved order, replay animations, removal, and shop purchase.
+
+### Seed
+Seed is a free, repeatable shop bag piece, also available in the Debug bag editor. It starts at 1 and spends one play when placed. Each subsequent piece played grows every Seed already on the board by +1, including free Rocks and other Seeds. Passing, scoring, and Encore replays do not grow Seeds. Growth is permanent across rounds and resolves before scoring (after the 100 Ball's reductions and before a Bomb explodes). High Five checks the placed Seed's current value. Destroyed Seeds leave the collection normally.
+
+Growth uses the shared signed-value animation, with green +1 badges. Multiple changes to the same space animate sequentially so a 100 Ball's -1 and a Seed's +1 remain legible. `node scripts/seed-check.mjs` checks shop, art, growth/scoring order, persistence and debug values; `REAL_MOTION=1` runs full animations.

@@ -467,3 +467,10 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .rock-art{background:url('assets/rock.svg?v=2f6d52f9e4ab') center/contain no-repeat;image-rendering:pixelated}.play-cue.free-play>span{color:#b9e9b0}
 
 .joker-encore{background:#ded0f3;border-color:#9872bb}.joker-encore .digits-art{color:#69408d}.joker-card{cursor:grab}.joker-card.held{cursor:grabbing}
+
+/* Seeds retain a readable value inside a small pixel sprout. */
+.ball.seed-item{background:transparent url('assets/seed.svg?v=936b413ef8a5') center/contain no-repeat!important;border:0;box-shadow:none;border-radius:0;image-rendering:pixelated}
+.ball.seed-item:before,.ball.seed-item:after{display:none}.ball.seed-item .face{background:transparent;box-shadow:none;border:0;transform:translateY(16%);font-size:calc(var(--size)*.29);color:#254531}
+.cell.stamped.seed-item:before{background:transparent url('assets/seed.svg?v=936b413ef8a5') center/contain no-repeat!important;width:96%;height:96%;border:0;box-shadow:none;border-radius:0;transform:none;image-rendering:pixelated}
+.cell.seed-item>span{color:#254531;top:13%;font-size:clamp(18px,3.2dvh,29px)}
+.seed-art{display:grid;place-items:center;padding-top:22px;font-style:normal;font-size:25px;color:#254531;background:url('assets/seed.svg?v=936b413ef8a5') center/contain no-repeat;image-rendering:pixelated}

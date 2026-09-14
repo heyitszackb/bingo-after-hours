@@ -22,7 +22,7 @@ export const isRuleCard=id=>Object.hasOwn(RULE_CARDS,id);
 // Add new definitions here as the shop grows. Empty slots cannot be purchased.
 export const CARD_TYPES={encore:{name:'Encore',text:'Retrigger the card immediately to the right. No effect without a card to its right.',icon:'↻',short:'Retrigger right →'},'high-five':{name:'High Five',text:'Play a 1–5, including a die roll, to score it and its occupied orthogonal neighbors.',icon:'✚',short:'Play 1–5: score ✚'}};
 export const BALL_UPGRADES={};
-export const ITEM_TYPES={bomb:{name:'Bomb',text:'On placement, destroy this bomb and all items in the 8 neighboring spaces for the rest of the run.',price:0},d20:{name:'20-Sided Die',text:'Roll 1–20 when placed. Keep that number on this space for the round.',price:0},hundred:{name:'100 Ball',text:'Before scoring, permanently reduce occupied orthogonal neighbors by 1. Starts at 100.',price:0},rock:{name:'Rock',text:'Costs no play to place. Fills a space for combos, but has no number and scores 0 points.',price:0}};
+export const ITEM_TYPES={seed:{name:'Seed',text:'Starts at 1. While on the board, permanently gains +1 whenever you play another piece, before scoring.',price:0},bomb:{name:'Bomb',text:'On placement, destroy this bomb and all items in the 8 neighboring spaces for the rest of the run.',price:0},d20:{name:'20-Sided Die',text:'Roll 1–20 when placed. Keep that number on this space for the round.',price:0},hundred:{name:'100 Ball',text:'Before scoring, permanently reduce occupied orthogonal neighbors by 1. Starts at 100.',price:0},rock:{name:'Rock',text:'Costs no play to place. Fills a space for combos, but has no number and scores 0 points.',price:0}};
 export const isRock=(state,id)=>state.items?.[id]==='rock';
 export const isDie=(state,id)=>state.items?.[id]==='d20';
 export const isBomb=(state,id)=>state.items?.[id]==='bomb';
@@ -41,7 +41,7 @@ export const normalizeJokers=jokers=>{
     return CARD_TYPES[cardType(id)]&&cardDetails(id)&&purchased++<5;
   });
 };
-export const ballValue=(state,number)=>number==null||isBomb(state,number)||isDie(state,number)||isRock(state,number)?null:((state.ballValues?.[number]??(state.items?.[number]==='hundred'?100:number))+(state.valueModifiers?.[number]||0));
+export const ballValue=(state,number)=>number==null||isBomb(state,number)||isDie(state,number)||isRock(state,number)?null:((state.ballValues?.[number]??(state.items?.[number]==='hundred'?100:state.items?.[number]==='seed'?1:number))+(state.valueModifiers?.[number]||0));
 const boardSnapshot=state=>({stamps:new Set(state.stamps),stampBalls:{...state.stampBalls},stampValues:{...state.stampValues}});
 export const orthogonalNeighbors=tile=>[tile-5,tile+1,tile+5,tile-1].filter(t=>t>=1&&t<=25&&Math.abs(Math.floor((t-1)/5)-Math.floor((tile-1)/5))+Math.abs((t-1)%5-(tile-1)%5)===1);
 // Effects produce a common before/after event for the UI, independent of scoring.
@@ -75,10 +75,12 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   const roll=isDie(state,number)?1+Math.floor(random()*20)+(state.valueModifiers?.[number]||0):null;
   const playCost=isRock(state,number)?0:1;
   state.stamps.add(tile);state.stampBalls[tile]=number;state.stampValues[tile]=roll??ballValue(state,number);state.bag.delete(number);state.played[number]=(state.played[number]||0)+1;state.calls-=playCost;
-  const effectBoard=(isBomb(state,number)||state.items[number]==='hundred')?boardSnapshot(state):null,valueChanges=[];
+  const seeds=[...state.stamps].filter(t=>t!==tile&&state.items[state.stampBalls[t]]==='seed');
+  const effectBoard=(isBomb(state,number)||state.items[number]==='hundred'||seeds.length)?boardSnapshot(state):null,valueChanges=[];
   if(state.items[number]==='hundred')for(const neighbor of orthogonalNeighbors(tile)){
     const change=changeTileValue(state,neighbor,-1,tile);if(change)valueChanges.push(change);
   }
+  for(const seed of seeds){const change=changeTileValue(state,seed,1,tile);if(change)valueChanges.push(change);}
   const destroyed=[];
   if(isBomb(state,number)){
     const row=Math.floor((tile-1)/5),col=(tile-1)%5;
