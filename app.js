@@ -1,10 +1,9 @@
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,removeJoker,normalizeJokers,redraw,settleStage,openShop,buyCard,upgradeBall,CARD_TYPES,BALL_UPGRADES,cardType,cardDetails,ballValue,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=d1044d6304fc';
+import {newStage,deal,choose,isRuleCard,removeJoker,normalizeJokers,redraw,settleStage,openShop,buyCard,upgradeBall,CARD_TYPES,BALL_UPGRADES,cardType,cardDetails,ballValue,redrawShop,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=246f33dcb2fe';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-let state=newStage(),busy=false,drag=null,audio,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,muted=false,selectedUpgrade=null,shopping=false;
+let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,selectedUpgrade=null,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
 const animate=(el,frames,options)=>el.animate(frames,{...options,duration:reduced?1:options.duration}).finished.catch(()=>{});
-function sound(kind,step=0){if(muted)return;if(!navigator.userActivation?.hasBeenActive)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const t=audio.currentTime;const o=audio.createOscillator(),g=audio.createGain();o.type=kind==='score'?'triangle':'square';o.frequency.setValueAtTime(kind==='activate'?330*2**(Math.min(step,12)/12):kind==='score'?660:kind==='roll'?180:110,t);o.frequency.exponentialRampToValueAtTime(kind==='activate'?220*2**(Math.min(step,12)/12):kind==='score'?1320:40,t+.12);g.gain.setValueAtTime(.035,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);o.connect(g).connect(audio.destination);o.start(t);o.stop(t+.17);}catch{}}
 function burst(rect,scoring=false){if(reduced)return;for(let i=0;i<(scoring?28:12);i++){const p=document.createElement('i');p.className='particle';p.style.left=`${rect.left+rect.width/2}px`;p.style.top=`${rect.top+rect.height/2}px`;p.style.background=scoring?'#f4c66c':i%2?'#a9b7b8':'#e4e9dd';$('effects').append(p);const angle=Math.random()*Math.PI*2,d=25+Math.random()*(scoring?150:65);animate(p,[{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+25}px) scale(0)`,opacity:0}],{duration:450+Math.random()*250,easing:'cubic-bezier(.1,.7,.3,1)'}).then(()=>p.remove());}}
 for(let n=1;n<=25;n++){const c=document.createElement('button');c.type='button';c.id=`cell-${n}`;c.className='cell';c.innerHTML='<span></span>';c.onclick=()=>{if(!busy&&!drag)inspectSpace(n);};$('board').append(c);}
 function render(){
@@ -22,18 +21,17 @@ function render(){
   }}
 
 let jokerDrag=null;
-const jokerText={bingo:'Score a row, column, or diagonal',...Object.fromEntries(Object.entries(CARD_TYPES).map(([id,c])=>[id,c.text]))};
 function renderJokers(){
   const ids=normalizeJokers(state.jokers),rack=$('joker-rack');
   if(rack.dataset.cards===ids.join('|'))return;
   rack.dataset.cards=ids.join('|');rack.style.setProperty('--card-count',ids.length);rack.style.setProperty('--slot-count',Math.max(5,ids.length));rack.replaceChildren();
   for(const id of ids){
-    const type=cardType(id),item=cardDetails(id),description=type==='bingo'?jokerText.bingo:item.text,card=document.createElement('button'),pattern={previewTiles:[3,8,11,12,13,14,15,18,23,1,7,19,25]};
+    const type=cardType(id),item=cardDetails(id),description=item.text,card=document.createElement('button'),pattern={previewTiles:[3,8,11,12,13,14,15,18,23,1,7,19,25]};
     card.className=`joker-card joker-${type}`;card.dataset.joker=id;
     card.setAttribute('aria-label',`${description}. Drag to trash to remove this effect, or press Delete.`);
-    card.innerHTML=`<span class="joker-heading">${type==='bingo'?'BINGO':item.name.toUpperCase()}</span><span class="joker-art ${type!=='bingo'?'digits-art':''}" aria-hidden="true">${type!=='bingo'?`<b>${item.icon}</b>`:Array.from({length:25},(_,i)=>`<i class="${pattern.previewTiles.includes(i+1)?'filled':''}"></i>`).join('')}</span><span class="joker-description">${type==='bingo'?'+1 per tile':description}</span>`;
+    card.innerHTML=`<span class="joker-heading">${type==='bingo'?'BINGO':item.name.toUpperCase()}</span><span class="joker-art ${type!=='bingo'?'digits-art':''}" aria-hidden="true">${type!=='bingo'?`<b>${item.icon}</b>`:Array.from({length:25},(_,i)=>`<i class="${pattern.previewTiles.includes(i+1)?'filled':''}"></i>`).join('')}</span><span class="joker-description">${type==='bingo'?'Lines of 5':type==='face-value'?'Number → pts':description}</span>`;
     card.onpointerdown=e=>{
-      if(e.button!==0||jokerDrag||drag)return;
+      if(busy||e.button!==0||jokerDrag||drag)return;
       const selected=tooltipAnchor===card;
       e.preventDefault();hideTooltip();card.setPointerCapture(e.pointerId);
       jokerDrag={card,id,pointer:e.pointerId,x:e.clientX,y:e.clientY,ghost:null,selected,scrollStart:rack.scrollLeft,scrolling:false};
@@ -44,7 +42,7 @@ function renderJokers(){
       if(!d.ghost&&!d.selected&&Math.abs(dx)>8&&Math.abs(dx)>Math.abs(dy)*1.4)d.scrolling=true;
       if(d.scrolling){rack.scrollLeft=d.scrollStart-dx;return;}
       if(!d.ghost&&Math.hypot(dx,dy)>6){
-        const r=card.getBoundingClientRect();d.ghost=card.cloneNode(true);d.ghost.removeAttribute('data-joker');d.ghost.classList.add('joker-ghost');d.ghost.setAttribute('aria-hidden','true');d.ghost.style.width=`${r.width}px`;d.ghost.style.height=`${r.height}px`;d.w=r.width;d.h=r.height;document.body.append(d.ghost);card.classList.add('held');$('joker-trash').hidden=false;sound('roll');
+        const r=card.getBoundingClientRect();d.ghost=card.cloneNode(true);d.ghost.removeAttribute('data-joker');d.ghost.classList.add('joker-ghost');d.ghost.setAttribute('aria-hidden','true');d.ghost.style.width=`${r.width}px`;d.ghost.style.height=`${r.height}px`;d.w=r.width;d.h=r.height;document.body.append(d.ghost);card.classList.add('held');$('joker-trash').hidden=false;
       }
       if(d.ghost){d.ghost.style.transform=`translate(${e.clientX-d.w/2}px,${e.clientY-d.h/2}px) rotate(${Math.max(-12,Math.min(12,(e.clientX-d.x)*.04))}deg)`;$('joker-trash').classList.toggle('ready',overTrash(e.clientX,e.clientY));}
     };
@@ -55,11 +53,11 @@ function renderJokers(){
       const discard=d.ghost&&overTrash(e.clientX,e.clientY),ghost=d.ghost;
       if(discard){removeJoker(state,id);saveRun();if(shopping)renderShop();}
       cancelJokerDrag(false);renderJokers();
-      if(ghost){if(discard){sound('stamp');navigator.vibrate?.(20);await animate(ghost,[{transform:ghost.style.transform,opacity:1},{transform:ghost.style.transform+' scale(.05)',opacity:0}],{duration:220});}else{const r=card.getBoundingClientRect();await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left}px,${r.top}px) rotate(0)`}],{duration:200,easing:'cubic-bezier(.2,.8,.2,1)'});}ghost.remove();}
+      if(ghost){if(discard){navigator.vibrate?.(20);await animate(ghost,[{transform:ghost.style.transform,opacity:1},{transform:ghost.style.transform+' scale(.05)',opacity:0}],{duration:220});}else{const r=card.getBoundingClientRect();await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left}px,${r.top}px) rotate(0)`}],{duration:200,easing:'cubic-bezier(.2,.8,.2,1)'});}ghost.remove();}
       if(discard)$('announcer').textContent=`${id} card removed.`;
     };
     card.onpointercancel=()=>cancelJokerDrag();card.onlostpointercapture=()=>{if(jokerDrag)cancelJokerDrag();};
-    card.onkeydown=e=>{if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeJoker(state,id);saveRun();renderJokers();if(shopping)renderShop();}};
+    card.onkeydown=e=>{if(busy)return;if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeJoker(state,id);saveRun();renderJokers();if(shopping)renderShop();}};
     rack.append(card);
   }
   for(let i=ids.length;i<5;i++){const slot=document.createElement('div');slot.className='joker-slot';slot.setAttribute('aria-hidden','true');rack.append(slot);}
@@ -93,7 +91,7 @@ function positionTooltip(){
 }
 function showTooltip(n,anchor,space=false){
   if(tooltipAnchor===anchor){hideTooltip();return;}
-  hideTooltip();sound('roll');
+  hideTooltip();
   const tip=$('inspect-tooltip');
   (anchor.closest('dialog')||document.body).append(tip);
   $('tooltip-number').textContent=space?(state.stamps.has(Number(anchor.id.replace('cell-','')))?state.stampValues[Number(anchor.id.replace('cell-',''))]??'X':'EMPTY'):(n==null?'':ballValue(state,n)??'X');
@@ -130,10 +128,10 @@ function refreshBag(){
 function lock(){hideTooltip();busy=true;render();document.querySelectorAll('#balls .ball').forEach(b=>b.disabled=true);}
 function unlock(){busy=false;saveRun();render();document.querySelectorAll('#balls .ball').forEach(b=>{b.disabled=false;b.classList.remove('enter');});}
 function showBalls(){$('balls').replaceChildren();state.offer.forEach((n,i)=>{const b=ball(n);b.classList.add('enter');b.style.setProperty('--i',state.plasmaActive?Math.min(i,2):i);b.disabled=true;b.setAttribute('aria-label',`Ball ${ballValue(state,n)??'X'}. Tap to inspect. Drag along the track to reorder, or to the card to play. Keyboard: Enter to inspect, Space to play.`);b.addEventListener('pointerdown',e=>startDrag(e,n,b));b.addEventListener('pointermove',moveDrag);b.addEventListener('pointerup',endDrag);b.addEventListener('pointercancel',cancelDrag);b.addEventListener('lostpointercapture',()=>{if(drag)cancelDrag();});b.onclick=e=>{if(e.detail===0&&!busy)inspect(n,b);};b.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();if(!busy&&!drag)play(n,b);} };$('balls').append(b);});refreshBag();}
-async function nextDraw(){resetResultUI();lock();deal(state);render();showBalls();await wait(770);sound('roll');unlock();}
+async function nextDraw(){resetResultUI();lock();deal(state);render();showBalls();await wait(770);unlock();}
 function startDrag(e,n,b){
   if(busy||drag||jokerDrag||e.button!==0)return;
-  e.preventDefault();sound('roll');b.setPointerCapture(e.pointerId);
+  e.preventDefault();b.setPointerCapture(e.pointerId);
   const nodes=[...$('balls').children];
   drag={n,tile:state.destinations[n],b,id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,ghost:null,
     original:[...state.offer],order:[...state.offer],nodes,
@@ -181,7 +179,7 @@ function moveDrag(e){
   $('board').classList.toggle('free-placement',state.upgrades[d.n]==='x');
   d.ghost.style.transform=`translate(${e.clientX-d.size/2}px,${e.clientY-d.size/2}px) rotate(${Math.max(-14,Math.min(14,(e.clientX-d.x)*.08))}deg) scale(1.08)`;
   const action=swipeAction(d,e),over=isOnBoard(e.clientX,e.clientY)||action==='play',onTrack=!over&&!action&&isOnTrack(e.clientX,e.clientY);
-  $('bag').classList.toggle('drop-ready',action==='pass');$('gesture-hint').textContent=action==='play'?'RELEASE TO PLAY ↑':action==='pass'?'RELEASE TO PASS ↓':state.passes===0&&e.clientY>d.y+36?'NO PASSES LEFT':'';
+  $('bag').classList.toggle('drop-ready',action==='pass');$('gesture-hint').textContent=state.passes===0&&e.clientY>d.y+36?'NO PASSES LEFT':'';
   document.querySelector('.board-frame').classList.toggle('drag-over',over);
   $('balls').classList.toggle('reordering',onTrack);
   document.querySelectorAll('.cell.destination').forEach(c=>c.classList.remove('destination'));
@@ -217,7 +215,7 @@ async function endDrag(e){
   const end=d.b.getBoundingClientRect();
   await animate(d.ghost,[{transform:d.ghost.style.transform},{transform:`translate(${end.left}px,${end.top}px) rotate(0deg) scale(1)`}],{duration:200,easing:'cubic-bezier(.15,.85,.3,1)'});
   d.ghost.remove();cleanDrag(d);commitOrder(d);busy=false;
-  if(reordered){saveRun();sound('roll');$('announcer').textContent=`Ball ${d.n}, position ${state.offer.indexOf(d.n)+1} of ${state.offer.length}.`;}
+  if(reordered){saveRun();$('announcer').textContent=`Ball ${d.n}, position ${state.offer.indexOf(d.n)+1} of ${state.offer.length}.`;}
 }
 function cancelDrag(){
   if(!drag)return;
@@ -228,104 +226,109 @@ function renderCalls(calls){
   $('call-dots').innerHTML=Array.from({length:15},(_,i)=>`<i class="${i>=Math.ceil(calls/state.callCapacity*15)?'used':''}"></i>`).join('');
   document.querySelector('.call-meter').setAttribute('aria-label',`${calls} plays remaining`);
 }
-function scoreCrunch(step=0,finish=false){
-  if(muted||reduced||!audio)return;
-  try{
-    const t=audio.currentTime,duration=finish ? .13 : .045,buffer=audio.createBuffer(1,Math.ceil(audio.sampleRate*duration),audio.sampleRate),data=buffer.getChannelData(0);
-    for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(1-i/data.length);
-    const source=audio.createBufferSource(),filter=audio.createBiquadFilter(),gain=audio.createGain();
-    source.buffer=buffer;filter.type='bandpass';filter.frequency.value=650+step*230;filter.Q.value=.7;
-    gain.gain.setValueAtTime(finish ? .055 : .032,t);gain.gain.exponentialRampToValueAtTime(.001,t+duration);
-    source.connect(filter).connect(gain).connect(audio.destination);source.start(t);source.stop(t+duration);
-    source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect();};
-  }catch{}
+// Each visible activation follows the engine's ordered contribution list.
+async function cardImpact(card,payout,color,trigger=false){
+  if(!card)return;
+  card.classList.add('scoring-card');card.dataset.payout=payout;
+  card.style.setProperty('--scoring-color',color);
+  const frames=reduced?[{opacity:.7},{opacity:1}]:[
+    {transform:'rotate(-1deg) scale(1)'},
+    {transform:'translateY(2px) rotate(-4deg) scale(1.04,.91)',offset:.12},
+    {transform:`translateY(-8px) rotate(4deg) scale(${trigger?1.24:1.18})`,offset:.29},
+    {transform:'translateY(-5px) rotate(-2deg) scale(1.12)',offset:.48},
+    {transform:'translateY(-5px) rotate(1deg) scale(1.12)',offset:.8},
+    {transform:'translateY(-4px) rotate(-1deg) scale(1.07)'}
+  ];
+  await animate(card,frames,{duration:trigger?660:270,easing:'linear'});
+}
+function releaseCard(card){
+  card?.classList.remove('scoring-card');if(card)delete card.dataset.payout;
+}
+async function scoreLink(from,to,color){
+  if(reduced||!from)return;
+  const a=from.getBoundingClientRect(),b=to.getBoundingClientRect(),spark=document.createElement('i');
+  spark.className='score-spark';spark.style.background=color;
+  spark.style.left=`${a.left+a.width/2}px`;spark.style.top=`${a.bottom-5}px`;$('effects').append(spark);
+  await animate(spark,[{transform:'scale(1.6)',opacity:1},{transform:`translate(${b.left+b.width/2-a.left-a.width/2}px,${b.top+b.height/2-a.bottom+5}px) scale(.6)`,opacity:1}],{duration:125,easing:'cubic-bezier(.5,0,.8,.4)'});
+  spark.remove();
 }
 async function activateSpaces(result){
-  let displayedScore=state.score-result.points,displayedCalls=result.callsBeforeBonuses;
-  let activePattern=[],activeCard=null,lineTotal=0;
-  const rack=$('joker-rack'),colors={row:'#83e0b5',column:'#91c6ff',diagonal:'#ffb18b'};
-  rack.classList.add('scoring-rack');
-  for(const [index,activation] of result.activations.entries()){
-    const cell=$(`cell-${activation.tile}`),color=colors[activation.type];
-    if(activation.pattern){
-      activeCard=document.querySelector('[data-joker="bingo"]');lineTotal=0;
-      activePattern.forEach(c=>c.classList.remove('pattern-active','charged'));
-      activePattern=activation.pattern.map(n=>$(`cell-${n}`));
-      activePattern.forEach(c=>{c.style.setProperty('--scoring-color',color);c.classList.add('pattern-active');});
-      if(activeCard){
-        activeCard.scrollIntoView({block:'nearest',inline:'nearest',behavior:reduced?'instant':'smooth'});
-        activeCard.classList.add('scoring-card');activeCard.dataset.pattern=activation.type;activeCard.dataset.payout='+0';
-        activeCard.style.setProperty('--scoring-color',color);
-        sound('score');scoreCrunch(0);
-        await animate(activeCard,[{transform:'rotate(-3deg) scale(1)'},{transform:'translateY(-9px) rotate(4deg) scale(1.12)',offset:.32},{transform:'translateY(-5px) rotate(-1deg) scale(1.06)'}],{duration:250,easing:'cubic-bezier(.2,.85,.2,1)',fill:'none'});
-        const from=activeCard.getBoundingClientRect(),to=cell.getBoundingClientRect(),spark=document.createElement('i');
-        spark.className='score-spark';spark.style.background=color;spark.style.left=`${from.left+from.width/2}px`;spark.style.top=`${from.bottom}px`;$('effects').append(spark);
-        await animate(spark,[{transform:'scale(1.6)',opacity:1},{transform:`translate(${to.left+to.width/2-from.left-from.width/2}px,${to.top+to.height/2-from.bottom}px) scale(.6)`,opacity:1}],{duration:180,easing:'cubic-bezier(.5,0,.8,.4)'});spark.remove();
+  let displayedScore=state.score-result.points,displayedCalls=result.callsBeforeBonuses,total=0,lineIndex=0;
+  let activePattern=[];
+  const rack=$('joker-rack'),board=$('board'),area=document.querySelector('.draw-area'),readout=$('score-readout');
+  const colors={row:'#83e0b5',column:'#91c6ff',diagonal:'#ffb18b'};
+  const allTiles=[...new Set(result.activations.map(a=>a.tile))].map(n=>$(`cell-${n}`));
+  rack.classList.add('scoring-rack');board.classList.add('scoring-board');area.classList.add('scoring-draw');
+  readout.hidden=false;$('score-gain').textContent='+0';$('score-running').textContent=`${displayedScore}/${state.target} pts`;
+  allTiles.forEach(cell=>cell.classList.add('score-pending'));
+  try{
+    for(const [index,activation] of result.activations.entries()){
+      const cell=$(`cell-${activation.tile}`),color=colors[activation.type];
+      if(activation.pattern){
+        lineIndex++;
+        activePattern.forEach(c=>c.classList.remove('pattern-active','charged'));
+        activePattern=activation.pattern.map(n=>$(`cell-${n}`));
+        activePattern.forEach(c=>{c.style.setProperty('--scoring-color',color);c.classList.add('pattern-active');});
+        $('score-line-label').textContent=`${activation.type.toUpperCase()}${result.patterns.length>1?` ${lineIndex}/${result.patterns.length}`:''}`;
+        const trigger=document.querySelector(`[data-joker="${activation.trigger}"]`);
+        pulseBackground();
+        // All five spaces are lit while the rule announces the line, before any points.
+        await cardImpact(trigger,'SCORE 5',color,true);
+        await Promise.all(activePattern.map(target=>scoreLink(trigger,target,color)));
+        releaseCard(trigger);
+        await wait(70);
       }
+      cell.classList.add('activating','charged');
+      navigator.vibrate?.(12);
+      const tileImpact=animate(cell,reduced?[{opacity:.75},{opacity:1}]:[
+        {transform:'scale(1)'},{transform:'scale(1.03,.94)',offset:.15},
+        {transform:'translateY(-5px) scale(1.1)',offset:.35},
+        {transform:'translateY(1px) scale(.98,1.02)',offset:.7},{transform:'scale(1)'}
+      ],{duration:300,easing:'linear'});
+      const r=cell.getBoundingClientRect(),point=document.createElement('span');
+      point.className='activation-point';point.style.color=color;point.style.left=`${r.left+r.width/2}px`;point.style.top=`${r.top+r.height/2}px`;
+      point.style.transform='translate(-50%,-65%)';point.textContent='0';point.hidden=true;$('effects').append(point);
+      let tilePoints=0;
+      for(const contribution of activation.contributions){
+        const card=document.querySelector(`[data-joker="${contribution.joker}"]`),calls=contribution.calls;
+        const accent=contribution.joker==='face-value'?'#91c6ff':calls!==undefined?'#83e0b5':'#f4c66c';
+        const label=calls!==undefined?(calls?'+1 PLAY':'15 MAX'):`+${contribution.points}`;
+        await cardImpact(card,label,accent);
+        await scoreLink(card,cell,accent);
+        if(calls!==undefined){
+          const meter=$('play-ball'),to=meter.getBoundingClientRect(),token=document.createElement('span');
+          token.className='activation-point call-point';token.textContent=label;token.style.left=`${r.left+r.width/2}px`;token.style.top=`${r.top}px`;$('effects').append(token);
+          await animate(token,[{transform:'translate(-50%,-100%)',opacity:1},{transform:`translate(calc(-50% + ${to.left+to.width/2-r.left-r.width/2}px),${to.top-r.top}px) scale(.5)`,opacity:0}],{duration:220});
+          token.remove();displayedCalls+=calls;renderCalls(displayedCalls);
+        }else{
+          tilePoints+=contribution.points;point.hidden=false;point.textContent=`+${tilePoints}`;
+          await animate(point,reduced?[{opacity:.7},{opacity:1}]:[{transform:'translate(-50%,-65%) scale(.7)',opacity:.7},{transform:'translate(-50%,-95%) scale(1.28)',opacity:1,offset:.35},{transform:'translate(-50%,-85%) scale(1)',opacity:1}],{duration:170,easing:'cubic-bezier(.2,.8,.3,1)'});
+        }
+        releaseCard(card);
+      }
+      await tileImpact;
+      point.hidden=false;point.textContent=`+${tilePoints}`;
+      if(tilePoints>0)burst(r);
+      const to=$('score-gain').getBoundingClientRect();
+      await animate(point,[{transform:'translate(-50%,-85%) scale(1)',opacity:1},{transform:'translate(-50%,-105%) scale(1.12)',opacity:1,offset:.25},{transform:`translate(calc(-50% + ${to.left+to.width/2-r.left-r.width/2}px),calc(-50% + ${to.top+to.height/2-r.top-r.height/2}px)) scale(.5)`,opacity:0}],{duration:Math.max(180,270-index%5*18),easing:'cubic-bezier(.4,0,.7,.4)'});
+      point.remove();
+      displayedScore+=activation.points;total+=activation.points;
+      $('score-gain').textContent=`+${total}`;$('score-running').textContent=`${displayedScore}/${state.target} pts`;
+      $('score').textContent=displayedScore;$('progress').style.width=`${Math.min(100,displayedScore/state.target*100)}%`;
+      await animate($('score-gain'),reduced?[{opacity:.75},{opacity:1}]:[{transform:'scale(1.22,1.08) rotate(-2deg)'},{transform:'scale(.97,1.03)',offset:.55},{transform:'scale(1)'}],{duration:130});
+      cell.classList.remove('activating');
     }
-    cell.classList.add('activating','charged');
-    sound('activate',index);scoreCrunch(index%5);
-    navigator.vibrate?.(12);
-    animate(cell,[{transform:'scale(1)'},{transform:'translateY(-4px) scale(1.1)',offset:.3},{transform:'scale(.98)',offset:.65},{transform:'scale(1)'}],{duration:250,easing:'cubic-bezier(.2,.8,.3,1)'});
-    const r=cell.getBoundingClientRect();
-    burst(r);
-    const point=document.createElement('span');
-    point.className='activation-point';point.style.color=color;
-    point.textContent=`+${activation.basePoints}`;
-    point.style.left=`${r.left+r.width/2}px`;
-    point.style.top=`${r.top+r.height/2}px`;
-    $('effects').append(point);
-    point.style.transform='translate(-50%,-90%)';
-    let tilePoints=activation.basePoints;
-    for(const bonus of activation.bonuses){
-      const bonusCard=document.querySelector(`[data-joker="${bonus.joker}"]`);
-      if(bonusCard){
-        bonusCard.scrollIntoView({block:'nearest',inline:'nearest',behavior:reduced?'instant':'smooth'});
-        bonusCard.classList.add('scoring-card');bonusCard.dataset.payout=bonus.calls!==undefined?(bonus.calls?'+1 PLAY':'15 MAX'):`+${bonus.points}`;bonusCard.style.setProperty('--scoring-color','#f4c66c');
-        sound('activate',index+4);scoreCrunch(4);navigator.vibrate?.(12);
-        await animate(bonusCard,[{transform:'scale(1)'},{transform:'translateY(-8px) rotate(-4deg) scale(1.12)',offset:.35},{transform:'translateY(-4px) rotate(2deg) scale(1.05)'}],{duration:230});
-        const from=bonusCard.getBoundingClientRect(),spark=document.createElement('i');spark.className='score-spark';spark.style.background='#f4c66c';spark.style.left=`${from.left+from.width/2}px`;spark.style.top=`${from.bottom}px`;$('effects').append(spark);
-        await animate(spark,[{transform:'scale(1.4)'},{transform:`translate(${r.left+r.width/2-from.left-from.width/2}px,${r.top+r.height/2-from.bottom}px) scale(.6)`}],{duration:150});spark.remove();
-      }
-      if(bonus.calls!==undefined){
-        const meter=$('play-ball'),to=meter.getBoundingClientRect(),token=document.createElement('span');
-        token.className='activation-point call-point';token.textContent=bonus.calls?'+1 PLAY':'15 MAX';token.style.left=`${r.left+r.width/2}px`;token.style.top=`${r.top}px`;$('effects').append(token);
-        await animate(token,[{transform:'translate(-50%,-100%) scale(1.1)',opacity:1},{transform:`translate(calc(-50% + ${to.left+to.width/2-r.left-r.width/2}px),${to.top-r.top}px) scale(.5)`,opacity:0}],{duration:320});token.remove();displayedCalls+=bonus.calls;renderCalls(displayedCalls);
-        animate(meter,[{filter:'brightness(1.8)',transform:'scale(1.08)'},{filter:'brightness(1)',transform:'scale(1)'}],{duration:180});
-      }
-      tilePoints+=bonus.points;point.textContent=`+${tilePoints}`;sound('activate',index+5);
-      await animate(point,[{transform:'translate(-50%,-90%) scale(1.35)',color:'#f4c66c'},{transform:'translate(-50%,-90%) scale(1)',color}],{duration:160});
-      bonusCard?.classList.remove('scoring-card');if(bonusCard)delete bonusCard.dataset.payout;
-    }
-    const scoreRect=(activeCard||$('joker-rack')).getBoundingClientRect();
-    const dx=scoreRect.left+scoreRect.width/2-r.left-r.width/2;
-    const dy=scoreRect.top+scoreRect.height/2-r.top-r.height/2;
-    await animate(point,[
-      {transform:'translate(-50%,-35%) scale(.65)',opacity:0},
-      {transform:'translate(-50%,-90%) scale(1.15)',opacity:1,offset:.25},
-      {transform:'translate(-50%,-100%) scale(1)',opacity:1,offset:.55},
-      {transform:`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.45)`,opacity:0}
-    ],{duration:Math.max(210,330-(index%5)*25),easing:'cubic-bezier(.2,.7,.35,1)'});
-    point.remove();
-    displayedScore+=activation.points;lineTotal+=activation.points;
-    if(activeCard?.isConnected){activeCard.dataset.payout=`+${lineTotal}`;animate(activeCard,[{transform:'translateY(-5px) rotate(-2deg) scale(1.09)'},{transform:'translateY(-5px) rotate(1deg) scale(1.04)'}],{duration:150});}
-    $('score').textContent=displayedScore;
-    $('progress').style.width=`${Math.min(100,displayedScore/state.target*100)}%`;
-    animate($('score'),[{transform:'scale(1.3)',color:'#fff5d5'},{transform:'scale(1)',color:'#f4c66c'}],{duration:150});
-    cell.classList.remove('activating');
-    if(index%5===4){
-      scoreCrunch(5,true);sound('score');pulseBackground();navigator.vibrate?.([15,25,25]);
-      if(activeCard?.isConnected)await animate(activeCard,[{transform:'translateY(-5px) scale(1.04)'},{transform:'translateY(-10px) rotate(3deg) scale(1.14)',filter:'brightness(1.35)',offset:.3},{transform:'translateY(-5px) scale(1.04)'}],{duration:320});
-      await wait(160);activeCard?.classList.remove('scoring-card');if(activeCard)delete activeCard.dataset.payout;
-    }else await wait(20);
+    $('score-line-label').textContent=state.jokers.includes('face-value')?'BINGO':'NO POINTS RULE';
+    if(total>0){pulseBackground();navigator.vibrate?.([15,25,25]);burst($('score-gain').getBoundingClientRect(),true);}
+    await animate(readout,reduced?[{opacity:.85},{opacity:1}]:[{transform:'scale(1)'},{transform:'scale(1.08) rotate(-1deg)',offset:.25},{transform:'scale(1)',offset:.65},{transform:'scale(1)'}],{duration:360});
+    await wait(600);
+    const names=result.scoredPatterns.map(p=>PATTERN_TYPES.find(type=>type.id===p.type).label);
+    $('announcer').textContent=`${names.join(', ')}. ${result.activations.length} spaces activated for ${result.points} points.`;
+  }finally{
+    rack.classList.remove('scoring-rack');board.classList.remove('scoring-board');area.classList.remove('scoring-draw');readout.hidden=true;
+    rack.querySelectorAll('.scoring-card').forEach(releaseCard);
+    allTiles.forEach(c=>c.classList.remove('score-pending','pattern-active','charged','activating'));
   }
-  rack.classList.remove('scoring-rack');
-  activePattern.forEach(c=>c.classList.remove('pattern-active'));
-  sound('score');
-  const names=result.scoredPatterns.map(p=>PATTERN_TYPES.find(type=>type.id===p.type).label);
-  $('announcer').textContent=`${names.join(', ')}. ${result.activations.length} spaces activated for ${result.points} points.`;
-  animate($('patterns-button'),[{color:'#fff1ba',filter:'brightness(1.6)',transform:'scale(1.12)'},{color:'#f5e7c5',filter:'brightness(1)',transform:'scale(1)'}],{duration:300});
-  await wait(160);
 }
 async function play(n,b,ghost,tile=state.destinations[n]){
   if(busy){ghost?.remove();return;}lock();const result=choose(state,n,tile);if(!result){ghost?.remove();unlock();return;}
@@ -334,11 +337,11 @@ async function play(n,b,ghost,tile=state.destinations[n]){
   if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}
   document.querySelectorAll('.cell.offered').forEach(c=>{c.className='cell paint-grey';c.querySelector('span').textContent='';});
   cell.className=`cell paint-grey upgrade-${state.upgrades[n]||'plain'} stamped just-stamped`;cell.querySelector('span').textContent=ballValue(state,n)??'X';
-  pulseBackground();sound('stamp');navigator.vibrate?.(18);burst(r);
+  pulseBackground();navigator.vibrate?.(18);burst(r);
   await animate(document.querySelector('.board-frame'),[{transform:'translateY(0)'},{transform:'translateY(3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});
   await wait(180);
   if(result.upgrade==='tornado'){
-    sound('score');scoreCrunch(5,true);pulseBackground();burst(r,true);
+    pulseBackground();burst(r,true);
     const flights=result.moves.map(move=>{
       const from=$(`cell-${move.from}`).getBoundingClientRect(),to=$(`cell-${move.to}`).getBoundingClientRect(),token=ball(move.number);
       token.classList.add('scatter-token');token.querySelector('.face').textContent=move.value??'X';token.style.left=`${from.left+from.width/2}px`;token.style.top=`${from.top+from.height/2}px`;$('effects').append(token);
@@ -348,7 +351,7 @@ async function play(n,b,ghost,tile=state.destinations[n]){
     await Promise.all(flights.map(async({token,from,to})=>{await animate(token,[{transform:'translate(-50%,-50%) scale(.7)'},{transform:'translate(-50%,-110%) scale(1.1) rotate(-15deg)',offset:.25},{transform:`translate(calc(-50% + ${to.left-from.left}px),calc(-50% + ${to.top-from.top}px)) scale(.7) rotate(360deg)`}],{duration:650,easing:'cubic-bezier(.3,.7,.3,1)'});token.remove();}));
   }
   if(result.upgrade==='dynamite'){
-    sound('stamp');scoreCrunch(5,true);pulseBackground();navigator.vibrate?.([20,30,30]);burst(r,true);
+    pulseBackground();navigator.vibrate?.([20,30,30]);burst(r,true);
     await animate(cell,[{transform:'scale(1)'},{transform:'scale(1.18)',filter:'brightness(1.6)',offset:.35},{transform:'scale(1)'}],{duration:220});
     const target=$('bag').getBoundingClientRect();let arrived=0;
     await Promise.all(result.returned.map(async(item,index)=>{
@@ -363,23 +366,23 @@ async function play(n,b,ghost,tile=state.destinations[n]){
   result.doubled.forEach(change=>$(`cell-${change.tile}`).querySelector('span').textContent=change.before);
   for(const change of result.doubled){
     const target=$(`cell-${change.tile}`);target.querySelector('span').textContent=change.before;
-    target.classList.add('doubling');sound('activate');
+    target.classList.add('doubling');
     await animate(target,[{transform:'scale(1)'},{transform:'scale(1.15)',offset:.4},{transform:'scale(1)'}],{duration:180});target.querySelector('span').textContent=change.after;target.classList.remove('doubling');
   }
   $('announcer').textContent=`${result.upgrade==='x'?'X':n} played. One play used.`;
-  if(result.points)await activateSpaces(result);await wait(120);render();refreshBag();
+  if(result.activations.length)await activateSpaces(result);await wait(120);render();refreshBag();
   if(state.status!=='playing'){showResult();return;}await nextDraw();
 }
 function showStages(){hideTooltip();$('stage-grid').innerHTML=Array.from({length:10},(_,i)=>{const n=i+1,current=n===state.stage,done=n<state.stage;return `<div class="stage-node ${current?'current':done?'complete':'locked'}" ${current?'aria-current="step"':''} aria-label="Stage ${n}, ${current?'current':done?'completed':'locked'}"><span>${n}<small>${STAGE_TARGETS[i].toLocaleString()} pts</small></span>${current?'<span>◆</span>':done?'<span>✓</span>':'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'}</div>`;}).join('');$('stage-dialog').showModal();}
 function showPatterns(){
   if(busy||drag||payingOut)return;
-  hideTooltip();sound('roll');
+  hideTooltip();
   const counts=state.patternCounts||{},most=Math.max(0,...PATTERN_TYPES.map(p=>counts[p.id]||0));
   $('patterns-total').textContent=PATTERN_TYPES.reduce((sum,p)=>sum+(counts[p.id]||0),0).toLocaleString();
   $('patterns-list').innerHTML=PATTERN_TYPES.map(p=>{
     const count=counts[p.id]||0;
     const preview=Array.from({length:25},(_,i)=>`<i${p.previewTiles.includes(i+1)?' class="filled"':''}></i>`).join('');
-    return `<div class="pattern-row${count?' has-scored':''}${count&&count===most?' most-scored':''}" data-pattern="${p.id}" role="listitem" aria-label="${p.label}, ${p.basePoints} base points, scored ${count} ${count===1?'time':'times'} this run"><span class="pattern-name"><span class="pattern-preview" aria-hidden="true">${preview}</span><span>${p.label}</span></span><span class="pattern-base">${p.basePoints}<small>pts</small></span><strong class="pattern-count"><span aria-hidden="true">×</span>${count.toLocaleString()}</strong></div>`;
+    return `<div class="pattern-row${count?' has-scored':''}${count&&count===most?' most-scored':''}" data-pattern="${p.id}" role="listitem" aria-label="${p.label}, ${p.tileCount} tiles, scored ${count} ${count===1?'time':'times'} this run"><span class="pattern-name"><span class="pattern-preview" aria-hidden="true">${preview}</span><span>${p.label}</span></span><span class="pattern-base">${p.tileCount}<small>tiles</small></span><strong class="pattern-count"><span aria-hidden="true">×</span>${count.toLocaleString()}</strong></div>`;
   }).join('');
   $('patterns-dialog').showModal();
 }
@@ -413,7 +416,7 @@ async function cashInCall(dot,index,before,onArrival,payout=true){
   const collected=onArrival();
   $('money').textContent=before+collected;
   if(payout)$('payout-earned').textContent=`+$${collected}`;
-  sound('activate',index);navigator.vibrate?.(8);
+  navigator.vibrate?.(8);
   animate(document.querySelector('.money-panel'),[{transform:'scale(1.08)',boxShadow:'0 0 22px #f4c66c99',borderColor:'#fff2bd'},{transform:'scale(1)',boxShadow:'3px 4px #00191e',borderColor:'#a68a58'}],{duration:170});
   animate($('money'),[{transform:'translateY(-3px) scale(1.2)',color:'#fff4c9'},{transform:'translateY(0) scale(1)',color:'#f4c66c'}],{duration:170});
   for(let i=0;i<5&&!reduced;i++){
@@ -456,7 +459,7 @@ async function showResult(){
   }
   await Promise.all(flights);
   document.querySelector('.call-meter').setAttribute('aria-label',`${bonus} unused plays converted to dollars`);
-  sound('score');
+
   $('announcer').textContent=`${bonus} unused plays paid $${bonus}. Balance $${state.money}.`;
   await wait(250);
   finishResult();
@@ -472,7 +475,7 @@ async function passTurn(ghost=null){
   if(busy||drag||state.passes<1||state.status!=='playing'){ghost?.remove();return;}
   const b=ghost?$('balls').querySelector(`[data-number="${ghost.dataset.number}"]`):$('balls').firstElementChild,r=b?.getBoundingClientRect();
   if(!ghost&&b){ghost=b.cloneNode(true);ghost.classList.add('drag-ghost');ghost.classList.remove('enter');ghost.setAttribute('aria-hidden','true');ghost.style.setProperty('--size',`${r.width}px`);ghost.style.transform=`translate(${r.left}px,${r.top}px)`;document.body.append(ghost);}
-  lock();if(!redraw(state)){ghost?.remove();unlock();return;}saveRun();$('redraw-cost').textContent=state.passes;if(b)b.style.visibility='hidden';sound('roll');
+  lock();if(!redraw(state)){ghost?.remove();unlock();return;}saveRun();$('redraw-cost').textContent=state.passes;if(b)b.style.visibility='hidden';
   document.querySelectorAll('#balls .ball').forEach(ball=>ball.classList.add('leave'));
   if(ghost){const to=$('bag').getBoundingClientRect(),size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform,opacity:1},{transform:`translate(${to.left+(to.width-size)/2}px,${to.top}px) scale(.15) rotate(90deg)`,opacity:0}],{duration:330,easing:'cubic-bezier(.4,0,.8,.4)'});ghost.remove();}
   animate($('bag'),[{transform:'scale(1.15)'},{transform:'scale(1)'}],{duration:190});render();showBalls();await wait(770);unlock();$('announcer').textContent=`Passed. ${state.passes} passes and ${state.calls} plays remaining.`;
@@ -485,16 +488,16 @@ for(const dialog of document.querySelectorAll('#bag-dialog,#stage-dialog,#help-d
 
 function renderShop(){
   hideTooltip();$('money').textContent=state.money;renderJokers();
-  $('shop-card-count').textContent=`${state.jokers.filter(id=>id!=='bingo').length}/5`;
+  $('shop-card-count').textContent=`${state.jokers.filter(id=>!isRuleCard(id)).length}/5`;
   for(const [kind,catalog] of [['cards',CARD_TYPES],['balls',BALL_UPGRADES]]){
     const container=$(`shop-${kind}`);container.replaceChildren();
     state.shopOffer[kind].forEach((type,index)=>{
       const button=document.createElement('button');button.className='shop-offer';button.dataset.kind=kind;button.dataset.index=index;
-      const item=kind==='cards'?cardDetails(type):catalog[type],price=item?.price??3;button.disabled=busy||!item||state.money<price||(kind==='cards'&&state.jokers.filter(id=>id!=='bingo').length>=5);
+      const item=kind==='cards'?cardDetails(type):catalog[type],price=item?.price??3;button.disabled=busy||!item||state.money<price||(kind==='cards'&&state.jokers.filter(id=>!isRuleCard(id)).length>=5);
       button.innerHTML=item?`<span class="offer-icon">${item.icon}</span><strong>${item.name}</strong><small>${item.text}</small><b>$${price}${kind==='balls'?' · CHOOSE BALL':''}</b>`:'<span class="offer-sold">SOLD</span>';
       button.onclick=async()=>{
         if(kind==='cards'){
-          if(!buyCard(state,index))return;saveRun();sound('score');pulseBackground();renderShop();
+          if(!buyCard(state,index))return;saveRun();pulseBackground();renderShop();
           const card=$('joker-rack').querySelector(`[data-joker="${state.jokers.at(-1)}"]`);if(card){card.scrollIntoView({block:'nearest',inline:'nearest'});await animate(card,[{transform:'scale(.5) rotate(-12deg)',opacity:0},{transform:'scale(1.1) rotate(3deg)',opacity:1,offset:.7},{transform:'scale(1)'}],{duration:340});}
         }else showUpgradeTargets(index);
       };container.append(button);
@@ -516,7 +519,7 @@ function showUpgradeTargets(index){
   for(let n=1;n<=25;n++){
     const b=ball(n);b.disabled=state.upgrades[n]===type;b.onclick=async()=>{
       if(busy||!upgradeBall(state,selectedUpgrade,n))return;
-      busy=true;saveRun();sound('stamp');pulseBackground();navigator.vibrate?.(18);
+      busy=true;saveRun();pulseBackground();navigator.vibrate?.(18);
       b.className=`ball paint-grey upgrade-${type}`;b.querySelector('.face').textContent=ballValue(state,n)??'X';
       await animate(b,[{transform:'scale(.8)'},{transform:'scale(1.15)',offset:.4},{transform:'scale(1)'}],{duration:280});
       $('upgrade-dialog').close();selectedUpgrade=null;busy=false;renderShop();refreshBag();
@@ -527,7 +530,7 @@ function showUpgradeTargets(index){
 $('upgrade-dialog').querySelector('.close').onclick=()=>{if(!busy)$('upgrade-dialog').close();};
 $('upgrade-dialog').addEventListener('cancel',e=>{if(busy)e.preventDefault();});
 $('upgrade-dialog').addEventListener('close',()=>{selectedUpgrade=null;});
-$('shop-redraw').onclick=()=>{if(busy||!redrawShop(state))return;saveRun();sound('roll');renderShop();};
+$('shop-redraw').onclick=()=>{if(busy||!redrawShop(state))return;saveRun();renderShop();};
 $('shop-next').onclick=async()=>{
   if(busy)return;hideTooltip();shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;
   state=newStage(state.stage+1,state.money,state.upgrades,state.patternCounts,state.jokers);saveRun();await nextDraw();
@@ -569,7 +572,10 @@ function loadRun(){
     if(typeof saved.upgrades!=='object'||Array.isArray(saved.upgrades)||!Object.entries(saved.upgrades).every(([n,type])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&BALL_UPGRADES[type]))throw new Error('Invalid upgrades');
     if(saved.shopOffer!=null&&(!['cards','balls'].every(kind=>Array.isArray(saved.shopOffer[kind])&&saved.shopOffer[kind].length===2&&saved.shopOffer[kind].every(type=>type===null||(kind==='cards'?cardDetails(type):BALL_UPGRADES[type])))||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
     saved.scoredLines=Array.isArray(saved.scoredLines)?[...new Set(saved.scoredLines.filter(id=>typeof id==='string'&&/^(row-[1-5]|column-[1-5]|diagonal-[12])$/.test(id)))]:[];
-    saved.jokers=normalizeJokers(saved.jokers);saved.jokerVersion=3;
+    saved.jokers=normalizeJokers(saved.jokers);
+    // Add the newly introduced rule once; an intentionally trashed rule stays removed.
+    if(saved.jokerVersion!==4&&!saved.jokers.includes('face-value'))saved.jokers.push('face-value');
+    saved.jokers=normalizeJokers(saved.jokers);saved.jokerVersion=4;
     saved.patternCounts=Object.fromEntries(PATTERN_TYPES.map(({id})=>[id,Number.isSafeInteger(saved.patternCounts?.[id])&&saved.patternCounts[id]>=0?saved.patternCounts[id]:0]));
     if(saved.rulesVersion!==2&&saved.rulesVersion!==3){
       state=newStage(saved.stage,saved.money,{},saved.patternCounts,saved.jokers);
@@ -630,10 +636,6 @@ $('main-menu-button').onclick=showMenu;
 $('result-menu').onclick=()=>{if(payingOut)return;if(state.status==='over'||state.stage===10){hasRun=false;try{localStorage.removeItem(SAVE_KEY);}catch{}}showMenu();};
 $('help-button').onclick=()=>$('help-dialog').showModal();
 $('help-done').onclick=()=>$('help-dialog').close();
-try{muted=localStorage.getItem('binglatro.muted')==='true';}catch{}
-function renderSound(){$('sound-button').textContent=muted?'SOUND OFF':'SOUND ON';$('sound-button').setAttribute('aria-pressed',String(muted));}
-$('sound-button').onclick=()=>{muted=!muted;try{localStorage.setItem('binglatro.muted',String(muted));}catch{}renderSound();};
-renderSound();
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!e.defaultPrevented&&!document.querySelector('dialog[open]')&&!inMenu){e.preventDefault();pauseGame();}});
 window.addEventListener('pagehide',saveRun);
 loadRun();updateMenu();
@@ -644,7 +646,7 @@ $('plasma-pick').onclick=()=>{
   $('plasma-balls').replaceChildren();
   for(let n=1;n<=25;n++){const b=ball(n);b.disabled=!state.bag.has(n);if(b.disabled)b.classList.add('played-ball');b.setAttribute('aria-label',`${ballValue(state,n)??'X'}${state.bag.has(n)?', choose for this turn':', already played'}`);b.onclick=()=>{
     state.offer=[n,...state.offer.filter(other=>other!==n)];saveRun();showBalls();unlock();$('balls').scrollLeft=0;$('plasma-dialog').close();
-    const picked=$('balls').firstElementChild;picked.focus({preventScroll:true});animate(picked,[{transform:'scale(.75)',filter:'brightness(1.8)'},{transform:'scale(1)',filter:'brightness(1)'}],{duration:240});sound('roll');
+    const picked=$('balls').firstElementChild;picked.focus({preventScroll:true});animate(picked,[{transform:'scale(.75)',filter:'brightness(1.8)'},{transform:'scale(1)',filter:'brightness(1)'}],{duration:240});
   };$('plasma-balls').append(b);}
   $('plasma-dialog').showModal();
 };

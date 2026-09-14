@@ -1,7 +1,7 @@
 export const PATTERN_TYPES = [
-  {id:'row',label:'5 in a row',previewTiles:[11,12,13,14,15],basePoints:5},
-  {id:'column',label:'5 in a col',previewTiles:[3,8,13,18,23],basePoints:5},
-  {id:'diagonal',label:'Diagonals',previewTiles:[1,7,13,19,25],basePoints:5},
+  {id:'row',label:'5 in a row',previewTiles:[11,12,13,14,15],tileCount:5},
+  {id:'column',label:'5 in a col',previewTiles:[3,8,13,18,23],tileCount:5},
+  {id:'diagonal',label:'Diagonals',previewTiles:[1,7,13,19,25],tileCount:5},
 ];
 export const PATTERN_DEFINITIONS = [
   ...Array.from({length:5},(_,r)=>({id:`row-${r+1}`,type:'row',tiles:Array.from({length:5},(_,c)=>r*5+c+1)})),
@@ -14,6 +14,11 @@ export const freshPatternCounts=()=>Object.fromEntries(PATTERN_TYPES.map(({id})=
 export const completedPatterns=stamps=>PATTERN_DEFINITIONS.filter(({tiles})=>tiles.every(tile=>stamps.has(tile)));
 export const STAGE_TARGETS = [5,10,15,20,30,40,55,70,90,120];
 export const targetFor = stage => STAGE_TARGETS[stage-1];
+export const RULE_CARDS={
+  bingo:{name:'Bingo',text:'Score rows, columns, and diagonals of 5.',icon:'▦'},
+  'face-value':{name:'Face Value',text:'Scored tiles earn their ball’s number in points.',icon:'#'}
+};
+export const isRuleCard=id=>Object.hasOwn(RULE_CARDS,id);
 export const CARD_TYPES={
   'single-digits':{name:'Single Digits',text:'Single digits get +1 when scored',icon:'1–9'},
   'outer-layer':{name:'Outer Layer',text:'Outer edge tiles get +5 when scored',icon:'▣'},
@@ -30,19 +35,19 @@ export const BALL_UPGRADES={
 export const cardType=id=>id.split(':')[0];
 export function cardDetails(id){
   if(typeof id!=='string')return null;
-  const type=cardType(id),base=CARD_TYPES[type];if(!base)return null;
+  const type=cardType(id),base=RULE_CARDS[id]||CARD_TYPES[type];if(!base)return null;
   if(type!=='call-range')return {...base,price:base.price??3};
   const start=Number(id.split(':')[1]);if(!Number.isInteger(start)||start<1||start>21)return null;
   return {...base,start,end:start+4,icon:`${start}–${start+4}`,text:`${start}–${start+4}: +1 play when scored. Max 15.`};
 }
 export const normalizeJokers=jokers=>{
-  if(!Array.isArray(jokers))return ['bingo'];
-  const cards=[...new Set(jokers.filter(id=>cardDetails(id)))].slice(0,5);
-  return [...(jokers.some(id=>['bingo','row','column','diagonal'].includes(id))?['bingo']:[]),...cards];
+  if(!Array.isArray(jokers))return ['bingo','face-value'];
+  const cards=[...new Set(jokers.filter(id=>typeof id==='string'&&CARD_TYPES[cardType(id)]&&cardDetails(id)))].slice(0,5);
+  return [...(jokers.some(id=>['bingo','row','column','diagonal'].includes(id))?['bingo']:[]),...(jokers.includes('face-value')?['face-value']:[]),...cards];
 };
 export const ballValue=(state,number)=>state.upgrades[number]==='x'?null:(state.ballValues?.[number]??number);
-export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['bingo']) {
-  return {turnVersion:1,passes:10,plasmaPending:false,plasmaActive:false,rulesVersion:3,upgradeVersion:2,ballValues:{},jokerVersion:3,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:{...upgrades},callCapacity:15,shopOffer:null,stage,target:targetFor(stage),score:0,calls:15,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
+export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['bingo','face-value']) {
+  return {turnVersion:1,passes:10,plasmaPending:false,plasmaActive:false,rulesVersion:3,upgradeVersion:2,ballValues:{},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:{...upgrades},callCapacity:15,shopOffer:null,stage,target:targetFor(stage),score:0,calls:15,money,bonusPaid:false,stamps:new Set(),bag:new Set(Array.from({length:25},(_,i)=>i+1)),played:Array(26).fill(0),status:'playing',offer:[]};
 }
 const shuffled=(values,random)=>{
   const result=[...values];for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;
@@ -95,20 +100,23 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   const patterns=scoredPatterns.map(p=>p.tiles);
   for(const {type} of scoredPatterns)state.patternCounts[type]=(state.patternCounts[type]||0)+1;
   state.scoredLines.push(...scoredPatterns.map(p=>p.id));
+  const hasPointsRule=state.jokers.includes('face-value');
   const activations=patterns.flatMap((pattern,i)=>pattern.map((tile,j)=>{
     const number=state.stampValues[tile],bonuses=[];
     for(const joker of state.jokers){
-      if(cardType(joker)==='single-digits'&&number!==null&&number>=1&&number<=9)bonuses.push({joker,points:1});
-      if(cardType(joker)==='number-cruncher'&&number!==null)bonuses.push({joker,points:number});
+      if(hasPointsRule&&cardType(joker)==='single-digits'&&number!==null&&number>=1&&number<=9)bonuses.push({joker,points:1});
+      if(hasPointsRule&&cardType(joker)==='number-cruncher'&&number!==null)bonuses.push({joker,points:number});
       if(cardType(joker)==='call-range'){
         const range=cardDetails(joker);
         if(number!==null&&number>=range.start&&number<=range.end){
           const calls=Math.max(0,Math.min(1,15-state.calls));state.calls+=calls;bonuses.push({joker,points:0,calls});
         }
       }
-      if(cardType(joker)==='outer-layer'&&(tile<=5||tile>=21||tile%5===1||tile%5===0))bonuses.push({joker,points:5});
+      if(hasPointsRule&&cardType(joker)==='outer-layer'&&(tile<=5||tile>=21||tile%5===1||tile%5===0))bonuses.push({joker,points:5});
     }
-    return {tile,number,basePoints:1,bonuses,points:1+bonuses.reduce((sum,b)=>sum+b.points,0),type:scoredPatterns[i].type,pattern:j===0?pattern:null};
+    const basePoints=hasPointsRule?(number??0):0;
+    const contributions=[...(hasPointsRule?[{joker:'face-value',points:basePoints}]:[]),...bonuses];
+    return {tile,number,basePoints,bonuses,contributions,points:basePoints+bonuses.reduce((sum,b)=>sum+b.points,0),trigger:'bingo',type:scoredPatterns[i].type,pattern:j===0?pattern:null};
   }));
   const points=activations.reduce((sum,a)=>sum+a.points,0);state.score+=points;
   state.offer=[];state.destinations={};
@@ -145,7 +153,7 @@ export function openShop(state,random=Math.random){
 }
 export function buyCard(state,index){
   const type=state.shopOffer?.cards[index],item=cardDetails(type);
-  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!item||state.money<item.price||state.jokers.filter(id=>id!=='bingo').length>=5)return false;
+  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!item||!CARD_TYPES[cardType(type)]||state.money<item.price||state.jokers.filter(id=>!isRuleCard(id)).length>=5)return false;
   let serial=1;while(state.jokers.includes(`${type}:${serial}`))serial++;
   state.jokers.push(`${type}:${serial}`);state.shopOffer.cards[index]=null;state.money-=item.price;return true;
 }
