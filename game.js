@@ -20,7 +20,7 @@ export const RULE_CARDS={
 };
 export const isRuleCard=id=>Object.hasOwn(RULE_CARDS,id);
 // Add new definitions here as the shop grows. Empty slots cannot be purchased.
-export const CARD_TYPES={encore:{name:'Encore',text:'Retrigger the card immediately to the right. No effect without a card to its right.',icon:'↻',short:'Retrigger right →'},'high-five':{name:'High Five',text:'Play a 1–5, including a die roll, to score it and its occupied orthogonal neighbors.',icon:'✚',short:'Play 1–5: score ✚'}};
+export const CARD_TYPES={'silver-lining':{name:'Silver Lining',text:'Scored negative numbers earn +30 extra points. Their negative value still applies.',icon:'+30',short:'Negative → +30'},'full-sweep':{name:'Full Sweep',text:'Activate once per round to score every occupied tile using your point cards. Costs no play.',icon:'▦',short:'USE · Score all',active:true},encore:{name:'Encore',text:'Retrigger the card immediately to the right. No effect without a card to its right.',icon:'↻',short:'Retrigger right →'},'high-five':{name:'High Five',text:'Play a 1–5, including a die roll, to score it and its occupied orthogonal neighbors.',icon:'✚',short:'Play 1–5: score ✚'}};
 export const BALL_UPGRADES={};
 export const ITEM_TYPES={seed:{name:'Seed',text:'Starts at 1. While on the board, permanently gains +1 whenever you play another piece, before scoring.',price:0},bomb:{name:'Bomb',text:'On placement, destroy this bomb and all items in the 8 neighboring spaces for the rest of the run.',price:0},d20:{name:'20-Sided Die',text:'Roll 1–20 when placed. Keep that number on this space for the round.',price:0},hundred:{name:'100 Ball',text:'Before scoring, permanently reduce occupied orthogonal neighbors by 1. Starts at 100.',price:0},rock:{name:'Rock',text:'Costs no play to place. Fills a space for combos, but has no number and scores 0 points.',price:0}};
 export const isRock=(state,id)=>state.items?.[id]==='rock';
@@ -53,7 +53,7 @@ export function changeTileValue(state,tile,delta,source){
 }
 export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['bingo','face-value'],inventory=null) {
   const collection=inventory?[...inventory.collection]:Array.from({length:25},(_,i)=>i+1),items={...inventory?.items},nextItemId=inventory?.nextItemId??26;
-  return {inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{...inventory?.ballValues},valueModifiers:{...inventory?.valueModifiers},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:15,shopOffer:null,stage,target:targetFor(stage),score:0,calls:15,money,bonusPaid:false,stamps:new Set(),bag:new Set(collection),played:Array(nextItemId).fill(0),status:collection.length?'playing':'over',offer:[]};
+  return {activeUses:{},inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{...inventory?.ballValues},valueModifiers:{...inventory?.valueModifiers},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:15,shopOffer:null,stage,target:targetFor(stage),score:0,calls:15,money,bonusPaid:false,stamps:new Set(),bag:new Set(collection),played:Array(nextItemId).fill(0),status:collection.length?'playing':'over',offer:[]};
 }
 const shuffled=(values,random)=>{
   const result=[...values];for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;
@@ -102,13 +102,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   // counts as playing it, so neighboring low numbers cannot trigger a cascade.
   // Resolve only toward the right, so Encore chains are finite. Preserve the
   // source chain for both group triggers and per-tile points animations.
-  const events=[];
-  function resolveCard(index,retriggers=[]){
-    const joker=state.jokers[index];if(!joker)return;
-    if(cardType(joker)==='encore')resolveCard(index+1,[...retriggers,joker]);
-    else events.push({joker,retriggers});
-  }
-  state.jokers.forEach((_,index)=>resolveCard(index));
+  const events=cardEvents(state);
   const scoringGroups=[];
   for(const {joker,retriggers} of events){
     if(joker==='bingo')scoringGroups.push(...scoredPatterns.map(p=>({trigger:joker,retriggers,type:p.type,tiles:p.tiles})));
@@ -117,18 +111,42 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
       scoringGroups.push({trigger:joker,retriggers,type:'cross',tiles:neighbors});
     }
   }
-  const activations=scoringGroups.flatMap(group=>group.tiles.map((tile,j)=>{
-    const number=state.stampValues[tile],bonuses=[];
-    const contributions=events.filter(e=>e.joker==='face-value').map(e=>({...e,points:number??0}));
-    const basePoints=state.jokers.includes('face-value')?(number??0):0;
-    return {tile,number,basePoints,bonuses,contributions,points:contributions.reduce((sum,c)=>sum+c.points,0),trigger:group.trigger,retriggers:group.retriggers,type:group.type,pattern:j===0?group.tiles:null};
-  }));
-  const points=activations.reduce((sum,a)=>sum+a.points,0);state.score+=points;
+  const {activations,points}=scoreGroups(state,scoringGroups,events);
 
   state.offer=[];state.destinations={};
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
   return {tile,playCost,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
+}
+function cardEvents(state){
+  const events=[];
+  function resolveCard(index,retriggers=[]){
+    const joker=state.jokers[index];if(!joker)return;
+    if(cardType(joker)==='encore')resolveCard(index+1,[...retriggers,joker]);
+    else events.push({joker,retriggers});
+  }
+  state.jokers.forEach((_,index)=>resolveCard(index));
+  return events;
+}
+function scoreGroups(state,scoringGroups,events=cardEvents(state)){
+  const activations=scoringGroups.flatMap(group=>group.tiles.map((tile,j)=>{
+    const number=state.stampValues[tile],bonuses=[];
+    const contributions=events.flatMap(e=>e.joker==='face-value'?[{...e,points:number??0}]:cardType(e.joker)==='silver-lining'&&Number.isFinite(number)&&number<0?[{...e,points:30}]:[]);
+    const basePoints=state.jokers.includes('face-value')?(number??0):0;
+    return {tile,number,basePoints,bonuses,contributions,points:contributions.reduce((sum,c)=>sum+c.points,0),trigger:group.trigger,retriggers:group.retriggers,type:group.type,pattern:j===0?group.tiles:null};
+  }));
+  const points=activations.reduce((sum,a)=>sum+a.points,0);state.score+=points;
+
+  return {activations,points};
+}
+export function activateCard(state,id){
+  if(state.status!=='playing'||!state.jokers.includes(id)||!cardDetails(id)?.active||state.activeUses?.[id]||!state.stamps.size)return null;
+  state.activeUses??={};state.activeUses[id]=true;
+  const events=cardEvents(state),tiles=[...state.stamps].sort((a,b)=>a-b);
+  const scoringGroups=events.filter(e=>e.joker===id).map(e=>({trigger:id,retriggers:e.retriggers,type:'all',tiles}));
+  const {activations,points}=scoreGroups(state,scoringGroups,events);
+  if(state.score>=state.target)state.status='passed';
+  return {scoringGroups,activations,points,callsBeforeBonuses:state.calls};
 }
 export function redraw(state,random=Math.random) {
   if(state.status!=='playing'||state.passes<1||!state.offer.length)return false;

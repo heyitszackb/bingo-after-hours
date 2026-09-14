@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=1d0ca33e2cde';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=0b81cefcefe7';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=c3666efe7228';
+import {newStage,deal,choose,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=37a9149221e5';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 // One tempo for animation and sequencing keeps effects and input locks aligned.
@@ -34,13 +34,14 @@ function render(boardState=state){
 let jokerDrag=null;
 function renderJokers(){
   const ids=normalizeJokers(state.jokers),rack=$('joker-rack');
-  if(rack.dataset.cards===ids.join('|'))return;
-  rack.dataset.cards=ids.join('|');rack.style.setProperty('--card-count',ids.length);rack.style.setProperty('--slot-count',Math.max(5,ids.length));rack.replaceChildren();
+  const signature=ids.join('|')+JSON.stringify(state.activeUses||{});
+  if(rack.dataset.cards===signature)return;
+  rack.dataset.cards=signature;rack.style.setProperty('--card-count',ids.length);rack.style.setProperty('--slot-count',Math.max(5,ids.length));rack.replaceChildren();
   for(const id of ids){
     const type=cardType(id),item=cardDetails(id),description=item.text,card=document.createElement('button'),pattern={previewTiles:[3,8,11,12,13,14,15,18,23,1,7,19,25]};
-    card.className=`joker-card joker-${type}`;card.dataset.joker=id;
+    card.className=`joker-card joker-${type}${item.active?' active-joker':''}${state.activeUses?.[id]?' spent':''}`;card.dataset.joker=id;
     card.setAttribute('aria-label',`${description}. Drag to reorder or trash. Use Left and Right arrows to reorder, or Delete to remove.`);
-    card.innerHTML=`<span class="joker-heading">${type==='bingo'?'BINGO':item.name.toUpperCase()}</span><span class="joker-art ${type!=='bingo'?'digits-art':''}" aria-hidden="true">${type!=='bingo'?`<b>${item.icon}</b>`:Array.from({length:25},(_,i)=>`<i class="${pattern.previewTiles.includes(i+1)?'filled':''}"></i>`).join('')}</span><span class="joker-description">${type==='bingo'?'Lines of 5':type==='face-value'?'Number → pts':item.short||description}</span>`;
+    card.innerHTML=`<span class="joker-heading">${type==='bingo'?'BINGO':item.name.toUpperCase()}</span><span class="joker-art ${type!=='bingo'?'digits-art':''}" aria-hidden="true">${type!=='bingo'?`<b>${item.icon}</b>`:Array.from({length:25},(_,i)=>`<i class="${pattern.previewTiles.includes(i+1)?'filled':''}"></i>`).join('')}</span><span class="joker-description">${type==='bingo'?'Lines of 5':type==='face-value'?'Number → pts':state.activeUses?.[id]?'USED':item.short||description}</span>`;
     card.onpointerdown=e=>{
       if(busy||e.button!==0||jokerDrag||drag)return;
       const selected=tooltipAnchor===card;
@@ -71,7 +72,7 @@ function renderJokers(){
     };
     card.onpointerup=async e=>{
       const d=jokerDrag;if(!d||d.pointer!==e.pointerId)return;
-      if(!d.ghost){showTooltip(null,card);$('tooltip-number').textContent=type==='bingo'?'Bingo':item.name;$('tooltip-effect').textContent=description;$('tooltip-effect').hidden=false;positionTooltip();}
+      if(!d.ghost)inspectCard(id,card);
       const discard=d.ghost&&overTrash(e.clientX,e.clientY),ghost=d.ghost;
       if(ghost){state.jokers=[...rack.querySelectorAll('[data-joker]')].map(c=>c.dataset.joker);saveRun();}
       if(discard){removeJoker(state,id);saveRun();if(shopping)renderShop();}
@@ -80,7 +81,7 @@ function renderJokers(){
       if(discard)$('announcer').textContent=`${id} card removed.`;
     };
     card.onpointercancel=()=>cancelJokerDrag();card.onlostpointercapture=()=>{if(jokerDrag)cancelJokerDrag();};
-    card.onkeydown=e=>{if(busy)return;if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();const from=state.jokers.indexOf(id),to=from+(e.key==='ArrowLeft'?-1:1);if(to>=0&&to<state.jokers.length){[state.jokers[from],state.jokers[to]]=[state.jokers[to],state.jokers[from]];saveRun();renderJokers();rack.querySelector(`[data-joker="${id}"]`).focus();}return;}if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeJoker(state,id);saveRun();renderJokers();if(shopping)renderShop();}};
+    card.onkeydown=e=>{if(busy)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();inspectCard(id,card);return;}if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();const from=state.jokers.indexOf(id),to=from+(e.key==='ArrowLeft'?-1:1);if(to>=0&&to<state.jokers.length){[state.jokers[from],state.jokers[to]]=[state.jokers[to],state.jokers[from]];saveRun();renderJokers();rack.querySelector(`[data-joker="${id}"]`).focus();}return;}if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeJoker(state,id);saveRun();renderJokers();if(shopping)renderShop();}};
     rack.append(card);
   }
   for(let i=ids.length;i<5;i++){const slot=document.createElement('div');slot.className='joker-slot';slot.setAttribute('aria-hidden','true');rack.append(slot);}
@@ -95,7 +96,7 @@ function ball(n){const b=document.createElement('button');b.className=`ball pain
 function hideTooltip(){
   const tip=$('inspect-tooltip');
   if(tip.matches(':popover-open'))tip.hidePopover();
-  tip.hidden=true;
+  tip.hidden=true;$('activate-card').hidden=true;tip.setAttribute('role','tooltip');
   tooltipAnchor?.removeAttribute('aria-describedby');
   tooltipAnchor?.classList.remove('inspected');
   tooltipAnchor=null;
@@ -133,6 +134,21 @@ function showTooltip(n,anchor,space=false){
   tip.showPopover?.();
   positionTooltip();
   animate(tip,[{opacity:0,transform:'translateY(5px) scale(.94)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:150,easing:'cubic-bezier(.2,.8,.25,1)'});
+}
+function inspectCard(id,card){
+  const item=cardDetails(id);showTooltip(null,card);$('tooltip-number').textContent=item.name;$('tooltip-effect').textContent=item.text;$('tooltip-effect').hidden=false;
+  if(item.active){
+    const button=$('activate-card'),used=state.activeUses?.[id];button.hidden=false;button.disabled=!!used||!state.stamps.size||busy||state.status!=='playing'||shopping;
+    button.textContent=used?'USED · NEXT ROUND':!state.stamps.size?'PLACE A PIECE FIRST':'ACTIVATE';button.onclick=()=>useActiveCard(id);$('inspect-tooltip').setAttribute('role','dialog');
+  }
+  positionTooltip();
+}
+async function useActiveCard(id){
+  if(busy||drag||jokerDrag||shopping||inMenu)return;
+  const result=activateCard(state,id);if(!result)return;
+  hideTooltip();lock();saveRun();
+  await activateSpaces(result);render();refreshBag();
+  if(state.status!=='playing'){showResult();return;}unlock();
 }
 function inspectSpace(tile){showTooltip(state.stampBalls[tile],$(`cell-${tile}`),true);}
 function inspect(n,anchor){showTooltip(n,anchor);}
@@ -322,7 +338,7 @@ async function activateSpaces(result){
   let displayedScore=state.score-result.points,displayedCalls=result.callsBeforeBonuses,total=0,lineIndex=0;
   let activePattern=[];
   const rack=$('joker-rack'),board=$('board'),area=document.querySelector('.draw-area'),readout=$('score-meter');
-  const colors={row:'#83e0b5',column:'#91c6ff',diagonal:'#ffb18b',cross:'#eab6f3'};
+  const colors={row:'#83e0b5',column:'#91c6ff',diagonal:'#ffb18b',cross:'#eab6f3',all:'#ffe094'};
   const allTiles=[...new Set(result.activations.map(a=>a.tile))].map(n=>$(`cell-${n}`));
   rack.classList.add('scoring-rack');board.classList.add('scoring-board');area.classList.add('scoring-draw');
   readout.classList.add('scoring-total');$('score-line-label').hidden=false;renderScore(displayedScore);
@@ -385,11 +401,11 @@ async function activateSpaces(result){
       await animate($('score'),reduced?[{opacity:.75},{opacity:1}]:[{transform:'scale(1.22,1.08) rotate(-2deg)'},{transform:'scale(.97,1.03)',offset:.55},{transform:'scale(1)'}],{duration:130});
       cell.classList.remove('activating');
     }
-    $('score-line-label').textContent=state.jokers.includes('face-value')?(result.scoringGroups.some(g=>g.type==='cross')?'SCORED':'BINGO'):'NO POINTS RULE';
+    $('score-line-label').textContent=result.activations.some(a=>a.contributions.length)?'SCORED':'NO POINTS RULE';
     if(total>0){pulseBackground();navigator.vibrate?.([15,25,25]);burst($('score').getBoundingClientRect(),true);}
     await animate(readout,reduced?[{opacity:.85},{opacity:1}]:[{transform:'scale(1)'},{transform:'scale(1.08) rotate(-1deg)',offset:.25},{transform:'scale(1)',offset:.65},{transform:'scale(1)'}],{duration:360});
     await wait(600);
-    const names=result.scoringGroups.map(g=>g.type==='cross'?cardDetails(g.trigger).name:PATTERN_TYPES.find(type=>type.id===g.type).label);
+    const names=result.scoringGroups.map(g=>['cross','all'].includes(g.type)?cardDetails(g.trigger).name:PATTERN_TYPES.find(type=>type.id===g.type).label);
     $('announcer').textContent=`${names.join(', ')}. ${result.activations.length} spaces activated for ${result.points} points.`;
   }finally{
     rack.classList.remove('scoring-rack');board.classList.remove('scoring-board');area.classList.remove('scoring-draw');readout.classList.remove('scoring-total');$('score-line-label').hidden=true;
