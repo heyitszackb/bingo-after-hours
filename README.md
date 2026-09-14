@@ -6,7 +6,7 @@ A solo arcade bingo game with a portrait table, numbered stamps, a bag, and two 
 
 - Each normal draw offers one available ball and one random empty space. Swipe up to stamp that space, or down to pass. Passing returns the ball to the bag, changes the ball and location when alternatives exist, and spends no money or play. Tap a ball, stamp, or card to inspect it. Tap the bag to inspect your surviving collection, including added items; played pieces are greyed out and destroyed pieces are absent.
 - A deliberate swipe commits on release; returning to its start cancels. Arrow Up/Down are keyboard equivalents. Dragging onto the board also works.
-- Start with $5, 15 plays and 10 passes. A placement uses one play and removes its ball from the bag for the round. Plays and passes replenish each round. Targets are **5, 10, 15, 20, 30, 40, 55, 70, 90, 120**.
+- Start with $5, 15 plays and 10 passes. A placement removes its piece from the bag for the round and uses one play, except Rocks, which cost no play. Plays and passes replenish each round. Targets are **5, 10, 15, 20, 30, 40, 55, 70, 90, 120**.
 - **Bingo:** score rows, columns, and diagonals of five. Each physical line activates once per round. Stamps remain on the board and may activate in other newly completed lines. Squares and corners alone do not score.
 - **Face Value:** scored tiles earn their ball’s number in points. Removing Bingo prevents line activations; other trigger cards still work. Removing Face Value preserves activations but awards zero points. Drag either rule card to the trash to remove it for the run.
 - Each unused play pays $1 after a win, then the shop opens. The next round resets placements and refills the bag, plays, and passes. Money and run pattern counts carry over.
@@ -15,7 +15,7 @@ The header contains menu, current score / target, and money. Scoring lights the 
 
 ## Developer bag editor
 
-Open **View Bag → Debug** to edit a draft of the full collection, including currently played pieces. Change each row’s type, value and copy count; add/remove rows; or use **Base 1–25**, **Current Bag**, and **Clear**. The editor supports up to 500 pieces, duplicate numbers, zero/negative values, Bombs, dice and powered 100 Balls. Dice use the Value field as a permanent roll modifier (0 means normal). A plain numbered 100 has no special power.
+Open **View Bag → Debug** to edit a draft of the full collection, including currently played pieces. Change each row’s type, value and copy count; add/remove rows; or use **Base 1–25**, **Current Bag**, and **Clear**. The editor supports up to 500 pieces, duplicate numbers, zero/negative values, Bombs, dice, powered 100 Balls and Rocks. Dice use the Value field as a permanent roll modifier (0 means normal). A plain numbered 100 has no special power.
 
 **Apply & Restart Round** replaces the collection and restarts the current round with a clear board, zero round score, 15 plays and 10 passes. It preserves the stage, money, cards and historical pattern counts. Closing the editor or returning to bag inspection discards the draft. Applied bags persist through reloads and round transitions; starting a fresh run restores the standard 1–25 collection.
 
@@ -28,7 +28,7 @@ All shop additions are **free while testing**. Every available purchase appears 
 - **Cards:** **High Five** is free: playing a 1–5 scores itself and occupied neighbors immediately above, right, below, and left. Trigger groups resolve in rack order. Bingo and High Five can score the same tile separately; each activation uses Face Value if owned. Scoring a tile never re-triggers High Five, and dice qualify by their rolled value. Up to five purchased cards can be held and removed through the rack.
 
 - **Ball Upgrades:** no upgrades are currently available, so there are no empty purchase placeholders.
-- **Items:** new pieces added to the bag. **Bomb**, **20-Sided Die**, and **100 Ball** are available with a repeatable “Add to Bag” action and an owned count.
+- **Items:** new pieces added to the bag. **Bomb**, **20-Sided Die**, **100 Ball**, and **Rock** are available with a repeatable “Add to Bag” action and an owned count.
 
 Each Bomb has a unique identity and the same per-piece draw probability as a numbered ball. It rolls and passes normally, and an unplayed Bomb survives round transitions. It is not a ball upgrade and has no number, so Face Value awards it zero points.
 
@@ -39,6 +39,8 @@ The **20-Sided Die** has the same draw odds as every other piece and shows `?` b
 The **100 Ball** starts at value 100. When played, it permanently subtracts 1 from each occupied orthogonal neighbor with a numeric value, before any scoring groups are built. Empty and numberless spaces are unaffected; diagonals and the source are excluded. Reductions accumulate through zero into negatives and stay with the affected pieces across rounds and reloads. Dice keep the permanent modifier on future rolls. Destruction removes a piece’s modifiers, and a new run resets them.
 
 Number-changing effects emit a common source/tile/before/after/delta event. The UI holds the pre-effect board, pulses the source, sends a colored marker to each target, flips its old number into the new one, and settles all changes before activating scoring cards. Negative scoring uses signed labels; the header progress bar never becomes negative.
+
+**Rock** is numberless and contributes zero points, but occupies a space for Bingo and other scoring groups. Placing one costs no play; passing still spends one pass. Rocks leave the bag when placed and return next round if they survive. High Five can include a Rock but a Rock cannot trigger it. Value-changing effects skip Rocks; Bombs destroy them. A win preserves the unused play for the normal cash payout.
 
 The collection tracks permanent ownership separately from the current bag. Every new round refills the bag from surviving items only. A new run restores the original 25 numbered balls. Saves preserve added Bombs, destroyed items, played availability and progress; pre-item saves receive the original collection.
 
@@ -60,3 +62,5 @@ Other browser scripts document retired interfaces and effects. Tests for the rem
 Run `python3 scripts/version-assets.py` before committing to fingerprint browser resources. GitHub Pages publishes the root of `main`.
 
 Motion references: [LocalThunk on the solitaire feel](https://localthunk.com/blog/solitaire), [Indieklem’s Balatro UI analysis](https://indieklem.substack.com/p/20-a-look-at-100-interface-games), and [Folmer Kelly on contextual game polish](https://www.gdcvault.com/play/1020861/).
+
+`node scripts/rock-check.mjs` verifies shop/debug availability, free placement, numberless presentation, zero-point scoring, reloads, preserved-play payout, and next-round availability.

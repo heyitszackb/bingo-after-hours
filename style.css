@@ -459,3 +459,9 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 #bag-debug .debug-row button{padding:0;font-size:25px;color:#dfac98;height:38px}.debug-add{display:flex;justify-content:space-between;align-items:center;gap:10px}.debug-add output{font-size:17px;color:var(--gold)}#bag-debug .debug-note{font-size:13px;color:#94b09d}#bag-debug #debug-error{color:#ffc099;font-size:14px}#debug-apply{width:100%;min-height:43px;font-size:21px;margin:0;padding:9px 6px;flex-shrink:0}
 @media(max-width:350px){.debug-columns,.debug-row{grid-template-columns:minmax(82px,1.5fr) minmax(50px,1fr) 44px 29px;gap:5px}#bag-debug{gap:7px}#bag-debug .debug-intro{font-size:14px}#bag-debug .debug-presets button{font-size:14px;padding:5px 7px}.debug-row input,.debug-row select{font-size:16px}#debug-apply{font-size:18px}}
 @media(max-height:480px){#bag-dialog.debug-editing{width:min(96vw,700px);height:96dvh;max-height:96dvh}.debug-editing .bag-heading{margin-bottom:5px}#bag-debug{gap:5px}#bag-debug .debug-intro{font-size:13px}#bag-debug .debug-note{font-size:11px}#debug-rows{min-height:42px}#debug-apply{min-height:34px;padding:5px}#bag-debug .debug-presets button,#bag-debug #debug-add{min-height:28px;padding:4px 7px}}
+
+/* Rocks fill a tile without a numeric face or a play cost. */
+.ball.rock-item{background:transparent url('assets/rock.svg?v=2f6d52f9e4ab') center/contain no-repeat!important;border:0;box-shadow:none;border-radius:0;image-rendering:pixelated}
+.ball.rock-item:before,.ball.rock-item:after{display:none}.ball.rock-item .face{visibility:hidden}
+.cell.stamped.rock-item:before{background:transparent url('assets/rock.svg?v=2f6d52f9e4ab') center/contain no-repeat!important;width:88%;border:0;box-shadow:none;border-radius:0;transform:none;image-rendering:pixelated}
+.rock-art{background:url('assets/rock.svg?v=2f6d52f9e4ab') center/contain no-repeat;image-rendering:pixelated}.play-cue.free-play>span{color:#b9e9b0}

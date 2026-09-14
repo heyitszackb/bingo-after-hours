@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=78d5728066b7';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=98c745eac36f';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,migrateShop,migrateInventory,buyCard,isRuleCard,buyItem,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openShop,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=765ac0834793';
+import {newStage,deal,choose,migrateShop,migrateInventory,buyCard,isRuleCard,buyItem,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openShop,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=6b306e773610';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
@@ -16,6 +16,7 @@ function renderScore(value=state.score){
 }
 function render(boardState=state){
   renderJokers();$('bag').disabled=busy;
+  const freePlay=state.items[state.offer[0]]==='rock';$('play-ball').querySelector('span').textContent=freePlay?'↑ FREE PLAY':'↑ PLAY';$('play-ball').classList.toggle('free-play',freePlay);
   $('redraw').classList.toggle('exhausted',state.passes===0);$('play-ball').disabled=busy||!!drag||state.status!=='playing'||!state.offer.length;$('play-ball').setAttribute('aria-label',`Play ball ${pieceLabel(state.offer[0])} on the highlighted space. ${state.calls} plays remaining.`);
   $('patterns-button').disabled=busy||payingOut;$('score-patterns').disabled=busy||payingOut;
   $('score-patterns').setAttribute('aria-label',`${state.score} of ${state.target} points. View scoring patterns and run counts`);
@@ -24,7 +25,7 @@ function render(boardState=state){
     c.className=`cell paint-grey upgrade-${state.upgrades[number]||'plain'}${itemClass(number)}${boardState.stamps.has(tile)?' stamped':''}${offered?' offered':''}`;
     c.querySelector('span').textContent=boardState.stamps.has(tile)?(boardState.stampValues[tile]??''):'';
     c.classList.toggle('large-value',String(boardState.stampValues[tile]).length>2);
-    c.setAttribute('aria-label',`Row ${Math.floor((tile-1)/5)+1}, column ${(tile-1)%5+1}${boardState.stamps.has(tile)?`, stamped ${boardState.stampValues[tile]??'Bomb'}`:offered?', available for any drawn ball':', empty'}. Scoring is determined by your active cards.`);
+    c.setAttribute('aria-label',`Row ${Math.floor((tile-1)/5)+1}, column ${(tile-1)%5+1}${boardState.stamps.has(tile)?`, stamped ${boardState.stampValues[tile]??pieceLabel(number)}`:offered?', available for any drawn ball':', empty'}. Scoring is determined by your active cards.`);
   }}
 
 let jokerDrag=null;
@@ -72,7 +73,7 @@ function renderJokers(){
 function overTrash(x,y){const r=$('joker-trash').getBoundingClientRect();return x>=r.left-12&&x<=r.right+12&&y>=r.top-12&&y<=r.bottom+12;}
 function cancelJokerDrag(removeGhost=true){if(!jokerDrag)return;const d=jokerDrag;jokerDrag=null;d.card.classList.remove('held');if(removeGhost)d.ghost?.remove();$('joker-trash').hidden=true;$('joker-trash').classList.remove('ready');if(d.card.hasPointerCapture(d.pointer))d.card.releasePointerCapture(d.pointer);}
 
-const itemClass=n=>isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':'';
+const itemClass=n=>isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':'';
 const pieceLabel=n=>state.items[n]?`${ITEM_TYPES[state.items[n]].name}${ballValue(state,n)!==null?` (${ballValue(state,n)})`:''}`:ballValue(state,n)??'';
 const pieceFace=n=>isDie(state,n)?'?':ballValue(state,n)??'';
 function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)}`;b.classList.toggle('large-value',String(pieceFace(n)).length>2);b.dataset.number=n;b.innerHTML=`<span class="face">${pieceFace(n)}</span>`;b.setAttribute('aria-label',`Inspect ${pieceLabel(n)}`);return b;}
@@ -104,7 +105,7 @@ function showTooltip(n,anchor,space=false){
   hideTooltip();
   const tip=$('inspect-tooltip');
   (anchor.closest('dialog')||document.body).append(tip);
-  $('tooltip-number').textContent=space?(state.stamps.has(Number(anchor.id.replace('cell-','')))?state.stampValues[Number(anchor.id.replace('cell-',''))]??'Bomb':'EMPTY'):(n==null?'':isDie(state,n)?'?':ballValue(state,n)??pieceLabel(n));
+  $('tooltip-number').textContent=space?(state.stamps.has(Number(anchor.id.replace('cell-','')))?state.stampValues[Number(anchor.id.replace('cell-',''))]??pieceLabel(n):'EMPTY'):(n==null?'':isDie(state,n)?'?':ballValue(state,n)??pieceLabel(n));
   const upgrade=state.upgrades[n],item=ITEM_TYPES[state.items?.[n]];
   $('tooltip-effect').textContent=item?item.text:upgrade?BALL_UPGRADES[upgrade].text:space?'Nothing special':'';
   const modifier=state.valueModifiers?.[n]||0;if(modifier)$('tooltip-effect').textContent+=`${$('tooltip-effect').textContent?' ':''}Permanent value change: ${signed(modifier)}.${isDie(state,n)?` Future rolls: ${1+modifier}–${20+modifier}.`:''}`;
@@ -143,10 +144,10 @@ function debugRows(){
     const line=document.createElement('div');line.className='debug-row';
     const select=document.createElement('select');select.setAttribute('aria-label',`Piece ${index+1} type`);
     for(const [type,name] of [['number','Number'],...Object.entries(ITEM_TYPES).map(([type,item])=>[type,item.name])]){const option=document.createElement('option');option.value=type;option.textContent=name;select.append(option);}select.value=row.type;
-    const value=document.createElement('input');value.type='number';value.step='1';value.inputMode='text';value.value=row.value??'';value.disabled=row.type==='bomb';value.setAttribute('aria-label',`Piece ${index+1} ${row.type==='d20'?'roll modifier':'value'}`);
+    const value=document.createElement('input');value.type='number';value.step='1';value.inputMode='text';value.value=row.value??'';value.disabled=['bomb','rock'].includes(row.type);value.setAttribute('aria-label',`Piece ${index+1} ${row.type==='d20'?'roll modifier':'value'}`);
     const count=document.createElement('input');count.type='number';count.step='1';count.min='1';count.max='500';count.inputMode='numeric';count.value=row.count;count.setAttribute('aria-label',`Piece ${index+1} copies`);
     const remove=document.createElement('button');remove.textContent='×';remove.setAttribute('aria-label',`Remove piece ${index+1}`);
-    select.onchange=()=>{row.type=select.value;row.value=row.type==='bomb'?null:row.type==='d20'?0:row.type==='hundred'?100:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
+    select.onchange=()=>{row.type=select.value;row.value=['bomb','rock'].includes(row.type)?null:row.type==='d20'?0:row.type==='hundred'?100:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
     value.oninput=()=>{row.value=value.value===''?null:value.valueAsNumber;validateDebugDraft();};count.oninput=()=>{row.count=count.value===''?null:count.valueAsNumber;validateDebugDraft();};
     remove.onclick=()=>{debugDraft.splice(index,1);debugRows();const next=$('debug-rows').children[Math.min(index,debugDraft.length-1)];(next?.querySelector('select')||$('debug-add')).focus();};
     line.append(select,value,count,remove);list.append(line);
@@ -390,7 +391,7 @@ async function explodeBomb(result){
       const angle=Math.atan2(rect.top-r.top,rect.left-r.left)+(i-2.5)*.45,d=30+Math.random()*70;
       fragments.push(animate(chip,[{transform:'scale(1.3)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+20}px) rotate(${i*65}deg) scale(.2)`,opacity:0}],{duration:360+i*20,easing:'cubic-bezier(.1,.65,.2,1)'}).then(()=>chip.remove()));
     }}
-    cell.classList.remove('stamped','bomb-item','die-item','hundred-item','just-stamped');cell.querySelector('span').textContent='';
+    cell.classList.remove('stamped','bomb-item','die-item','hundred-item','rock-item','just-stamped');cell.querySelector('span').textContent='';
   }
   if(!reduced){
     const ring=document.createElement('i');ring.className='bomb-wave';ring.style.left=`${r.left+r.width/2}px`;ring.style.top=`${r.top+r.height/2}px`;ring.style.width=`${r.width*2.6}px`;ring.style.height=`${r.height*2.6}px`;$('effects').append(ring);
@@ -458,7 +459,7 @@ async function play(n,b,ghost,tile=state.destinations[n]){
   render(result.effectBoard||state);if(result.roll!==null)cell.querySelector('span').textContent='?';renderCalls(result.callsBeforeBonuses);renderScore(state.score-result.points);
   if(result.roll!==null)await rollDie(cell,result.roll);
   if(result.valueChanges.length)await animateValueChanges(result);
-  $('announcer').textContent=`${pieceLabel(n)} played.${result.roll!==null?` Rolled ${result.roll}.`:''} One play used.`;
+  $('announcer').textContent=`${pieceLabel(n)} played.${result.roll!==null?` Rolled ${result.roll}.`:''} ${result.playCost===0?'No play used.':'One play used.'}`;
   if(result.destroyed.length){await explodeBomb(result);render();renderScore(state.score-result.points);}
   if(result.activations.length)await activateSpaces(result);
   await wait(120);render();refreshBag();
@@ -594,7 +595,7 @@ function renderShop(){
     const owned=isCard?state.jokers.filter(id=>cardType(id)===type).length:state.collection.filter(id=>state.items[id]===type).length;
     const action=sold?'ADDED':isCard&&full?'5 / 5 CARDS':isCard?'FREE · ADD CARD':'FREE · ADD TO BAG';
     card.disabled=busy||sold||(isCard&&full);card.setAttribute('aria-label',`${item.name}. ${item.text} ${action}. ${owned} owned.`);
-    const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='hundred'?'<i class="hundred-art" aria-hidden="true">100</i>':`<i class="${type==='bomb'?'bomb-art':'die-art'}" aria-hidden="true">${type==='d20'?'?':''}</i>`;
+    const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='hundred'?'<i class="hundred-art" aria-hidden="true">100</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='d20'?'?':''}</i>`;
     card.innerHTML=`<small class="product-kind">${isCard?'CARD':'BAG PIECE'}</small><strong class="product-name">${item.name.toUpperCase()}</strong>${art}<span class="product-description">${item.text}</span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span><b class="product-action">${action}</b>`;
     card.onclick=()=>{
       if(busy)return;const added=isCard?buyCard(state,index):buyItem(state,type);if(added===false)return;

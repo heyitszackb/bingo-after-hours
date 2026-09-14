@@ -1,11 +1,11 @@
-import {ballValue,ITEM_TYPES} from './game.js?v=765ac0834793';
+import {ballValue,ITEM_TYPES} from './game.js?v=6b306e773610';
 
 export const DEBUG_BAG_LIMIT=500;
 export const baseBagRecipe=()=>Array.from({length:25},(_,i)=>({type:'number',value:i+1,count:1}));
 export function bagRecipe(state){
   const groups=new Map();
   for(const id of state.collection){
-    const type=state.items[id]||'number',value=type==='bomb'?null:type==='d20'?(state.valueModifiers[id]||0):ballValue(state,id),key=`${type}:${value}`;
+    const type=state.items[id]||'number',value=['bomb','rock'].includes(type)?null:type==='d20'?(state.valueModifiers[id]||0):ballValue(state,id),key=`${type}:${value}`;
     if(groups.has(key))groups.get(key).count++;
     else groups.set(key,{type,value,count:1});
   }
@@ -19,7 +19,7 @@ export function buildDebugBag(recipe){
   for(const row of recipe){
     if(!row||!(row.type==='number'||Object.hasOwn(ITEM_TYPES,row.type)))throw new Error('Choose a valid piece type.');
     if(!Number.isInteger(row.count)||row.count<1)throw new Error('Copies must be whole numbers of 1 or more.');
-    if(row.type!=='bomb'&&!Number.isSafeInteger(row.value))throw new Error('Values must be whole numbers.');
+    if(!['bomb','rock'].includes(row.type)&&!Number.isSafeInteger(row.value))throw new Error('Values must be whole numbers.');
     total+=row.count;
     if(total>DEBUG_BAG_LIMIT)throw new Error(`Use at most ${DEBUG_BAG_LIMIT} pieces in a test bag.`);
   }
