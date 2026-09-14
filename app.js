@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=364833e05ed6';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=470d0657ab97';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=0ad392a44205';
+import {newStage,deal,choose,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=03223c23417b';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 // One tempo for animation and sequencing keeps effects and input locks aligned.
@@ -180,7 +180,7 @@ function debugRows(){
     const value=document.createElement('input');value.type='number';value.step='1';value.inputMode='text';value.value=row.value??'';value.disabled=['bomb','rock','x2','x3','copier'].includes(row.type);value.setAttribute('aria-label',`Piece ${index+1} ${row.type==='d20'?'roll modifier':'value'}`);
     const count=document.createElement('input');count.type='number';count.step='1';count.min='1';count.max='500';count.inputMode='numeric';count.value=row.count;count.setAttribute('aria-label',`Piece ${index+1} copies`);
     const remove=document.createElement('button');remove.textContent='×';remove.setAttribute('aria-label',`Remove piece ${index+1}`);
-    select.onchange=()=>{row.type=select.value;row.value=['bomb','rock','x2','x3','copier'].includes(row.type)?null:row.type==='d20'?0:row.type==='hundred'?100:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
+    select.onchange=()=>{row.type=select.value;row.value=['bomb','rock','x2','x3','copier'].includes(row.type)?null:row.type==='d20'?0:row.type==='hundred'?50:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
     value.oninput=()=>{row.value=value.value===''?null:value.valueAsNumber;validateDebugDraft();};count.oninput=()=>{row.count=count.value===''?null:count.valueAsNumber;validateDebugDraft();};
     remove.onclick=()=>{debugDraft.splice(index,1);debugRows();const next=$('debug-rows').children[Math.min(index,debugDraft.length-1)];(next?.querySelector('select')||$('debug-add')).focus();};
     line.append(select,value,count,remove);list.append(line);
@@ -499,13 +499,22 @@ async function animateCopy(copy){
   ghost.remove();await animate($('bag'),[{transform:'scale(1)'},{transform:'scale(1.15)',offset:.4},{transform:'scale(1)'}],{duration:200});
   $('announcer').textContent='Copier added an exact copy to the bag.';
 }
+async function dropAnvil(id,cell){
+  const r=cell.getBoundingClientRect(),size=r.width*.95,ghost=ball(id);ghost.classList.add('drag-ghost','anvil-drop');ghost.setAttribute('aria-hidden','true');ghost.style.setProperty('--size',`${size}px`);document.body.append(ghost);cell.classList.add('anvil-pending');
+  const x=r.left+(r.width-size)/2,y=r.top+(r.height-size)/2;
+  await animate(ghost,[{transform:`translate(${x}px,${y-180}px) scale(1.15)`,opacity:0},{transform:`translate(${x}px,${y-165}px) scale(1.12)`,opacity:1,offset:.15},{transform:`translate(${x}px,${y}px) scale(1)`,opacity:1}],{duration:700,easing:'cubic-bezier(.65,0,1,.5)'});
+  cell.classList.remove('anvil-pending');ghost.remove();
+  await animate(cell.querySelector('span'),[{transform:'scale(1.25,.6)'},{transform:'scale(.95,1.1)',offset:.6},{transform:'scale(1)'}],{duration:180});
+}
 async function play(n,b,ghost,tile=state.destinations[n]){
   if(busy){ghost?.remove();return;}lock();const result=choose(state,n,tile);if(!result){ghost?.remove();unlock();return;}
   saveRun();renderCalls(result.callsBeforeBonuses);$('bag-count').textContent=state.bag.size;
   const cell=$(`cell-${tile}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.classList.add('leave');});
+  if(ghost&&state.items[n]==='hundred'){ghost.remove();ghost=null;}
   if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}
   document.querySelectorAll('.cell.offered').forEach(c=>{c.className='cell paint-grey';c.querySelector('span').textContent='';});
   cell.className=`cell paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)} stamped just-stamped`;cell.querySelector('span').textContent=pieceFace(n);cell.classList.toggle('large-value',String(pieceFace(n)).length>2);
+  if(state.items[n]==='hundred')await dropAnvil(n,cell);
   pulseBackground();navigator.vibrate?.(18);burst(r);
   await animate(document.querySelector('.board-frame'),[{transform:'translateY(0)'},{transform:'translateY(3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});
   await wait(180);
@@ -641,7 +650,7 @@ const shopCopy={
   seed:'Starts at 1 · grows with each play',
   bomb:'Destroy itself + 8 neighboring pieces',
   d20:'Roll 1–20 when placed',
-  hundred:'Worth 100 · 4 neighbors lose 1',
+  hundred:'Worth 50 · crush 4 neighbors by 1',
   rock:'Free play · scores 0',
   copier:'Play here → copy into bag',
   x2:'×2 tile points · permanent',
@@ -660,7 +669,7 @@ function renderShop(){
     const owned=isCard?state.jokers.filter(id=>cardType(id)===type).length:state.collection.filter(id=>state.items[id]===type).length;
     const action=sold?'ADDED':isCard&&full?'5 / 5 CARDS':'FREE · CHOOSE';
     card.disabled=busy||sold||(isCard&&full);card.setAttribute('aria-label',`${item.name}. ${item.text} ${action}. ${owned} owned.`);
-    const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='hundred'?'<i class="hundred-art" aria-hidden="true">100</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='copier'?'▣':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;
+    const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='copier'?'▣':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;
     card.innerHTML=`<strong class="product-name">${item.name.toUpperCase()}</strong>${art}<span class="product-description">${shopCopy[type]||item.short||item.text}</span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span><b class="product-action">${action}</b>`;
     card.onclick=async()=>{
       if(busy||!claimReward(state,type))return;
@@ -727,6 +736,7 @@ function loadRun(){
     saved.valueModifiers??={};
     if(typeof saved.valueModifiers!=='object'||Array.isArray(saved.valueModifiers)||!Object.entries(saved.valueModifiers).every(([id,value])=>saved.collection.includes(Number(id))&&Number.isSafeInteger(value)))throw new Error('Invalid value modifiers');
     saved.ballValues??={};
+    for(const [tile,id] of Object.entries(saved.stampBalls||{}))if(saved.items[id]==='hundred')saved.stampValues[tile]=ballValue(saved,Number(id));
     if(typeof saved.ballValues!=='object'||Array.isArray(saved.ballValues)||!Object.entries(saved.ballValues).every(([n,value])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<saved.nextItemId&&saved.collection.includes(Number(n))&&Number.isSafeInteger(value)))throw new Error('Invalid ball values');
     if(typeof saved.upgrades!=='object'||Array.isArray(saved.upgrades)||!Object.entries(saved.upgrades).every(([n,type])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&BALL_UPGRADES[type]))throw new Error('Invalid upgrades');
     if(saved.shopOffer!=null&&(!['cards','balls'].every(kind=>Array.isArray(saved.shopOffer[kind])&&saved.shopOffer[kind].length===2&&saved.shopOffer[kind].every(type=>type===null||(kind==='cards'?cardDetails(type):BALL_UPGRADES[type])))||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');

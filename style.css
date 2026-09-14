@@ -501,3 +501,11 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .ball.stamp-item{border-radius:5px;background:#daca9f!important;box-shadow:3px 4px #1a302c,inset 0 0 0 4px #9d895f;border:3px solid #d8bf86}
 .ball.stamp-item:before,.ball.stamp-item:after{display:none}.ball.stamp-item .face{background:transparent;box-shadow:none;border:0;color:#7f6a44;font-size:calc(var(--size)*.4)}
 .copier-art,.x2-art,.x3-art{background:#dbcaa0;color:#88734c;border:3px double #9c865a;border-radius:3px;font-size:25px;box-shadow:2px 3px #00191e}
+
+.ball.hundred-item{background:transparent url('assets/anvil.svg?v=163a501e866d') center/contain no-repeat!important;border:0;box-shadow:none;border-radius:0;image-rendering:pixelated}
+.ball.hundred-item:before,.ball.hundred-item:after{display:none}.ball.hundred-item .face{background:transparent;border:0;box-shadow:none;color:#142d31;font-size:calc(var(--size)*.25);transform:translateY(-25%);text-shadow:1px 1px #e1e7d4}
+.cell.stamped.hundred-item:before{background:transparent url('assets/anvil.svg?v=163a501e866d') center/contain no-repeat!important;width:96%;border:0;box-shadow:none;border-radius:0;transform:none}
+.cell.stamped.hundred-item>span{font-size:.55em;transform:translateY(-25%);text-shadow:1px 1px #e1e7d4}
+.cell.anvil-pending:before,.cell.anvil-pending>span{opacity:0!important}
+#shop-shelf .hundred-art{background:url('assets/anvil.svg?v=163a501e866d') center/contain no-repeat;font-size:14px;padding-bottom:6px}
+.cabinet:not(.shopping)>.draw-area .ball.hundred-item .face{font-size:calc(var(--size)*.28)}
