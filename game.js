@@ -165,6 +165,22 @@ export function openShop(state,random=Math.random){
   }
   return true;
 }
+// The live shop is a persisted, one-pick reward draft. Inventory helpers below
+// remain usable for fixtures and tools; all player selections go through this gate.
+export function openRewardShop(state,random=Math.random){
+  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10)return false;
+  if(state.shopOffer?.rewardVersion===1)return true;
+  state.shopOffer={rewardVersion:1,cards:shuffled(Object.keys(CARD_TYPES),random).slice(0,2),items:shuffled(Object.keys(ITEM_TYPES),random).slice(0,2),balls:[null,null],claimed:false};
+  return true;
+}
+export function claimReward(state,type){
+  const offer=state.shopOffer;
+  if(offer?.rewardVersion!==1||offer.claimed)return false;
+  const index=offer.cards.indexOf(type);
+  const added=index>=0?buyCard(state,index):offer.items.includes(type)?buyItem(state,type):false;
+  if(added===false)return false;
+  offer.claimed=true;return true;
+}
 export function buyItem(state,type){
   if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!Object.hasOwn(ITEM_TYPES,type)||!state.shopOffer?.items?.includes(type))return false;
   const id=state.nextItemId++;state.items[id]=type;state.collection.push(id);state.bag.add(id);state.played[id]=0;return id;

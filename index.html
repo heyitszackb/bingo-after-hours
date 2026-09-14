@@ -13,10 +13,10 @@
 <section class="draw-area" aria-label="Drag a ball to the card, or tap to inspect"><div id="play-ball" class="swipe-label play-cue"><span>↑ PLAY</span><small><strong id="play-count">15</strong> plays left</small></div><div class="track"><div id="balls" class="balls"></div><span id="gesture-hint" aria-hidden="true"></span><div class="rail"></div></div><div id="redraw" class="swipe-label pass-cue"><span>PASS ↓</span><small><strong id="redraw-cost">10</strong> passes left</small></div><section id="stage-result" hidden aria-label="Stage result"><div class="result-summary"><span id="result-icon" aria-hidden="true"></span><strong id="payout-earned" hidden></strong><span id="result-score" class="sr-only"></span></div><div id="result-actions" hidden><button id="continue" aria-label="Continue">→</button><button id="result-menu" aria-label="Main menu"><svg viewBox="0 0 24 24"><path d="M3 11 12 3l9 8M6 9v12h12V9M10 21v-7h4v7"/></svg></button></div></section></section>
 <button id="bag" class="bag-inspect" aria-label="View bag"><svg viewBox="0 0 40 44" aria-hidden="true"><path fill="#8b603c" stroke="#3a3025" stroke-width="2" d="M10 2h20l-5 10 3 4 6 10 2 11-4 5H8l-4-5 2-11 6-10 3-4z"/><path fill="#d4b27b" stroke="none" d="M12 3h16l-5 9h-6zM16 15h8l7 13 1 10H8l1-10z"/><path d="M12 12h16M12 15h16M13 13 6 20M27 13l7 7" stroke="#e9cb87" stroke-width="2"/><path d="M17 24h5l2 2v3l-2 1 2 1v3l-2 2h-5zM17 30h5" stroke="#5d462f" stroke-width="2" fill="none"/></svg><span>VIEW BAG <small id="bag-count">25</small></span></button>
 <section id="shop-screen" hidden aria-label="Upgrade shop">
-<div class="shop-heading"><h2>SHOP</h2></div>
-<div id="shop-shelf" role="region" tabindex="0" aria-label="All shop purchases. Scroll horizontally to browse."></div>
+<div class="shop-heading"><h2>CHOOSE 1 · FREE</h2></div>
+<div id="shop-shelf" role="region" tabindex="0" aria-label="Choose one free reward: two cards and two bag pieces. Scroll horizontally to browse."></div>
 <div id="shop-browse"><button id="shop-prev" aria-label="Previous shop options">←</button><span>SWIPE TO BROWSE</span><button id="shop-more" aria-label="More shop options">→</button></div>
-<div class="shop-actions"><button id="shop-next" class="menu-button primary-menu">NEXT ROUND <span>→</span></button></div>
+
 </section>
 </main>
 <dialog id="pause-dialog" class="navigation-dialog" aria-labelledby="pause-title"><h2 id="pause-title">PAUSED</h2><p id="pause-summary"></p><button id="resume-button" class="menu-button primary-menu">RESUME <span>▶</span></button><button id="restart-button" class="menu-button">RESTART RUN <span>↻</span></button><button id="main-menu-button" class="menu-button">MAIN MENU <span>⌂</span></button></dialog>
@@ -42,4 +42,4 @@
 <div id="joker-trash" hidden aria-label="Trash scoring card"><svg viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7"/></svg></div>
 <div id="announcer" class="sr-only" role="status" aria-live="polite"></div><div id="effects" aria-hidden="true"></div>
 <div id="inspect-tooltip" role="tooltip" popover="manual" hidden><strong id="tooltip-number"></strong><p id="tooltip-effect" hidden>Nothing special</p></div>
-<script type="module" src="app.js?v=4a2bb43093e5"></script></body></html>
+<script type="module" src="app.js?v=89bece4a6cbd"></script></body></html>

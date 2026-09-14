@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=64363ea1fcca';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=1d0ca33e2cde';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,migrateShop,migrateInventory,buyCard,isRuleCard,buyItem,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openShop,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=fbc1167c0fb2';
+import {newStage,deal,choose,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=c3666efe7228';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 // One tempo for animation and sequencing keeps effects and input locks aligned.
@@ -610,38 +610,41 @@ function renderShop(){
   const shelf=$('shop-shelf'),scroll=shelf.scrollLeft,focused=document.activeElement?.id;
   shelf.replaceChildren();
   const full=state.jokers.filter(id=>!isRuleCard(id)).length>=5;
-  for(const [type,definition] of [...Object.entries(CARD_TYPES),...Object.entries(ITEM_TYPES)]){
+  for(const type of [...state.shopOffer.cards,...state.shopOffer.items].filter(Boolean)){
+    const definition=CARD_TYPES[type]||ITEM_TYPES[type];
     const isCard=Object.hasOwn(CARD_TYPES,type),item=isCard?cardDetails(type):definition,index=state.shopOffer.cards.indexOf(type),sold=isCard&&index<0;
     const card=document.createElement('button');card.id=`shop-${type}`;card.className=`shop-product${isCard?' shop-rule-card':''}`;
     if(isCard)card.dataset.shopCard=type;
     const owned=isCard?state.jokers.filter(id=>cardType(id)===type).length:state.collection.filter(id=>state.items[id]===type).length;
-    const action=sold?'ADDED':isCard&&full?'5 / 5 CARDS':isCard?'FREE · ADD CARD':'FREE · ADD TO BAG';
+    const action=sold?'ADDED':isCard&&full?'5 / 5 CARDS':'FREE · CHOOSE';
     card.disabled=busy||sold||(isCard&&full);card.setAttribute('aria-label',`${item.name}. ${item.text} ${action}. ${owned} owned.`);
     const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='hundred'?'<i class="hundred-art" aria-hidden="true">100</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='d20'?'?':type==='seed'?'1':''}</i>`;
     card.innerHTML=`<small class="product-kind">${isCard?'CARD':'BAG PIECE'}</small><strong class="product-name">${item.name.toUpperCase()}</strong>${art}<span class="product-description">${item.text}</span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span><b class="product-action">${action}</b>`;
-    card.onclick=()=>{
-      if(busy)return;const added=isCard?buyCard(state,index):buyItem(state,type);if(added===false)return;
-      saveRun();renderShop();renderJokers();$('announcer').textContent=`${item.name} added. Free.`;
-      const updated=$(`shop-${type}`);animate(updated,[{transform:'scale(.96)'},{transform:'scale(1.025)',offset:.4},{transform:'scale(1)'}],{duration:240});
+    card.onclick=async()=>{
+      if(busy||!claimReward(state,type))return;
+      busy=true;saveRun();shelf.querySelectorAll('button').forEach(b=>b.disabled=true);$('shop-menu').disabled=true;
+      $('announcer').textContent=`${item.name} chosen. Next round.`;
+      await animate(card,[{transform:'scale(.96)'},{transform:'scale(1.06)',offset:.4},{transform:'scale(1)',opacity:.4}],{duration:400});
+      await finishShop();
     };
     shelf.append(card);
   }
   shelf.scrollLeft=scroll;if(focused?.startsWith('shop-')&&$(focused)&&!$(focused).disabled)$(focused).focus({preventScroll:true});
-  $('shop-next').disabled=busy;$('shop-menu').disabled=busy;requestAnimationFrame(updateShopScroll);
+  $('shop-menu').disabled=busy;requestAnimationFrame(updateShopScroll);
 }
 $('shop-shelf').addEventListener('scroll',updateShopScroll,{passive:true});window.addEventListener('resize',updateShopScroll);
 for(const [id,direction] of [['shop-prev',-1],['shop-more',1]])$(id).onclick=()=>$('shop-shelf').scrollBy({left:direction*200,behavior:reduced?'instant':'smooth'});
 function showShop(){
-  openShop(state);shopping=true;busy=false;
+  openShop(state);if(state.shopOffer.claimed){finishShop();return;}shopping=true;busy=false;
   $('patterns-button').disabled=false;$('score-patterns').disabled=false;
   hideTooltip();$('game-screen').classList.add('shopping');$('shop-screen').hidden=false;
   $('bag').disabled=false;$('stages').disabled=false;renderShop();saveRun();
   animate($('shop-screen'),[{transform:'translateY(24px)',opacity:0},{transform:'translateY(0)',opacity:1}],{duration:350,easing:'cubic-bezier(.2,.8,.3,1)'});
 }
-$('shop-next').onclick=async()=>{
-  if(busy)return;hideTooltip();shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;
+async function finishShop(){
+  hideTooltip();shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;
   state=newStage(state.stage+1,state.money,state.upgrades,state.patternCounts,state.jokers,state);saveRun();await nextDraw();
-};
+}
 $('shop-menu').onclick=()=>{if(!busy)showMenu();};
 
 const SAVE_KEY='binglatro.run.v1';
