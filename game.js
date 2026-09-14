@@ -22,7 +22,7 @@ export const isRuleCard=id=>Object.hasOwn(RULE_CARDS,id);
 // Add new definitions here as the shop grows. Empty slots cannot be purchased.
 export const CARD_TYPES={crowd:{name:'Crowd',text:'Each scored tile earns +1 point for every item on the board. Tile stamps do not count.',icon:'•••',short:'+1 per board item'},'silver-lining':{name:'Silver Lining',text:'Scored negative numbers earn +30 extra points. Their negative value still applies.',icon:'+30',short:'Negative → +30'},'full-sweep':{name:'Full Sweep',text:'Activate once per round to score every occupied tile using your point cards. Costs no play.',icon:'▦',short:'USE · Score all',active:true},encore:{name:'Encore',text:'Retrigger the card immediately to the right. No effect without a card to its right.',icon:'↻',short:'Retrigger right →'},'high-five':{name:'High Five',text:'Play a 1–5, including a die roll, to score it and its occupied orthogonal neighbors.',icon:'✚',short:'Play 1–5: score ✚'}};
 export const BALL_UPGRADES={};
-export const ITEM_TYPES={...Object.fromEntries([10,50,100].map(n=>[`plus${n}`,{name:`+${n} Stamp`,text:`One use. Permanently add ${n} points whenever this tile scores, before tile multipliers. Leaves the space empty.`,price:0}])),copier:{name:'Copier Stamp',text:'One use. Permanently mark this tile: whenever an item is played here, add an exact copy to the bag before its effects.',price:0},x2:{name:'×2 Stamp',text:'One use. Permanently multiply this tile’s scoring points by 2. Leaves the space empty. Stacks with other stamps.',price:0},x3:{name:'×3 Stamp',text:'One use. Permanently multiply this tile’s scoring points by 3. Leaves the space empty. Stacks with other stamps.',price:0},seed:{name:'Seed',text:'Starts at 1. While on the board, permanently gains +1 whenever you play another piece, before scoring.',price:0},bomb:{name:'Bomb',text:'On placement, destroy this bomb and all items in the 8 neighboring spaces for the rest of the run.',price:0},d20:{name:'20-Sided Die',text:'Roll 1–20 when placed. Keep that number on this space for the round.',price:0},hundred:{name:'Anvil',text:'Drops onto the board, permanently crushing the 4 occupied orthogonal neighbors by 1 before scoring. Starts at 50.',price:0},rock:{name:'Rock',text:'Costs no play to place. Fills a space for combos, but has no number and scores 0 points.',price:0}};
+export const ITEM_TYPES={question:{name:'Question Mark',text:'When scored, swap with a random non-Question-Mark item in the bag. No copies. Stamps are excluded; placement powers do not activate.',price:0},...Object.fromEntries([10,50,100].map(n=>[`plus${n}`,{name:`+${n} Stamp`,text:`One use. Permanently add ${n} points whenever this tile scores, before tile multipliers. Leaves the space empty.`,price:0}])),copier:{name:'Copier Stamp',text:'One use. Permanently mark this tile: whenever an item is played here, add an exact copy to the bag before its effects.',price:0},x2:{name:'×2 Stamp',text:'One use. Permanently multiply this tile’s scoring points by 2. Leaves the space empty. Stacks with other stamps.',price:0},x3:{name:'×3 Stamp',text:'One use. Permanently multiply this tile’s scoring points by 3. Leaves the space empty. Stacks with other stamps.',price:0},seed:{name:'Seed',text:'Starts at 1. While on the board, permanently gains +1 whenever you play another piece, before scoring.',price:0},bomb:{name:'Bomb',text:'On placement, destroy this bomb and all items in the 8 neighboring spaces for the rest of the run.',price:0},d20:{name:'20-Sided Die',text:'Roll 1–20 when placed. Keep that number on this space for the round.',price:0},hundred:{name:'Anvil',text:'Drops onto the board, permanently crushing the 4 occupied orthogonal neighbors by 1 before scoring. Starts at 50.',price:0},rock:{name:'Rock',text:'Costs no play to place. Fills a space for combos, but has no number and scores 0 points.',price:0}};
 export const stampFactor=(state,id)=>state.items?.[id]==='x2'?2:state.items?.[id]==='x3'?3:1;
 export const isStamp=(state,id)=>['x2','x3','copier','plus10','plus50','plus100'].includes(state.items?.[id]);
 export function tileStampList(state,tile){
@@ -49,7 +49,7 @@ export const normalizeJokers=jokers=>{
     return CARD_TYPES[cardType(id)]&&cardDetails(id)&&purchased++<5;
   });
 };
-export const ballValue=(state,number)=>number==null||isBomb(state,number)||isDie(state,number)||isRock(state,number)||isStamp(state,number)?null:((state.ballValues?.[number]??(state.items?.[number]==='hundred'?50:state.items?.[number]==='seed'?1:number))+(state.valueModifiers?.[number]||0));
+export const ballValue=(state,number)=>number==null||state.items?.[number]==='question'||isBomb(state,number)||isDie(state,number)||isRock(state,number)||isStamp(state,number)?null:((state.ballValues?.[number]??(state.items?.[number]==='hundred'?50:state.items?.[number]==='seed'?1:number))+(state.valueModifiers?.[number]||0));
 const boardSnapshot=state=>({stamps:new Set(state.stamps),stampBalls:{...state.stampBalls},stampValues:{...state.stampValues}});
 export const orthogonalNeighbors=tile=>[tile-5,tile+1,tile+5,tile-1].filter(t=>t>=1&&t<=25&&Math.abs(Math.floor((t-1)/5)-Math.floor((tile-1)/5))+Math.abs((t-1)%5-(tile-1)%5)===1);
 // Effects produce a common before/after event for the UI, independent of scoring.
@@ -139,12 +139,12 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
       scoringGroups.push({trigger:joker,retriggers,type:'cross',tiles:neighbors});
     }
   }
-  const {activations,points}=scoreGroups(state,scoringGroups,events);
+  const {activations,points,scoringBoard}=scoreGroups(state,scoringGroups,events,random);
 
   state.offer=[];state.destinations={};
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
-  return {tile,copied,copies,stampApplied,playCost,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
+  return {tile,scoringBoard,copied,copies,stampApplied,playCost,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
 }
 function cardEvents(state){
   const events=[];
@@ -156,26 +156,40 @@ function cardEvents(state){
   state.jokers.forEach((_,index)=>resolveCard(index));
   return events;
 }
-function scoreGroups(state,scoringGroups,events=cardEvents(state)){
+function scoreGroups(state,scoringGroups,events=cardEvents(state),random=Math.random){
+  const scoringBoard=boardSnapshot(state);
   const activations=scoringGroups.flatMap(group=>group.tiles.map((tile,j)=>{
+    let reveal=null;
+    const current=state.stampBalls[tile];
+    if(state.items[current]==='question'){
+      const available=[...state.bag].filter(id=>state.items[id]!=='question'&&!isStamp(state,id));
+      if(available.length){
+        const id=available[Math.floor(random()*available.length)];
+        state.bag.delete(id);state.bag.add(current);state.stampBalls[tile]=id;
+        state.stampValues[tile]=isDie(state,id)?1+Math.floor(random()*20)+(state.valueModifiers[id]||0):ballValue(state,id);
+        reveal={from:current,to:id,value:state.stampValues[tile]};
+        // Active scoring can consume the currently offered physical piece.
+        if(state.offer.includes(id)){state.offer=[];state.destinations={};}
+      }
+    }
     const number=state.stampValues[tile],bonuses=[];
     const contributions=events.flatMap(e=>cardType(e.joker)==='crowd'?[{...e,points:state.stamps.size}]:e.joker==='face-value'?[{...e,points:number??0}]:cardType(e.joker)==='silver-lining'&&Number.isFinite(number)&&number<0?[{...e,points:30}]:[]);
     const stampBonus=tileStampList(state,tile).reduce((sum,type)=>sum+(type.startsWith('plus')?Number(type.slice(4)):0),0);
     const basePoints=state.jokers.includes('face-value')?(number??0):0;
-    return {tile,number,basePoints,bonuses,contributions,stampBonus,multiplier:state.tileMultipliers?.[tile]||1,points:(contributions.reduce((sum,c)=>sum+c.points,0)+stampBonus)*(state.tileMultipliers?.[tile]||1),trigger:group.trigger,retriggers:group.retriggers,type:group.type,pattern:j===0?group.tiles:null};
+    return {tile,reveal,number,basePoints,bonuses,contributions,stampBonus,multiplier:state.tileMultipliers?.[tile]||1,points:(contributions.reduce((sum,c)=>sum+c.points,0)+stampBonus)*(state.tileMultipliers?.[tile]||1),trigger:group.trigger,retriggers:group.retriggers,type:group.type,pattern:j===0?group.tiles:null};
   }));
   const points=activations.reduce((sum,a)=>sum+a.points,0);state.score+=points;
 
-  return {activations,points};
+  return {activations,points,scoringBoard};
 }
-export function activateCard(state,id){
+export function activateCard(state,id,random=Math.random){
   if(state.status!=='playing'||!state.jokers.includes(id)||!cardDetails(id)?.active||state.activeUses?.[id]||!state.stamps.size)return null;
   state.activeUses??={};state.activeUses[id]=true;
   const events=cardEvents(state),tiles=[...state.stamps].sort((a,b)=>a-b);
   const scoringGroups=events.filter(e=>e.joker===id).map(e=>({trigger:id,retriggers:e.retriggers,type:'all',tiles}));
-  const {activations,points}=scoreGroups(state,scoringGroups,events);
+  const {activations,points,scoringBoard}=scoreGroups(state,scoringGroups,events,random);
   if(state.score>=state.target)state.status='passed';
-  return {scoringGroups,activations,points,callsBeforeBonuses:state.calls};
+  return {scoringBoard,scoringGroups,activations,points,callsBeforeBonuses:state.calls};
 }
 export function redraw(state,random=Math.random) {
   if(state.status!=='playing'||state.passes<1||!state.offer.length)return false;

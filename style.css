@@ -514,3 +514,4 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .space-tooltip #tooltip-effect{white-space:pre-line;text-align:left;font-size:16px;line-height:1.15;max-height:55dvh;overflow-y:auto}
 
 .cell .board-ink{white-space:normal;overflow-wrap:anywhere;line-height:1.1}.cell.stamped .board-ink{max-width:95%;font-size:11px}.cell:not(.stamped) .board-ink{font-size:clamp(13px,3.5vw,24px)}
+.ball.question-item{filter:sepia(.3)}.question-art{background:url('assets/stamp.svg?v=ff2fb538bdcb') center/contain no-repeat;font-size:30px;color:#233b37}
