@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=fdff12d501e4';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=2faf1f4c2662';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=b6fe4d164b10';
+import {newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=0d5f0a7f65c6';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 // One tempo for animation and sequencing keeps effects and input locks aligned.
@@ -351,7 +351,7 @@ async function activateSpaces(result){
   let displayedScore=state.score-result.points,displayedCalls=result.callsBeforeBonuses,total=0,lineIndex=0;
   let activePattern=[];
   const rack=$('joker-rack'),board=$('board'),area=document.querySelector('.draw-area'),readout=$('score-meter');
-  const colors={row:'#83e0b5',column:'#91c6ff',diagonal:'#ffb18b',cross:'#eab6f3',all:'#ffe094'};
+  const colors={square:'#d5b1f0',corners:'#f3c980',row:'#83e0b5',column:'#91c6ff',diagonal:'#ffb18b',cross:'#eab6f3',all:'#ffe094'};
   const allTiles=[...new Set(result.activations.map(a=>a.tile))].map(n=>$(`cell-${n}`));
   rack.classList.add('scoring-rack');board.classList.add('scoring-board');area.classList.add('scoring-draw');
   readout.classList.add('scoring-total');$('score-line-label').hidden=false;renderScore(displayedScore);
@@ -665,6 +665,7 @@ for(const dialog of document.querySelectorAll('#bag-dialog,#stage-dialog,#help-d
 
 
 const shopCopy={
+  square:'Score a filled 2×2 block',corners:'Score all four board corners',
   question:'When scored: swap with bag item',
   plus10:'+10 tile points · permanent',plus50:'+50 tile points · permanent',plus100:'+100 tile points · permanent',
   crowd:'Scored tiles: +1 per board item',
@@ -768,7 +769,7 @@ function loadRun(){
     if(typeof saved.upgrades!=='object'||Array.isArray(saved.upgrades)||!Object.entries(saved.upgrades).every(([n,type])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&BALL_UPGRADES[type]))throw new Error('Invalid upgrades');
     if(saved.shopOffer!=null&&(!['cards','balls'].every(kind=>Array.isArray(saved.shopOffer[kind])&&saved.shopOffer[kind].length===2&&saved.shopOffer[kind].every(type=>type===null||(kind==='cards'?cardDetails(type):BALL_UPGRADES[type])))||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
     if(saved.shopOffer?.items&&!saved.shopOffer.items.every(type=>Object.hasOwn(ITEM_TYPES,type)))throw new Error('Invalid shop items');
-    saved.scoredLines=Array.isArray(saved.scoredLines)?[...new Set(saved.scoredLines.filter(id=>typeof id==='string'&&/^(row-[1-5]|column-[1-5]|diagonal-[12])$/.test(id)))]:[];
+    saved.scoredLines=Array.isArray(saved.scoredLines)?[...new Set(saved.scoredLines.filter(id=>typeof id==='string'&&/^(row-[1-5]|column-[1-5]|diagonal-[12]|square-(?:[1-9]|1[0-6])|corners-1)$/.test(id)))]:[];
     saved.jokers=normalizeJokers(saved.jokers);
     // Add the newly introduced rule once; an intentionally trashed rule stays removed.
     if(saved.jokerVersion!==4&&!saved.jokers.includes('face-value'))saved.jokers.push('face-value');

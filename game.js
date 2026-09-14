@@ -1,4 +1,6 @@
 export const PATTERN_TYPES = [
+  {id:'square',label:'2×2 square',previewTiles:[7,8,12,13],tileCount:4},
+  {id:'corners',label:'Four corners',previewTiles:[1,5,21,25],tileCount:4},
   {id:'row',label:'5 in a row',previewTiles:[11,12,13,14,15],tileCount:5},
   {id:'column',label:'5 in a col',previewTiles:[3,8,13,18,23],tileCount:5},
   {id:'diagonal',label:'Diagonals',previewTiles:[1,7,13,19,25],tileCount:5},
@@ -9,6 +11,7 @@ export const PATTERN_DEFINITIONS = [
   {id:'diagonal-1',type:'diagonal',tiles:[1,7,13,19,25]},
   {id:'diagonal-2',type:'diagonal',tiles:[5,9,13,17,21]},
 ];
+export const EXTRA_PATTERNS=[...Array.from({length:16},(_,i)=>{const t=Math.floor(i/4)*5+i%4+1;return {id:`square-${i+1}`,type:'square',tiles:[t,t+1,t+5,t+6]};}),{id:'corners-1',type:'corners',tiles:[1,5,21,25]}];
 export const PATTERNS = PATTERN_DEFINITIONS.map(pattern=>pattern.tiles);
 export const freshPatternCounts=()=>Object.fromEntries(PATTERN_TYPES.map(({id})=>[id,0]));
 export const completedPatterns=stamps=>PATTERN_DEFINITIONS.filter(({tiles})=>tiles.every(tile=>stamps.has(tile)));
@@ -20,7 +23,7 @@ export const RULE_CARDS={
 };
 export const isRuleCard=id=>Object.hasOwn(RULE_CARDS,id);
 // Add new definitions here as the shop grows. Empty slots cannot be purchased.
-export const CARD_TYPES={crowd:{name:'Crowd',text:'Each scored tile earns +1 point for every item on the board. Tile stamps do not count.',icon:'•••',short:'+1 per board item'},'silver-lining':{name:'Silver Lining',text:'Scored negative numbers earn +30 extra points. Their negative value still applies.',icon:'+30',short:'Negative → +30'},'full-sweep':{name:'Full Sweep',text:'Activate once per round to score every occupied tile using your point cards. Costs no play.',icon:'▦',short:'USE · Score all',active:true},encore:{name:'Encore',text:'Retrigger the card immediately to the right. No effect without a card to its right.',icon:'↻',short:'Retrigger right →'},'high-five':{name:'High Five',text:'Play a 1–5, including a die roll, to score it and its occupied orthogonal neighbors.',icon:'✚',short:'Play 1–5: score ✚'}};
+export const CARD_TYPES={square:{name:'Square',text:'Score each completed 2×2 block of four items. Each block scores once per round.',icon:'▦',short:'Score 2×2 blocks'},corners:{name:'Four Corners',text:'Score the four corner items when all four corners are occupied. Once per round.',icon:'⌗',short:'Score 4 corners'},crowd:{name:'Crowd',text:'Each scored tile earns +1 point for every item on the board. Tile stamps do not count.',icon:'•••',short:'+1 per board item'},'silver-lining':{name:'Silver Lining',text:'Scored negative numbers earn +30 extra points. Their negative value still applies.',icon:'+30',short:'Negative → +30'},'full-sweep':{name:'Full Sweep',text:'Activate once per round to score every occupied tile using your point cards. Costs no play.',icon:'▦',short:'USE · Score all',active:true},encore:{name:'Encore',text:'Retrigger the card immediately to the right. No effect without a card to its right.',icon:'↻',short:'Retrigger right →'},'high-five':{name:'High Five',text:'Play a 1–5, including a die roll, to score it and its occupied orthogonal neighbors.',icon:'✚',short:'Play 1–5: score ✚'}};
 export const BALL_UPGRADES={};
 export const ITEM_TYPES={question:{name:'Question Mark',text:'When scored, swap with a random non-Question-Mark item in the bag. No copies. Stamps are excluded; placement powers do not activate.',price:0},...Object.fromEntries([10,50,100].map(n=>[`plus${n}`,{name:`+${n} Stamp`,text:`One use. Permanently add ${n} points whenever this tile scores, before tile multipliers. Leaves the space empty.`,price:0}])),copier:{name:'Copier Stamp',text:'One use. Permanently mark this tile: each Copier adds one exact copy of any item played here to the bag, including stamps. Multiple Copiers stack.',price:0},x2:{name:'×2 Stamp',text:'One use. Permanently multiply this tile’s scoring points by 2. Leaves the space empty. Stacks with other stamps.',price:0},x3:{name:'×3 Stamp',text:'One use. Permanently multiply this tile’s scoring points by 3. Leaves the space empty. Stacks with other stamps.',price:0},seed:{name:'Seed',text:'Starts at 1. While on the board, permanently gains +1 whenever you play another piece, before scoring.',price:0},bomb:{name:'Bomb',text:'On placement, destroy this bomb and all items in the 8 neighboring spaces for the rest of the run.',price:0},d20:{name:'20-Sided Die',text:'Roll 1–20 when placed. Keep that number on this space for the round.',price:0},hundred:{name:'Anvil',text:'Drops onto the board, permanently crushing the 4 occupied orthogonal neighbors by 1 before scoring. Starts at 50.',price:0},rock:{name:'Rock',text:'Costs no play to place. Fills a space for combos, but has no number and scores 0 points.',price:0}};
 export const stampFactor=(state,id)=>state.items?.[id]==='x2'?2:state.items?.[id]==='x3'?3:1;
@@ -122,7 +125,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
 
   // All placement effects have resolved. Only the surviving board can score.
   const callsBeforeBonuses=state.calls;
-  const scoredPatterns=completedPatterns(state.stamps).filter(p=>!state.scoredLines.includes(p.id)&&p.tiles.includes(tile)&&state.jokers.includes('bingo'));
+  const scoredPatterns=[...completedPatterns(state.stamps),...EXTRA_PATTERNS.filter(p=>p.tiles.every(t=>state.stamps.has(t)))].filter(p=>!state.scoredLines.includes(p.id)&&p.tiles.includes(tile)&&(p.type==='square'||p.type==='corners'?state.jokers.some(id=>cardType(id)===p.type):state.jokers.includes('bingo')));
   const patterns=scoredPatterns.map(p=>p.tiles);
   for(const {type} of scoredPatterns)state.patternCounts[type]=(state.patternCounts[type]||0)+1;
   state.scoredLines.push(...scoredPatterns.map(p=>p.id));
@@ -133,7 +136,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   const events=cardEvents(state);
   const scoringGroups=[];
   for(const {joker,retriggers} of events){
-    if(joker==='bingo')scoringGroups.push(...scoredPatterns.map(p=>({trigger:joker,retriggers,type:p.type,tiles:p.tiles})));
+    if(joker==='bingo'||['square','corners'].includes(cardType(joker)))scoringGroups.push(...scoredPatterns.filter(p=>joker==='bingo'?['row','column','diagonal'].includes(p.type):p.type===cardType(joker)).map(p=>({trigger:joker,retriggers,type:p.type,tiles:p.tiles})));
     if(cardType(joker)==='high-five'&&state.stampValues[tile]>=1&&state.stampValues[tile]<=5){
       const neighbors=[tile,...orthogonalNeighbors(tile)].filter(t=>state.stamps.has(t));
       scoringGroups.push({trigger:joker,retriggers,type:'cross',tiles:neighbors});
