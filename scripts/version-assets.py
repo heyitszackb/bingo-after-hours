@@ -10,9 +10,10 @@ def version(name):
 style=root/'style.css'
 css=re.sub(r"url\('([^'?]+)(?:\?v=[^']+)?'\)",lambda m:f"url('{m[1]}?v={version(m[1])}')",style.read_text())
 style.write_text(css)
-app=root/'app.js'
-js=re.sub(r"from '\./([^'?]+)(?:\?v=[^']+)?'",lambda m:f"from './{m[1]}?v={version(m[1])}'",app.read_text())
-app.write_text(js)
+for filename in ['debug-bag.js','app.js']:
+    app=root/filename
+    js=re.sub(r"from '\./([^'?]+)(?:\?v=[^']+)?'",lambda m:f"from './{m[1]}?v={version(m[1])}'",app.read_text())
+    app.write_text(js)
 index=root/'index.html'
 html=index.read_text()
 for name in ['style.css','app.js']:

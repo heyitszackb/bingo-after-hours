@@ -13,6 +13,14 @@ A solo arcade bingo game with a portrait table, numbered stamps, a bag, and two 
 
 The header contains menu, current score / target, and money. Scoring lights the complete line with Bingo, then activates each tile and Face Value in order. Points fly into the persistent header counter. No sound is generated. Mobile layouts fit without scrolling.
 
+## Developer bag editor
+
+Open **View Bag → Debug** to edit a draft of the full collection, including currently played pieces. Change each row’s type, value and copy count; add/remove rows; or use **Base 1–25**, **Current Bag**, and **Clear**. The editor supports up to 500 pieces, duplicate numbers, zero/negative values, Bombs, dice and powered 100 Balls. Dice use the Value field as a permanent roll modifier (0 means normal). A plain numbered 100 has no special power.
+
+**Apply & Restart Round** replaces the collection and restarts the current round with a clear board, zero round score, 15 plays and 10 passes. It preserves the stage, money, cards and historical pattern counts. Closing the editor or returning to bag inspection discards the draft. Applied bags persist through reloads and round transitions; starting a fresh run restores the standard 1–25 collection.
+
+`node scripts/debug-bag-check.mjs` covers draft/cancel/reset, responsive layout, custom values and duplicates, validation, applying to a progressed round, scoring, and save/round persistence. `test/debug-bag.test.js` verifies independent identities and interactions with powers.
+
 ## Shop
 
 All shop additions are **free while testing**. Every available purchase appears on one horizontally scrollable shelf, with a type label, effect description, owned count and add action. Swipe sideways, use the browse arrows, or focus the shelf and use the keyboard. Bought cards stay visible as added; bag pieces can be added repeatedly.

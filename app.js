@@ -1,3 +1,4 @@
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=556a04830c18';
 import {pulseBackground} from './background.js?v=64709a33df06';
 import {newStage,deal,choose,migrateShop,migrateInventory,buyCard,isRuleCard,buyItem,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openShop,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=f9a0815a3005';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -135,6 +136,43 @@ function refreshBag(){
     b.onclick=()=>inspect(n,b);$('bag-grid').append(b);
   }
 }
+let debugDraft=null;
+function debugRows(){
+  const list=$('debug-rows');list.replaceChildren();
+  debugDraft.forEach((row,index)=>{
+    const line=document.createElement('div');line.className='debug-row';
+    const select=document.createElement('select');select.setAttribute('aria-label',`Piece ${index+1} type`);
+    for(const [type,name] of [['number','Number'],...Object.entries(ITEM_TYPES).map(([type,item])=>[type,item.name])]){const option=document.createElement('option');option.value=type;option.textContent=name;select.append(option);}select.value=row.type;
+    const value=document.createElement('input');value.type='number';value.step='1';value.inputMode='text';value.value=row.value??'';value.disabled=row.type==='bomb';value.setAttribute('aria-label',`Piece ${index+1} ${row.type==='d20'?'roll modifier':'value'}`);
+    const count=document.createElement('input');count.type='number';count.step='1';count.min='1';count.max='500';count.inputMode='numeric';count.value=row.count;count.setAttribute('aria-label',`Piece ${index+1} copies`);
+    const remove=document.createElement('button');remove.textContent='×';remove.setAttribute('aria-label',`Remove piece ${index+1}`);
+    select.onchange=()=>{row.type=select.value;row.value=row.type==='bomb'?null:row.type==='d20'?0:row.type==='hundred'?100:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
+    value.oninput=()=>{row.value=value.value===''?null:value.valueAsNumber;validateDebugDraft();};count.oninput=()=>{row.count=count.value===''?null:count.valueAsNumber;validateDebugDraft();};
+    remove.onclick=()=>{debugDraft.splice(index,1);debugRows();const next=$('debug-rows').children[Math.min(index,debugDraft.length-1)];(next?.querySelector('select')||$('debug-add')).focus();};
+    line.append(select,value,count,remove);list.append(line);
+  });validateDebugDraft();
+}
+function validateDebugDraft(){
+  const count=debugDraft.reduce((n,row)=>n+(Number.isInteger(row.count)&&row.count>0?row.count:0),0);$('debug-count').textContent=`${count} pieces`;
+  try{buildDebugBag(debugDraft);$('debug-error').hidden=true;$('debug-error').textContent='';$('debug-apply').disabled=false;}
+  catch(error){$('debug-error').textContent=error.message;$('debug-error').hidden=false;$('debug-apply').disabled=true;}
+}
+function closeDebugBag(){debugDraft=null;$('bag-dialog').classList.remove('debug-editing');$('bag-debug').hidden=true;$('bag-grid').hidden=false;$('bag-heading').textContent='BAG';$('bag-debug-toggle').textContent='DEBUG';$('bag-debug-toggle').setAttribute('aria-expanded','false');}
+$('bag-debug-toggle').onclick=()=>{
+  if(busy)return;hideTooltip();
+  if(debugDraft){closeDebugBag();refreshBag();return;}
+  debugDraft=bagRecipe(state);$('bag-dialog').setAttribute('aria-label','Developer bag editor');$('bag-dialog').classList.add('debug-editing');$('bag-grid').hidden=true;$('bag-debug').hidden=false;$('bag-heading').textContent='DEBUG BAG';$('bag-debug-toggle').textContent='BACK';$('bag-debug-toggle').setAttribute('aria-expanded','true');debugRows();
+};
+$('bag-dialog').addEventListener('close',closeDebugBag);
+for(const [id,recipe] of [['debug-base',baseBagRecipe],['debug-current',()=>bagRecipe(state)],['debug-clear',()=>[]]])$(id).onclick=()=>{debugDraft=recipe();debugRows();};
+$('debug-add').onclick=()=>{debugDraft.push({type:'number',value:1,count:1});debugRows();const last=$('debug-rows').lastElementChild;last.scrollIntoView({block:'nearest'});last.querySelector('select').focus();};
+$('debug-apply').onclick=async()=>{
+  if(busy||!debugDraft)return;
+  let inventory;try{inventory=buildDebugBag(debugDraft);}catch{validateDebugDraft();return;}
+  hideTooltip();state=newStage(state.stage,state.money,state.upgrades,state.patternCounts,state.jokers,inventory);hasRun=true;
+  shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;$('bag-dialog').close();closeDebugBag();saveRun();
+  $('announcer').textContent=`Test bag applied: ${state.collection.length} pieces. Round restarted.`;await nextDraw();
+};
 function lock(){hideTooltip();busy=true;render();document.querySelectorAll('#balls .ball').forEach(b=>b.disabled=true);}
 function unlock(){busy=false;saveRun();render();document.querySelectorAll('#balls .ball').forEach(b=>{b.disabled=false;b.classList.remove('enter');});}
 function showBalls(){$('balls').replaceChildren();state.offer.forEach((n,i)=>{const b=ball(n);b.classList.add('enter');b.style.setProperty('--i',i);b.disabled=true;b.setAttribute('aria-label',`Ball ${pieceLabel(n)}. Tap to inspect. Drag along the track to reorder, or to the card to play. Keyboard: Enter to inspect, Space to play.`);b.addEventListener('pointerdown',e=>startDrag(e,n,b));b.addEventListener('pointermove',moveDrag);b.addEventListener('pointerup',endDrag);b.addEventListener('pointercancel',cancelDrag);b.addEventListener('lostpointercapture',()=>{if(drag)cancelDrag();});b.onclick=e=>{if(e.detail===0&&!busy)inspect(n,b);};b.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();if(!busy&&!drag)play(n,b);} };$('balls').append(b);});refreshBag();}
@@ -595,7 +633,7 @@ function loadRun(){
     migrateInventory(saved);
     const numbers=a=>Array.isArray(a)&&a.every(n=>Number.isInteger(n)&&n>=1&&n<=25)&&new Set(a).size===a.length;
     const ids=a=>Array.isArray(a)&&a.every(n=>Number.isSafeInteger(n)&&n>=1&&n<saved.nextItemId)&&new Set(a).size===a.length;
-    if(!Number.isSafeInteger(saved.nextItemId)||saved.nextItemId<26||saved.nextItemId>10000||!ids(saved.collection)||!saved.items||Array.isArray(saved.items)||!Object.entries(saved.items).every(([id,type])=>Number.isInteger(Number(id))&&Number(id)>=26&&Number(id)<saved.nextItemId&&Object.hasOwn(ITEM_TYPES,type))||!saved.collection.every(id=>id<=25||saved.items[id]))throw new Error('Invalid collection');
+    if(!Number.isSafeInteger(saved.nextItemId)||saved.nextItemId<26||saved.nextItemId>10000||!ids(saved.collection)||!saved.items||Array.isArray(saved.items)||!Object.entries(saved.items).every(([id,type])=>Number.isInteger(Number(id))&&Number(id)>=26&&Number(id)<saved.nextItemId&&Object.hasOwn(ITEM_TYPES,type))||!saved.collection.every(id=>id<=25||saved.items[id]||Object.hasOwn(saved.ballValues||{},id)))throw new Error('Invalid collection');
     if(!Number.isInteger(saved.stage)||saved.stage<1||saved.stage>10||!numbers(saved.stamps)||!ids(saved.bag)||!ids(saved.offer)||!saved.bag.every(id=>saved.collection.includes(id))||!saved.offer.every(n=>saved.bag.includes(n))||!Number.isInteger(saved.calls)||saved.calls<0||saved.calls>192||!Number.isInteger(saved.money)||saved.money<0||!Number.isInteger(saved.score)||!['playing','passed','over'].includes(saved.status)||!Array.isArray(saved.played)||saved.played.length<26||saved.played.length>saved.nextItemId)throw new Error('Invalid save');
     const old=saved.rulesVersion!==3;
     delete saved.paints;delete saved.goldSeals;
@@ -619,7 +657,7 @@ function loadRun(){
     saved.valueModifiers??={};
     if(typeof saved.valueModifiers!=='object'||Array.isArray(saved.valueModifiers)||!Object.entries(saved.valueModifiers).every(([id,value])=>saved.collection.includes(Number(id))&&Number.isSafeInteger(value)))throw new Error('Invalid value modifiers');
     saved.ballValues??={};
-    if(typeof saved.ballValues!=='object'||Array.isArray(saved.ballValues)||!Object.entries(saved.ballValues).every(([n,value])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&Number.isSafeInteger(value)&&value>=1))throw new Error('Invalid ball values');
+    if(typeof saved.ballValues!=='object'||Array.isArray(saved.ballValues)||!Object.entries(saved.ballValues).every(([n,value])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<saved.nextItemId&&saved.collection.includes(Number(n))&&Number.isSafeInteger(value)))throw new Error('Invalid ball values');
     if(typeof saved.upgrades!=='object'||Array.isArray(saved.upgrades)||!Object.entries(saved.upgrades).every(([n,type])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&BALL_UPGRADES[type]))throw new Error('Invalid upgrades');
     if(saved.shopOffer!=null&&(!['cards','balls'].every(kind=>Array.isArray(saved.shopOffer[kind])&&saved.shopOffer[kind].length===2&&saved.shopOffer[kind].every(type=>type===null||(kind==='cards'?cardDetails(type):BALL_UPGRADES[type])))||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
     if(saved.shopOffer?.items&&!saved.shopOffer.items.every(type=>Object.hasOwn(ITEM_TYPES,type)))throw new Error('Invalid shop items');
