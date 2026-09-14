@@ -10,7 +10,7 @@ try{
  const restore=async s=>{await page.evaluate(s=>sessionStorage.setItem('fixture',JSON.stringify(s)),{...s,stamps:[...s.stamps],bag:[...s.bag]});await page.reload();await page.locator('#play-button').click();};
  const s=newStage(1,25);delete s.shopVersion;s.status='passed';s.bonusPaid=true;s.score=52;s.jokers.push('single-digits:1','number-cruncher:1');s.upgrades={1:'x',2:'doubler',3:'plasma'};s.ballValues={2:8};s.shopOffer={cards:['single-digits','call-range:13'],balls:['x','dynamite']};
  await restore(s);await page.locator('#shop-screen').waitFor({state:'visible'});
- assert.equal(await page.locator('#shop-cards .card-slot').count(),2);assert.equal(await page.locator('#shop-balls .ball-slot').count(),2);assert.equal(await page.locator('#shop-screen button').count(),2);assert.equal(await page.locator('#shop-redraw,#upgrade-dialog,#plasma-dialog,#plasma-pick').count(),0);
+ assert.equal(await page.locator('#shop-cards .card-slot').count(),2);assert.equal(await page.locator('#shop-balls .ball-slot').count(),2);assert.equal(await page.locator('#shop-screen button').count(),3);assert.equal(await page.locator('#shop-redraw,#upgrade-dialog,#plasma-dialog,#plasma-pick').count(),0);
  assert.deepEqual((await read()).jokers,['bingo','face-value']);assert.deepEqual((await read()).upgrades,{});assert.equal((await read()).money,25);assert.equal((await read()).score,52);
  for(const [width,height] of [[390,844],[320,568],[1000,800],[844,390]]){
   await page.setViewportSize({width,height});

@@ -19,11 +19,13 @@ All shop additions are **free while testing**. The shop has three categories:
 
 - **Cards:** persistent effects above the board; two blank slots for now.
 - **Ball Upgrades:** changes to existing balls; two blank slots for now.
-- **Items:** new pieces added to the bag. **Bomb** is available with a repeatable “Add to Bag” action and an owned count.
+- **Items:** new pieces added to the bag. **Bomb** and **20-Sided Die** are available with a repeatable “Add to Bag” action and an owned count.
 
 Each Bomb has a unique identity and the same per-piece draw probability as a numbered ball. It rolls and passes normally, and an unplayed Bomb survives round transitions. It is not a ball upgrade and has no number, so Face Value awards it zero points.
 
 Placing a Bomb first completes and scores any eligible lines, including the Bomb’s occupied space. After every scoring activation finishes, the Bomb explodes. It permanently destroys itself and every item in its eight neighboring spaces for the rest of the run. The board spaces remain usable. Items outside that neighborhood survive; nearby Bombs are destroyed without starting chain explosions. Scored physical lines still activate at most once per round. Winning a round does not skip the explosion.
+
+The **20-Sided Die** has the same draw odds as every other piece and shows `?` before placement. Playing it rolls uniformly from 1–20, then scoring uses that number. Its faceted stamp keeps the result for the round, including later line activations. Passing never rolls it. The next round returns surviving dice to the bag unrolled; Bombs can permanently destroy them. The roll animation finishes before Bingo and Face Value activate.
 
 The collection tracks permanent ownership separately from the current bag. Every new round refills the bag from surviving items only. A new run restores the original 25 numbered balls. Saves preserve added Bombs, destroyed items, played availability and progress; pre-item saves receive the original collection.
 

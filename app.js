@@ -1,5 +1,5 @@
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,migrateShop,migrateInventory,buyItem,isBomb,ITEM_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openShop,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=f3fa251451e7';
+import {newStage,deal,choose,migrateShop,migrateInventory,buyItem,isBomb,isDie,ITEM_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openShop,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=79c7d5b28375';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
@@ -14,12 +14,12 @@ function renderScore(value=state.score){
 }
 function render(boardState=state){
   renderJokers();$('bag').disabled=busy;
-  $('redraw').classList.toggle('exhausted',state.passes===0);$('play-ball').disabled=busy||!!drag||state.status!=='playing'||!state.offer.length;$('play-ball').setAttribute('aria-label',`Play ball ${ballValue(state,state.offer[0])??'Bomb'} on the highlighted space. ${state.calls} plays remaining.`);
+  $('redraw').classList.toggle('exhausted',state.passes===0);$('play-ball').disabled=busy||!!drag||state.status!=='playing'||!state.offer.length;$('play-ball').setAttribute('aria-label',`Play ball ${pieceLabel(state.offer[0])} on the highlighted space. ${state.calls} plays remaining.`);
   $('patterns-button').disabled=busy||payingOut;$('score-patterns').disabled=busy||payingOut;
   $('score-patterns').setAttribute('aria-label',`${state.score} of ${state.target} points. View scoring patterns and run counts`);
   $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);renderScore();for(const k of ['calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw-cost').textContent=state.passes;$('redraw').disabled=busy||state.passes<1||state.status!=='playing';$('redraw').setAttribute('aria-label',`Pass: ${state.passes} remaining. Return this ball and draw a new ball and space without spending a play.`);renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
     const c=$(`cell-${tile}`),offered=Object.values(state.destinations).includes(tile),number=boardState.stampBalls[tile];
-    c.className=`cell paint-grey upgrade-${state.upgrades[number]||'plain'}${isBomb(state,number)?' bomb-item':''}${boardState.stamps.has(tile)?' stamped':''}${offered?' offered':''}`;
+    c.className=`cell paint-grey upgrade-${state.upgrades[number]||'plain'}${itemClass(number)}${boardState.stamps.has(tile)?' stamped':''}${offered?' offered':''}`;
     c.querySelector('span').textContent=boardState.stamps.has(tile)?(boardState.stampValues[tile]??''):'';
     c.classList.toggle('large-value',String(boardState.stampValues[tile]).length>2);
     c.setAttribute('aria-label',`Row ${Math.floor((tile-1)/5)+1}, column ${(tile-1)%5+1}${boardState.stamps.has(tile)?`, stamped ${boardState.stampValues[tile]??'Bomb'}`:offered?', available for any drawn ball':', empty'}. Scoring is determined by your active cards.`);
@@ -70,7 +70,10 @@ function renderJokers(){
 function overTrash(x,y){const r=$('joker-trash').getBoundingClientRect();return x>=r.left-12&&x<=r.right+12&&y>=r.top-12&&y<=r.bottom+12;}
 function cancelJokerDrag(removeGhost=true){if(!jokerDrag)return;const d=jokerDrag;jokerDrag=null;d.card.classList.remove('held');if(removeGhost)d.ghost?.remove();$('joker-trash').hidden=true;$('joker-trash').classList.remove('ready');if(d.card.hasPointerCapture(d.pointer))d.card.releasePointerCapture(d.pointer);}
 
-function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}${isBomb(state,n)?' bomb-item':''}`;b.dataset.number=n;b.innerHTML=`<span class="face">${ballValue(state,n)??''}</span>`;b.setAttribute('aria-label',isBomb(state,n)?'Inspect Bomb':`Inspect ball ${n}`);return b;}
+const itemClass=n=>isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':'';
+const pieceLabel=n=>ITEM_TYPES[state.items?.[n]]?.name??ballValue(state,n)??'';
+const pieceFace=n=>isDie(state,n)?'?':ballValue(state,n)??'';
+function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)}`;b.dataset.number=n;b.innerHTML=`<span class="face">${pieceFace(n)}</span>`;b.setAttribute('aria-label',`Inspect ${pieceLabel(n)}`);return b;}
 function hideTooltip(){
   const tip=$('inspect-tooltip');
   if(tip.matches(':popover-open'))tip.hidePopover();
@@ -99,8 +102,8 @@ function showTooltip(n,anchor,space=false){
   hideTooltip();
   const tip=$('inspect-tooltip');
   (anchor.closest('dialog')||document.body).append(tip);
-  $('tooltip-number').textContent=space?(state.stamps.has(Number(anchor.id.replace('cell-','')))?state.stampValues[Number(anchor.id.replace('cell-',''))]??'Bomb':'EMPTY'):(n==null?'':ballValue(state,n)??'Bomb');
-  const upgrade=state.upgrades[n],item=isBomb(state,n)?ITEM_TYPES.bomb:null;
+  $('tooltip-number').textContent=space?(state.stamps.has(Number(anchor.id.replace('cell-','')))?state.stampValues[Number(anchor.id.replace('cell-',''))]??'Bomb':'EMPTY'):(n==null?'':isDie(state,n)?'?':pieceLabel(n));
+  const upgrade=state.upgrades[n],item=ITEM_TYPES[state.items?.[n]];
   $('tooltip-effect').textContent=item?item.text:upgrade?BALL_UPGRADES[upgrade].text:space?'Nothing special':'';
   $('tooltip-effect').hidden=!space&&!upgrade&&!item;
   tip.classList.toggle('space-tooltip',space);
@@ -126,13 +129,13 @@ function refreshBag(){
     const b=ball(n),played=!state.bag.has(n);
     if(played)b.classList.add('played-ball');
     if(state.offer.includes(n))b.classList.add('on-track');
-    b.setAttribute('aria-label',`Ball ${ballValue(state,n)??'Bomb'}${played?', already played, unavailable this stage':''}${state.offer.includes(n)?', on track':''}; played ${state.played[n]} times`);
+    b.setAttribute('aria-label',`Ball ${pieceLabel(n)}${played?', already played, unavailable this stage':''}${state.offer.includes(n)?', on track':''}; played ${state.played[n]} times`);
     b.onclick=()=>inspect(n,b);$('bag-grid').append(b);
   }
 }
 function lock(){hideTooltip();busy=true;render();document.querySelectorAll('#balls .ball').forEach(b=>b.disabled=true);}
 function unlock(){busy=false;saveRun();render();document.querySelectorAll('#balls .ball').forEach(b=>{b.disabled=false;b.classList.remove('enter');});}
-function showBalls(){$('balls').replaceChildren();state.offer.forEach((n,i)=>{const b=ball(n);b.classList.add('enter');b.style.setProperty('--i',i);b.disabled=true;b.setAttribute('aria-label',`Ball ${ballValue(state,n)??'Bomb'}. Tap to inspect. Drag along the track to reorder, or to the card to play. Keyboard: Enter to inspect, Space to play.`);b.addEventListener('pointerdown',e=>startDrag(e,n,b));b.addEventListener('pointermove',moveDrag);b.addEventListener('pointerup',endDrag);b.addEventListener('pointercancel',cancelDrag);b.addEventListener('lostpointercapture',()=>{if(drag)cancelDrag();});b.onclick=e=>{if(e.detail===0&&!busy)inspect(n,b);};b.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();if(!busy&&!drag)play(n,b);} };$('balls').append(b);});refreshBag();}
+function showBalls(){$('balls').replaceChildren();state.offer.forEach((n,i)=>{const b=ball(n);b.classList.add('enter');b.style.setProperty('--i',i);b.disabled=true;b.setAttribute('aria-label',`Ball ${pieceLabel(n)}. Tap to inspect. Drag along the track to reorder, or to the card to play. Keyboard: Enter to inspect, Space to play.`);b.addEventListener('pointerdown',e=>startDrag(e,n,b));b.addEventListener('pointermove',moveDrag);b.addEventListener('pointerup',endDrag);b.addEventListener('pointercancel',cancelDrag);b.addEventListener('lostpointercapture',()=>{if(drag)cancelDrag();});b.onclick=e=>{if(e.detail===0&&!busy)inspect(n,b);};b.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();if(!busy&&!drag)play(n,b);} };$('balls').append(b);});refreshBag();}
 async function nextDraw(){resetResultUI();lock();deal(state);render();showBalls();await wait(770);unlock();}
 function startDrag(e,n,b){
   if(busy||drag||jokerDrag||e.button!==0)return;
@@ -175,7 +178,7 @@ function moveDrag(e){
   if(!drag||e.pointerId!==drag.id)return;
   const d=drag;
   if(!d.moved&&Math.hypot(e.clientX-d.x,e.clientY-d.y)>7){
-    d.moved=true;hideTooltip();d.ghost=d.b.cloneNode(true);d.ghost.className=`ball drag-ghost paint-grey upgrade-${state.upgrades[d.n]||'plain'}${isBomb(state,d.n)?' bomb-item':''}`;
+    d.moved=true;hideTooltip();d.ghost=d.b.cloneNode(true);d.ghost.className=`ball drag-ghost paint-grey upgrade-${state.upgrades[d.n]||'plain'}${itemClass(d.n)}`;
     d.ghost.removeAttribute('disabled');d.ghost.setAttribute('aria-hidden','true');d.ghost.tabIndex=-1;
     d.size=d.b.getBoundingClientRect().width;d.ghost.style.setProperty('--size',`${d.size}px`);
     document.body.append(d.ghost);d.b.classList.add('held');
@@ -347,7 +350,7 @@ async function explodeBomb(result){
       const angle=Math.atan2(rect.top-r.top,rect.left-r.left)+(i-2.5)*.45,d=30+Math.random()*70;
       fragments.push(animate(chip,[{transform:'scale(1.3)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+20}px) rotate(${i*65}deg) scale(.2)`,opacity:0}],{duration:360+i*20,easing:'cubic-bezier(.1,.65,.2,1)'}).then(()=>chip.remove()));
     }}
-    cell.classList.remove('stamped','bomb-item','just-stamped');cell.querySelector('span').textContent='';
+    cell.classList.remove('stamped','bomb-item','die-item','just-stamped');cell.querySelector('span').textContent='';
   }
   if(!reduced){
     const ring=document.createElement('i');ring.className='bomb-wave';ring.style.left=`${r.left+r.width/2}px`;ring.style.top=`${r.top+r.height/2}px`;ring.style.width=`${r.width*2.6}px`;ring.style.height=`${r.height*2.6}px`;$('effects').append(ring);
@@ -359,18 +362,35 @@ async function explodeBomb(result){
   affected.forEach(c=>c.classList.remove('blast-zone'));center.classList.remove('bomb-armed');frame.classList.remove('bomb-exploding');
   $('announcer').textContent=`Bomb exploded. ${result.destroyed.length} items permanently removed from this run.`;
 }
+async function rollDie(cell,value){
+  const face=cell.querySelector('span');cell.classList.add('die-rolling');
+  try{
+    if(!reduced){
+      // Cosmetic faces never change the committed result or consume another play.
+      for(const [i,ms] of [55,65,80,105,140].entries()){
+        face.textContent=1+(value+i*7)%20;
+        await animate(cell,[{transform:`rotate(${i%2?-13:13}deg) scale(1.06)`},{transform:`rotate(${i%2?9:-9}deg) scale(.96)`}],{duration:ms,easing:'ease-out'});
+      }
+    }
+    face.textContent=value;cell.classList.add('die-settled');
+    pulseBackground();burst(cell.getBoundingClientRect());navigator.vibrate?.(16);
+    await animate(cell,reduced?[{opacity:.7},{opacity:1}]:[{transform:'scale(1.16) rotate(-3deg)'},{transform:'scale(.95) rotate(1deg)',offset:.55},{transform:'scale(1) rotate(0deg)'}],{duration:260,easing:'cubic-bezier(.15,.8,.25,1)'});
+    await wait(180);
+  }finally{cell.classList.remove('die-rolling','die-settled');face.textContent=value;}
+}
 async function play(n,b,ghost,tile=state.destinations[n]){
   if(busy){ghost?.remove();return;}lock();const result=choose(state,n,tile);if(!result){ghost?.remove();unlock();return;}
   saveRun();renderCalls(result.callsBeforeBonuses);$('bag-count').textContent=state.bag.size;
   const cell=$(`cell-${tile}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.classList.add('leave');});
   if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}
   document.querySelectorAll('.cell.offered').forEach(c=>{c.className='cell paint-grey';c.querySelector('span').textContent='';});
-  cell.className=`cell paint-grey upgrade-${state.upgrades[n]||'plain'}${isBomb(state,n)?' bomb-item':''} stamped just-stamped`;cell.querySelector('span').textContent=ballValue(state,n)??'';
+  cell.className=`cell paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)} stamped just-stamped`;cell.querySelector('span').textContent=pieceFace(n);
   pulseBackground();navigator.vibrate?.(18);burst(r);
   await animate(document.querySelector('.board-frame'),[{transform:'translateY(0)'},{transform:'translateY(3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});
   await wait(180);
-  render(result.scoringBoard||state);renderCalls(result.callsBeforeBonuses);renderScore(state.score-result.points);
-  $('announcer').textContent=`${n} played. One play used.`;
+  render(result.scoringBoard||state);if(result.roll!==null)cell.querySelector('span').textContent='?';renderCalls(result.callsBeforeBonuses);renderScore(state.score-result.points);
+  if(result.roll!==null)await rollDie(cell,result.roll);
+  $('announcer').textContent=`${pieceLabel(n)} played.${result.roll!==null?` Rolled ${result.roll}.`:''} One play used.`;
   if(result.activations.length)await activateSpaces(result);
   if(result.destroyed.length)await explodeBomb(result);
   await wait(120);render();refreshBag();
@@ -498,8 +518,10 @@ function renderShop(){
       slot.setAttribute('aria-hidden','true');container.append(slot);
     }
   }
-  $('shop-bomb').disabled=busy;
-  $('shop-item-count').textContent=state.collection.filter(id=>isBomb(state,id)).length;
+  for(const type of Object.keys(ITEM_TYPES)){
+    $(`shop-${type}`).disabled=busy;
+    $(type==='bomb'?'shop-item-count':`shop-${type}-count`).textContent=state.collection.filter(id=>state.items[id]===type).length;
+  }
   $('shop-next').disabled=busy;$('shop-menu').disabled=busy;
 }
 function showShop(){
@@ -509,11 +531,11 @@ function showShop(){
   $('bag').disabled=false;$('stages').disabled=false;renderShop();saveRun();
   animate($('shop-screen'),[{transform:'translateY(24px)',opacity:0},{transform:'translateY(0)',opacity:1}],{duration:350,easing:'cubic-bezier(.2,.8,.3,1)'});
 }
-$('shop-bomb').onclick=async()=>{
+for(const type of Object.keys(ITEM_TYPES))$(`shop-${type}`).onclick=async()=>{
   if(busy)return;
-  const id=buyItem(state,'bomb');if(id===false)return;
-  saveRun();renderShop();$('announcer').textContent='Bomb added to the bag. Free.';
-  const item=$('shop-bomb');await animate(item,[{transform:'scale(.96)'},{transform:'scale(1.04)',offset:.4},{transform:'scale(1)'}],{duration:240});
+  const id=buyItem(state,type);if(id===false)return;
+  saveRun();renderShop();$('announcer').textContent=`${ITEM_TYPES[type].name} added to the bag. Free.`;
+  const item=$(`shop-${type}`);await animate(item,[{transform:'scale(.96)'},{transform:'scale(1.04)',offset:.4},{transform:'scale(1)'}],{duration:240});
 };
 $('shop-next').onclick=async()=>{
   if(busy)return;hideTooltip();shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;

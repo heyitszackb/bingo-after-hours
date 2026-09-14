@@ -395,3 +395,19 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 @media(max-height:480px){.cabinet.shopping{gap:6px;padding:6px 0}.cabinet.shopping #shop-screen{gap:7px 18px}.cabinet.shopping .shop-offers{height:64px}.cabinet.shopping .shop-slot.card-slot{height:64px}.cabinet.shopping .shop-item-category{grid-column:1/3}.cabinet.shopping .shop-item-category h3{display:none}#shop-bomb{min-height:60px}.bomb-art{width:46px;height:46px;flex-basis:46px}.cabinet.shopping .shop-category h3{margin-bottom:4px}}
 /* Wrap long item descriptions inside the existing inspection tooltip. */
 #inspect-tooltip p{white-space:normal;max-width:min(280px,calc(100vw - 60px));line-height:1.1}
+
+/* Faceted die: unknown in the draw; its rolled value stays on the board. */
+.ball.die-item{background:transparent url('assets/d20.svg?v=317aefa125c0') center/contain no-repeat!important;border:0;box-shadow:none;border-radius:0;image-rendering:pixelated}
+.ball.die-item:before,.ball.die-item:after{display:none}
+.ball.die-item .face{background:none;border:0;box-shadow:none;color:#102d38;font-size:calc(var(--size)*.29);transform:translateY(7%);text-shadow:0 1px #e8efdf}
+.cell.stamped.die-item:before{background:transparent url('assets/d20.svg?v=317aefa125c0') center/contain no-repeat!important;width:96%;border:0;box-shadow:none;border-radius:0;transform:none;image-rendering:pixelated}
+.cell.stamped.die-item>span{color:#102d38;font-size:.68em;transform:translateY(12%);text-shadow:0 1px #e8efdf}
+.cell.die-rolling{z-index:9;outline:2px solid #c5e8ec;outline-offset:-3px}.cell.die-settled{filter:brightness(1.15)}
+.die-art{display:flex;align-items:center;justify-content:center;width:58px;height:58px;background:url('assets/d20.svg?v=317aefa125c0') center/contain no-repeat;image-rendering:pixelated;color:#102d38;font-size:21px;font-style:normal;padding-top:4px;text-shadow:0 1px #e8efdf}
+.shop-items{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.shop-items .shop-item{display:grid!important;grid-template-columns:1fr auto;gap:4px 6px!important;align-items:center;width:100%;padding:8px!important;min-height:0!important;border:2px solid #718d78;background:#153c35;box-shadow:3px 4px #00191e;text-align:left}
+.shop-items .bomb-art,.shop-items .die-art{width:54px;height:54px;grid-column:1;grid-row:1}
+.shop-items .item-copy{grid-row:2;grid-column:1/3;gap:3px}.shop-items .item-copy strong{font-size:19px;white-space:nowrap}.shop-items .item-copy small,.shop-items .item-copy b{font-size:13px}
+.shop-items .item-owned{grid-row:1;grid-column:2}.shop-items .item-owned strong{font-size:21px}
+@media(max-height:480px){.shop-items .shop-item{grid-template-columns:40px 1fr auto;gap:5px!important;padding:5px!important}.shop-items .bomb-art,.shop-items .die-art{width:40px;height:40px}.shop-items .item-copy{grid-row:1;grid-column:2}.shop-items .item-owned{grid-column:3}.shop-items .item-copy strong{font-size:15px}.shop-items .item-copy small{display:none}.shop-items .item-copy b{font-size:11px}.shop-items .item-owned small{font-size:8px}.die-art{font-size:16px}}
+.cabinet:not(.shopping)>.draw-area .ball.die-item .face{font-size:calc(var(--size)*.29)}
