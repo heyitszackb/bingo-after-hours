@@ -24,7 +24,7 @@ All shop additions are **free while testing**. Every available purchase appears 
 
 Each Bomb has a unique identity and the same per-piece draw probability as a numbered ball. It rolls and passes normally, and an unplayed Bomb survives round transitions. It is not a ball upgrade and has no number, so Face Value awards it zero points.
 
-Placing a Bomb first completes and scores any eligible lines, including the Bomb’s occupied space. After every scoring activation finishes, the Bomb explodes. It permanently destroys itself and every item in its eight neighboring spaces for the rest of the run. The board spaces remain usable. Items outside that neighborhood survive; nearby Bombs are destroyed without starting chain explosions. Scored physical lines still activate at most once per round. Winning a round does not skip the explosion.
+Placing a Bomb immediately triggers its explosion, before any scoring checks or card activations. Scoring uses the surviving board, so lines broken by the blast do not score. It permanently destroys itself and every item in its eight neighboring spaces for the rest of the run. The board spaces remain usable. Items outside that neighborhood survive; nearby Bombs are destroyed without starting chain explosions. Scored physical lines still activate at most once per round. The explosion also resolves on the final play; it cannot earn points from the line it destroys.
 
 The **20-Sided Die** has the same draw odds as every other piece and shows `?` before placement. Playing it rolls uniformly from 1–20, then scoring uses that number. Its faceted stamp keeps the result for the round, including later line activations. Passing never rolls it. The next round returns surviving dice to the bag unrolled; Bombs can permanently destroy them. The roll animation finishes before Bingo and Face Value activate.
 
@@ -38,11 +38,11 @@ Previous shop effects remain retired. The earlier migration removes them and res
 
 ## Development and verification
 
-`npm start` serves http://localhost:5173. `npm test` covers drawing, passing, placement, scoring and rule removal, persistent stamps, round resets, shop behavior, Bomb draw/placement/scoring/destruction order, permanent collection changes, and save migration.
+`npm start` serves http://localhost:5173. `npm test` covers drawing, passing, placement, scoring and rule removal, persistent stamps, round resets, shop behavior, Bomb draw/placement/destruction-before-scoring order, permanent collection changes, and save migration.
 
 Browser checks use local Chrome and Playwright. Set `GAME_URL` to check deployment:
 
-- `node scripts/bomb-check.mjs`: free repeated additions, responsive shop, dynamic bag/tooltip, scoring-before-explosion, no-line explosions, passing, reload and round persistence. Set `REAL_MOTION=1` for full-speed animation checks.
+- `node scripts/bomb-check.mjs`: free repeated additions, responsive shop, dynamic bag/tooltip, explosion-before-scoring, no-line explosions, passing, reload and round persistence. Set `REAL_MOTION=1` for full-speed animation checks.
 - `node scripts/shop-scaffold-check.mjs`: responsive horizontal shop, no obsolete purchase controls, saved-shop and active-run migrations, menu/reload, and next-round resources.
 - `node scripts/swipe-layout-check.mjs`: portrait layout, persistent score, bag inspection, mouse/touch swipes, pause/reload, payout and next round.
 - `node scripts/starting-rules-check.mjs`: trigger-before-points order, five Face Value activations, score-counter increments, absent rules, save migration, input locking and no audio. Set `REAL_MOTION=1` to inspect full animation timing.

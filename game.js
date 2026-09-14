@@ -22,7 +22,7 @@ export const isRuleCard=id=>Object.hasOwn(RULE_CARDS,id);
 // Add new definitions here as the shop grows. Empty slots cannot be purchased.
 export const CARD_TYPES={'high-five':{name:'High Five',text:'When you play a 1–5, score it and its occupied orthogonal neighbors.',icon:'✚',short:'Play 1–5: score ✚'}};
 export const BALL_UPGRADES={};
-export const ITEM_TYPES={bomb:{name:'Bomb',text:'After scoring, destroy this bomb and all items in the 8 neighboring spaces for the rest of the run.',price:0},d20:{name:'20-Sided Die',text:'Roll 1–20 when placed. Keep that number on this space for the round.',price:0},hundred:{name:'100 Ball',text:'Before scoring, permanently reduce occupied orthogonal neighbors by 1. Starts at 100.',price:0}};
+export const ITEM_TYPES={bomb:{name:'Bomb',text:'On placement, destroy this bomb and all items in the 8 neighboring spaces for the rest of the run.',price:0},d20:{name:'20-Sided Die',text:'Roll 1–20 when placed. Keep that number on this space for the round.',price:0},hundred:{name:'100 Ball',text:'Before scoring, permanently reduce occupied orthogonal neighbors by 1. Starts at 100.',price:0}};
 export const isDie=(state,id)=>state.items?.[id]==='d20';
 export const isBomb=(state,id)=>state.items?.[id]==='bomb';
 export const cardType=id=>id.split(':')[0];
@@ -73,10 +73,22 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||!Object.values(state.destinations).includes(tile)||tile<1||tile>25||state.stamps.has(tile))return null;
   const roll=isDie(state,number)?1+Math.floor(random()*20)+(state.valueModifiers?.[number]||0):null;
   state.stamps.add(tile);state.stampBalls[tile]=number;state.stampValues[tile]=roll??ballValue(state,number);state.bag.delete(number);state.played[number]=(state.played[number]||0)+1;state.calls--;
-  const effectBoard=state.items[number]==='hundred'?boardSnapshot(state):null,valueChanges=[];
-  if(effectBoard)for(const neighbor of orthogonalNeighbors(tile)){
+  const effectBoard=(isBomb(state,number)||state.items[number]==='hundred')?boardSnapshot(state):null,valueChanges=[];
+  if(state.items[number]==='hundred')for(const neighbor of orthogonalNeighbors(tile)){
     const change=changeTileValue(state,neighbor,-1,tile);if(change)valueChanges.push(change);
   }
+  const destroyed=[];
+  if(isBomb(state,number)){
+    const row=Math.floor((tile-1)/5),col=(tile-1)%5;
+    for(const occupied of [...state.stamps]){
+      if(Math.abs(Math.floor((occupied-1)/5)-row)>1||Math.abs((occupied-1)%5-col)>1)continue;
+      const id=state.stampBalls[occupied];destroyed.push({tile:occupied,id,value:state.stampValues[occupied]});
+      state.collection=state.collection.filter(n=>n!==id);state.bag.delete(id);
+      state.stamps.delete(occupied);delete state.stampBalls[occupied];delete state.stampValues[occupied];delete state.ballValues[id];delete state.valueModifiers[id];delete state.upgrades[id];
+    }
+  }
+
+  // All placement effects have resolved. Only the surviving board can score.
   const callsBeforeBonuses=state.calls;
   const scoredPatterns=completedPatterns(state.stamps).filter(p=>!state.scoredLines.includes(p.id)&&p.tiles.includes(tile)&&state.jokers.includes('bingo'));
   const patterns=scoredPatterns.map(p=>p.tiles);
@@ -100,23 +112,11 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
     return {tile,number,basePoints,bonuses,contributions,points:basePoints,trigger:group.trigger,type:group.type,pattern:j===0?group.tiles:null};
   }));
   const points=activations.reduce((sum,a)=>sum+a.points,0);state.score+=points;
-  // Snapshot scoring before removing any items: the UI plays these phases in order.
-  const scoringBoard=isBomb(state,number)?boardSnapshot(state):null;
-  const destroyed=[];
-  if(isBomb(state,number)){
-    const row=Math.floor((tile-1)/5),col=(tile-1)%5;
-    for(const occupied of [...state.stamps]){
-      if(Math.abs(Math.floor((occupied-1)/5)-row)>1||Math.abs((occupied-1)%5-col)>1)continue;
-      const id=state.stampBalls[occupied];destroyed.push({tile:occupied,id,value:state.stampValues[occupied]});
-      state.collection=state.collection.filter(n=>n!==id);state.bag.delete(id);
-      state.stamps.delete(occupied);delete state.stampBalls[occupied];delete state.stampValues[occupied];delete state.ballValues[id];delete state.valueModifiers[id];delete state.upgrades[id];
-    }
-  }
 
   state.offer=[];state.destinations={};
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
-  return {tile,roll,effectBoard,valueChanges,scoringBoard,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
+  return {tile,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
 }
 export function redraw(state,random=Math.random) {
   if(state.status!=='playing'||state.passes<1||!state.offer.length)return false;
