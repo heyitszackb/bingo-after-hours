@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=2faf1f4c2662';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=3edf4816c755';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=0d5f0a7f65c6';
+import {newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=fc34074a957a';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 // One tempo for animation and sequencing keeps effects and input locks aligned.
@@ -395,7 +395,7 @@ async function activateSpaces(result){
       for(const contribution of activation.contributions){
         const card=document.querySelector(`[data-joker="${contribution.joker}"]`),calls=contribution.calls;
         const accent=contribution.joker==='face-value'?'#91c6ff':calls!==undefined?'#83e0b5':'#f4c66c';
-        const label=calls!==undefined?(calls?'+1 PLAY':'15 MAX'):signed(contribution.points);
+        const label=calls!==undefined?(calls?'+1 PLAY':'20 MAX'):signed(contribution.points);
         await animateRetriggers(contribution.retriggers,card,accent);
         await cardImpact(card,label,accent);
         await scoreLink(card,cell,accent);
@@ -739,8 +739,9 @@ function loadRun(){
     const old=saved.rulesVersion!==3;
     delete saved.paints;delete saved.goldSeals;
     const oldTurn=saved.turnVersion!==1;
-    if(oldTurn){if(saved.status==='playing')saved.calls=Math.max(0,15-Math.max(0,(saved.callCapacity??12)-saved.calls));saved.passes=10;}
-    saved.calls=Math.min(saved.calls,15);saved.callCapacity=15;saved.turnVersion=1;
+    if(oldTurn){if(saved.status==='playing')saved.calls=Math.max(0,20-Math.max(0,(saved.callCapacity??12)-saved.calls));saved.passes=10;}
+    if(!oldTurn&&saved.status==='playing'&&saved.callCapacity===15)saved.calls+=5;
+    saved.calls=Math.min(saved.calls,20);saved.callCapacity=20;saved.turnVersion=1;
     if(!Number.isInteger(saved.passes)||saved.passes<0||saved.passes>10)throw new Error('Invalid passes');
     migrateShop(saved);
     if(!Number.isInteger(saved.callCapacity)||saved.callCapacity<15||saved.callCapacity>192||saved.calls>saved.callCapacity)throw new Error('Invalid call capacity');

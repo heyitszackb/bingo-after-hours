@@ -6,7 +6,7 @@ A solo arcade bingo game with a portrait table, numbered stamps, a bag, and two 
 
 - Each normal draw offers one available ball and one random empty space. Swipe up to stamp that space, or down to pass. Passing returns the ball to the bag, changes the ball and location when alternatives exist, and spends no money or play. Tap a ball, stamp, or card to inspect it. Tap the bag to inspect your surviving collection, including added items; played pieces are greyed out and destroyed pieces are absent.
 - A deliberate swipe commits on release; returning to its start cancels. Arrow Up/Down are keyboard equivalents. Dragging onto the board also works.
-- Start with $5, 15 plays and 10 passes. A placement removes its piece from the bag for the round and uses one play, except Rocks, which cost no play. Plays and passes replenish each round. Targets are **5, 10, 15, 20, 30, 40, 55, 70, 90, 120**.
+- Start with $5, 20 plays and 10 passes. A placement removes its piece from the bag for the round and uses one play, except Rocks, which cost no play. Plays and passes replenish each round. Targets are **5, 10, 15, 20, 30, 40, 55, 70, 90, 120**.
 - **Bingo:** score rows, columns, and diagonals of five. Each physical line activates once per round. Stamps remain on the board and may activate in other newly completed lines. Squares and corners alone do not score.
 - **Face Value:** scored tiles earn their ball’s number in points. Removing Bingo prevents line activations; other trigger cards still work. Removing Face Value preserves activations but awards zero points. Drag either rule card to the trash to remove it for the run.
 - Each unused play pays $1 after a win, then the shop opens. The next round resets placements and refills the bag, plays, and passes. Money and run pattern counts carry over.
@@ -17,7 +17,7 @@ The header contains menu, current score / target, and money. Scoring lights the 
 
 Open **View Bag → Debug** to edit a draft of the full collection, including currently played pieces. Change each row’s type, value and copy count; add/remove rows; or use **Base 1–25**, **Current Bag**, and **Clear**. The editor supports up to 500 pieces, duplicate numbers, zero/negative values, Bombs, dice, powered 100 Balls and Rocks. Dice use the Value field as a permanent roll modifier (0 means normal). A plain numbered 100 has no special power.
 
-**Apply & Restart Round** replaces the collection and restarts the current round with a clear board, zero round score, 15 plays and 10 passes. It preserves the stage, money, cards and historical pattern counts. Closing the editor or returning to bag inspection discards the draft. Applied bags persist through reloads and round transitions; starting a fresh run restores the standard 1–25 collection.
+**Apply & Restart Round** replaces the collection and restarts the current round with a clear board, zero round score, 20 plays and 10 passes. It preserves the stage, money, cards and historical pattern counts. Closing the editor or returning to bag inspection discards the draft. Applied bags persist through reloads and round transitions; starting a fresh run restores the standard 1–25 collection.
 
 `node scripts/debug-bag-check.mjs` covers draft/cancel/reset, responsive layout, custom values and duplicates, validation, applying to a progressed round, scoring, and save/round persistence. `test/debug-bag.test.js` verifies independent identities and interactions with powers.
 
@@ -123,3 +123,5 @@ Copier ink now displays one ▣ per installed Copier so stacking is visible dire
 
 ### Square and Four Corners
 Square and Four Corners are purchasable scoring-condition cards. Square scores each of the sixteen distinct 2×2 blocks when completed; Four Corners scores positions 1, 5, 21 and 25 when all are occupied. Each pattern scores once per round, retains its items, and uses the existing points/modifier/stamp pipeline. These conditions coexist with Bingo and High Five in rack order; shared items can score in each qualifying group, and Encore can retrigger them. Board ink alone never completes a condition. Pattern history persists across reloads and resets next round. `node scripts/conditions-check.mjs` verifies simultaneous conditions, activation order, persistence and rewards.
+
+Rounds now start with 20 plays. Existing active 15-play rounds gain five plays, preserving plays already spent. `node scripts/plays-check.mjs` verifies display, spending, reload and migration.
