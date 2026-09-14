@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=bfb7e7ccf9db';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=0e7bcbb9f7c0';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=e4a472006c1e';
+import {newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=e5461622f894';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 // One tempo for animation and sequencing keeps effects and input locks aligned.
@@ -27,7 +27,7 @@ function render(boardState=state){
     const c=$(`cell-${tile}`),offered=Object.values(state.destinations).includes(tile),number=boardState.stampBalls[tile];
     c.className=`cell paint-grey upgrade-${state.upgrades[number]||'plain'}${itemClass(number)}${boardState.stamps.has(tile)?' stamped':''}${offered?' offered':''}`;
     c.querySelector('span').textContent=boardState.stamps.has(tile)?(boardState.stampValues[tile]??''):'';
-    const multiplier=state.tileMultipliers?.[tile]||1;c.querySelector('.board-ink').textContent=[state.tileCopiers?.[tile]?'▣':'',multiplier>1?`×${multiplier}`:''].filter(Boolean).join(' ');c.classList.toggle('inked',multiplier>1||!!state.tileCopiers?.[tile]);
+    const multiplier=state.tileMultipliers?.[tile]||1;c.querySelector('.board-ink').textContent=[state.tileCopiers?.[tile]?'▣':'',...tileStampList(state,tile).filter(t=>t.startsWith('plus')).map(t=>'+'+t.slice(4)),multiplier>1?`×${multiplier}`:''].filter(Boolean).join(' ');c.classList.toggle('inked',tileStampList(state,tile).length>0);
     c.classList.toggle('large-value',String(boardState.stampValues[tile]).length>2);
     c.setAttribute('aria-label',`Row ${Math.floor((tile-1)/5)+1}, column ${(tile-1)%5+1}${boardState.stamps.has(tile)?`, stamped ${boardState.stampValues[tile]??pieceLabel(number)}`:offered?', available for any drawn ball':', empty'}. ${multiplier>1?`Tile multiplier ×${multiplier}. `:''}Scoring is determined by your active cards.`);
   }}
@@ -90,9 +90,9 @@ function renderJokers(){
 function overTrash(x,y){const r=$('joker-trash').getBoundingClientRect();return x>=r.left-12&&x<=r.right+12&&y>=r.top-12&&y<=r.bottom+12;}
 function cancelJokerDrag(removeGhost=true){if(!jokerDrag)return;const d=jokerDrag;jokerDrag=null;if(removeGhost){const rack=$('joker-rack');for(const id of d.originalOrder){const c=rack.querySelector(`[data-joker="${id}"]`);if(c)rack.insertBefore(c,rack.querySelector('.joker-slot'));}}d.card.classList.remove('held');if(removeGhost)d.ghost?.remove();$('joker-trash').hidden=true;$('joker-trash').classList.remove('ready');if(d.card.hasPointerCapture(d.pointer))d.card.releasePointerCapture(d.pointer);}
 
-const itemClass=n=>isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier'].includes(state.items[n])?' stamp-item':'';
+const itemClass=n=>isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';
 const pieceLabel=n=>state.items[n]?`${ITEM_TYPES[state.items[n]].name}${ballValue(state,n)!==null?` (${ballValue(state,n)})`:''}`:ballValue(state,n)??'';
-const pieceFace=n=>state.items[n]==='copier'?'▣':['x2','x3'].includes(state.items[n])?`×${state.items[n].slice(1)}`:isDie(state,n)?'?':ballValue(state,n)??'';
+const pieceFace=n=>state.items[n]?.startsWith('plus')?`+${state.items[n].slice(4)}`:state.items[n]==='copier'?'▣':['x2','x3'].includes(state.items[n])?`×${state.items[n].slice(1)}`:isDie(state,n)?'?':ballValue(state,n)??'';
 function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)}`;b.classList.toggle('large-value',String(pieceFace(n)).length>2);b.dataset.number=n;b.innerHTML=`<span class="face">${pieceFace(n)}</span>`;b.setAttribute('aria-label',`Inspect ${pieceLabel(n)}`);return b;}
 function hideTooltip(){
   const tip=$('inspect-tooltip');
@@ -128,10 +128,11 @@ function showTooltip(n,anchor,space=false){
   const modifier=state.valueModifiers?.[n]||0;if(modifier)$('tooltip-effect').textContent+=`${$('tooltip-effect').textContent?' ':''}Permanent value change: ${signed(modifier)}.${isDie(state,n)?` Future rolls: ${1+modifier}–${20+modifier}.`:''}`;
   if(space){
     const tile=Number(anchor.id.replace('cell-','')),list=tileStampList(state,tile),mult=state.tileMultipliers?.[tile]||1;
+    if(list.length)$('tooltip-effect').textContent=$('tooltip-effect').textContent.replace('Nothing special','').trim();
     const details=[state.stamps.has(tile)?`ITEM: ${item?.name||'Ball'}${state.stampValues[tile]!=null?` · ${state.stampValues[tile]}`:''}
 ${$('tooltip-effect').textContent}`:'ITEM: Empty'];
     details.push(`STAMPS · ${list.length}/4`);
-    list.forEach((type,i)=>details.push(`${i+1}. ${type==='copier'?'Copier · add one copy to the bag on placement':type==='x2'?'×2 · double this tile’s points':'×3 · triple this tile’s points'}`));
+    list.forEach((type,i)=>details.push(`${i+1}. ${type==='copier'?'Copier · add one copy to the bag on placement':type==='x2'?'×2 · double this tile’s points':type==='x3'?'×3 · triple this tile’s points':`+${type.slice(4)} · add ${type.slice(4)} points when scored`}`));
     if(!list.length)details.push('None');
     if(mult>1)details.push(`Combined multiplier: ×${mult}`);
     $('tooltip-effect').textContent=details.join('\n');
@@ -187,10 +188,10 @@ function debugRows(){
     const line=document.createElement('div');line.className='debug-row';
     const select=document.createElement('select');select.setAttribute('aria-label',`Piece ${index+1} type`);
     for(const [type,name] of [['number','Number'],...Object.entries(ITEM_TYPES).map(([type,item])=>[type,item.name])]){const option=document.createElement('option');option.value=type;option.textContent=name;select.append(option);}select.value=row.type;
-    const value=document.createElement('input');value.type='number';value.step='1';value.inputMode='text';value.value=row.value??'';value.disabled=['bomb','rock','x2','x3','copier'].includes(row.type);value.setAttribute('aria-label',`Piece ${index+1} ${row.type==='d20'?'roll modifier':'value'}`);
+    const value=document.createElement('input');value.type='number';value.step='1';value.inputMode='text';value.value=row.value??'';value.disabled=['bomb','rock','x2','x3','copier','plus10','plus50','plus100'].includes(row.type);value.setAttribute('aria-label',`Piece ${index+1} ${row.type==='d20'?'roll modifier':'value'}`);
     const count=document.createElement('input');count.type='number';count.step='1';count.min='1';count.max='500';count.inputMode='numeric';count.value=row.count;count.setAttribute('aria-label',`Piece ${index+1} copies`);
     const remove=document.createElement('button');remove.textContent='×';remove.setAttribute('aria-label',`Remove piece ${index+1}`);
-    select.onchange=()=>{row.type=select.value;row.value=['bomb','rock','x2','x3','copier'].includes(row.type)?null:row.type==='d20'?0:row.type==='hundred'?50:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
+    select.onchange=()=>{row.type=select.value;row.value=['bomb','rock','x2','x3','copier','plus10','plus50','plus100'].includes(row.type)?null:row.type==='d20'?0:row.type==='hundred'?50:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
     value.oninput=()=>{row.value=value.value===''?null:value.valueAsNumber;validateDebugDraft();};count.oninput=()=>{row.count=count.value===''?null:count.valueAsNumber;validateDebugDraft();};
     remove.onclick=()=>{debugDraft.splice(index,1);debugRows();const next=$('debug-rows').children[Math.min(index,debugDraft.length-1)];(next?.querySelector('select')||$('debug-add')).focus();};
     line.append(select,value,count,remove);list.append(line);
@@ -403,6 +404,7 @@ async function activateSpaces(result){
         releaseCard(card);
       }
       await tileImpact;
+      if(activation.stampBonus){point.hidden=false;point.textContent=`${signed(tilePoints)} +${activation.stampBonus}`;await animate(cell.querySelector('.board-ink'),[{opacity:.5},{opacity:1,transform:'scale(1.4)',offset:.4},{opacity:.7,transform:'scale(1)'}],{duration:300});tilePoints+=activation.stampBonus;}
       if(activation.multiplier>1){
         const ink=cell.querySelector('.board-ink');point.hidden=false;point.textContent=`${signed(tilePoints)} ×${activation.multiplier}`;
         await animate(ink,[{opacity:.5,transform:'scale(1)'},{opacity:1,transform:'scale(1.5)',offset:.4},{opacity:.7,transform:'scale(1)'}],{duration:320});
@@ -656,6 +658,7 @@ for(const dialog of document.querySelectorAll('#bag-dialog,#stage-dialog,#help-d
 
 
 const shopCopy={
+  plus10:'+10 tile points · permanent',plus50:'+50 tile points · permanent',plus100:'+100 tile points · permanent',
   crowd:'Scored tiles: +1 per board item',
   'silver-lining':'Negative scores: +30',
   'full-sweep':'Score all · once per round',
@@ -683,7 +686,7 @@ function renderShop(){
     const owned=isCard?state.jokers.filter(id=>cardType(id)===type).length:state.collection.filter(id=>state.items[id]===type).length;
     const action=sold?'ADDED':isCard&&full?'5 / 5 CARDS':'FREE · CHOOSE';
     card.disabled=busy||sold||(isCard&&full);card.setAttribute('aria-label',`${item.name}. ${item.text} ${action}. ${owned} owned.`);
-    const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='copier'?'▣':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;
+    const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'▣':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;
     card.innerHTML=`<strong class="product-name">${item.name.toUpperCase()}</strong>${art}<span class="product-description">${shopCopy[type]||item.short||item.text}</span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span><b class="product-action">${action}</b>`;
     card.onclick=async()=>{
       if(busy||!claimReward(state,type))return;
@@ -744,7 +747,7 @@ function loadRun(){
     }
     saved.upgradeVersion=2;
     saved.tileStamps??=Object.fromEntries(Array.from({length:25},(_,i)=>[i+1,tileStampList(saved,i+1)]).filter(([,list])=>list.length));
-    if(typeof saved.tileStamps!=='object'||Array.isArray(saved.tileStamps)||!Object.entries(saved.tileStamps).every(([tile,list])=>Number.isInteger(Number(tile))&&Number(tile)>=1&&Number(tile)<=25&&Array.isArray(list)&&list.every(type=>['x2','x3','copier'].includes(type))))throw new Error('Invalid tile stamps');
+    if(typeof saved.tileStamps!=='object'||Array.isArray(saved.tileStamps)||!Object.entries(saved.tileStamps).every(([tile,list])=>Number.isInteger(Number(tile))&&Number(tile)>=1&&Number(tile)<=25&&Array.isArray(list)&&list.every(type=>['x2','x3','copier','plus10','plus50','plus100'].includes(type))))throw new Error('Invalid tile stamps');
     saved.tileCopiers??={};
     if(typeof saved.tileCopiers!=='object'||Array.isArray(saved.tileCopiers)||!Object.entries(saved.tileCopiers).every(([tile,value])=>Number.isInteger(Number(tile))&&Number(tile)>=1&&Number(tile)<=25&&value===true))throw new Error('Invalid copier tiles');
     saved.tileMultipliers??={};
