@@ -511,3 +511,4 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .cabinet:not(.shopping)>.draw-area .ball.hundred-item .face{font-size:calc(var(--size)*.28)}
 
 .joker-crowd{background:#d3dfb8;border-color:#86a277}.joker-crowd .digits-art{background:#446954;color:#e0efd0}
+.space-tooltip #tooltip-effect{white-space:pre-line;text-align:left;font-size:16px;line-height:1.15;max-height:55dvh;overflow-y:auto}

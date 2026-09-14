@@ -24,6 +24,13 @@ export const CARD_TYPES={crowd:{name:'Crowd',text:'Each scored tile earns +1 poi
 export const BALL_UPGRADES={};
 export const ITEM_TYPES={copier:{name:'Copier Stamp',text:'One use. Permanently mark this tile: whenever an item is played here, add an exact copy to the bag before its effects.',price:0},x2:{name:'×2 Stamp',text:'One use. Permanently multiply this tile’s scoring points by 2. Leaves the space empty. Stacks with other stamps.',price:0},x3:{name:'×3 Stamp',text:'One use. Permanently multiply this tile’s scoring points by 3. Leaves the space empty. Stacks with other stamps.',price:0},seed:{name:'Seed',text:'Starts at 1. While on the board, permanently gains +1 whenever you play another piece, before scoring.',price:0},bomb:{name:'Bomb',text:'On placement, destroy this bomb and all items in the 8 neighboring spaces for the rest of the run.',price:0},d20:{name:'20-Sided Die',text:'Roll 1–20 when placed. Keep that number on this space for the round.',price:0},hundred:{name:'Anvil',text:'Drops onto the board, permanently crushing the 4 occupied orthogonal neighbors by 1 before scoring. Starts at 50.',price:0},rock:{name:'Rock',text:'Costs no play to place. Fills a space for combos, but has no number and scores 0 points.',price:0}};
 export const stampFactor=(state,id)=>state.items?.[id]==='x2'?2:state.items?.[id]==='x3'?3:1;
+export const isStamp=(state,id)=>['x2','x3','copier'].includes(state.items?.[id]);
+export function tileStampList(state,tile){
+  if(state.tileStamps?.[tile])return state.tileStamps[tile];
+  const list=state.tileCopiers?.[tile]?['copier']:[];let value=state.tileMultipliers?.[tile]||1;
+  for(const [factor,type] of [[2,'x2'],[3,'x3']])while(value>1&&value%factor===0){list.push(type);value/=factor;}
+  return list;
+}
 export const isRock=(state,id)=>state.items?.[id]==='rock';
 export const isDie=(state,id)=>state.items?.[id]==='d20';
 export const isBomb=(state,id)=>state.items?.[id]==='bomb';
@@ -54,7 +61,7 @@ export function changeTileValue(state,tile,delta,source){
 }
 export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['bingo','face-value'],inventory=null) {
   const collection=inventory?[...inventory.collection]:Array.from({length:25},(_,i)=>i+1),items={...inventory?.items},nextItemId=inventory?.nextItemId??26;
-  return {tileCopiers:{...inventory?.tileCopiers},tileMultipliers:{...inventory?.tileMultipliers},activeUses:{},inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{...inventory?.ballValues},valueModifiers:{...inventory?.valueModifiers},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:15,shopOffer:null,stage,target:targetFor(stage),score:0,calls:15,money,bonusPaid:false,stamps:new Set(),bag:new Set(collection),played:Array(nextItemId).fill(0),status:collection.length?'playing':'over',offer:[]};
+  return {tileStamps:Object.fromEntries(Array.from({length:25},(_,i)=>[i+1,[...tileStampList(inventory||{},i+1)]]).filter(([,list])=>list.length)),tileCopiers:{...inventory?.tileCopiers},tileMultipliers:{...inventory?.tileMultipliers},activeUses:{},inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{...inventory?.ballValues},valueModifiers:{...inventory?.valueModifiers},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:15,shopOffer:null,stage,target:targetFor(stage),score:0,calls:15,money,bonusPaid:false,stamps:new Set(),bag:new Set(collection),played:Array(nextItemId).fill(0),status:collection.length?'playing':'over',offer:[]};
 }
 const shuffled=(values,random)=>{
   const result=[...values];for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;
@@ -63,7 +70,7 @@ export function deal(state,random=Math.random,count=1){
   const empty=Array.from({length:25},(_,i)=>i+1).filter(tile=>!state.stamps.has(tile));
   state.offer=draw(state,random,Math.min(count,empty.length));
   for(let i=empty.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[empty[i],empty[j]]=[empty[j],empty[i]];}
-  state.destinations=Object.fromEntries(state.offer.map((number,i)=>[number,empty[i%Math.min(count,empty.length)]]));
+  state.destinations=Object.fromEntries(state.offer.map((number,i)=>{const available=empty.filter(t=>!isStamp(state,number)||tileStampList(state,t).length<4);return [number,available.length?available[i%available.length]:null];}));
   return state.offer;
 }
 export function draw(state=newStage(),random=Math.random,count=1) {
@@ -73,21 +80,24 @@ export function draw(state=newStage(),random=Math.random,count=1) {
 }
 export function choose(state,number,tile=state.destinations[number],random=Math.random) {
   if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||!Object.values(state.destinations).includes(tile)||tile<1||tile>25||state.stamps.has(tile))return null;
-  let copied=null;
-  if(state.tileCopiers?.[tile]){
+  if(isStamp(state,number)&&tileStampList(state,tile).length>=4)return null;
+  let copied=null;const copies=[];
+  const copyCount=tileStampList(state,tile).filter(type=>type==='copier').length;
+  for(let copyIndex=0;copyIndex<copyCount;copyIndex++){
     const id=state.nextItemId++,type=state.items[number];
     if(type)state.items[id]=type;
     // Normal numbers need an explicit base value: their new ID is not their number.
     if(!type||Object.hasOwn(state.ballValues,number))state.ballValues[id]=state.ballValues[number]??number;
     if(Object.hasOwn(state.valueModifiers,number))state.valueModifiers[id]=state.valueModifiers[number];
     if(state.upgrades[number])state.upgrades[id]=state.upgrades[number];
-    state.collection.push(id);state.bag.add(id);state.played[id]=0;copied={id,source:number,tile};
+    state.collection.push(id);state.bag.add(id);state.played[id]=0;copied={id,source:number,tile};copies.push(copied);
   }
   const roll=isDie(state,number)?1+Math.floor(random()*20)+(state.valueModifiers?.[number]||0):null;
   const playCost=isRock(state,number)?0:1;
   state.stamps.add(tile);state.stampBalls[tile]=number;state.stampValues[tile]=roll??ballValue(state,number);state.bag.delete(number);state.played[number]=(state.played[number]||0)+1;state.calls-=playCost;
   const factor=stampFactor(state,number),stampApplied=(factor>1||state.items[number]==='copier')?{tile,factor,before:state.tileMultipliers?.[tile]||1}:null;
   if(stampApplied){
+    const previous=tileStampList(state,tile);state.tileStamps??={};state.tileStamps[tile]=[...previous,state.items[number]];
     if(state.items[number]==='copier'){state.tileCopiers??={};state.tileCopiers[tile]=true;}
     else{state.tileMultipliers??={};state.tileMultipliers[tile]=(state.tileMultipliers[tile]||1)*factor;}
     state.stamps.delete(tile);delete state.stampBalls[tile];delete state.stampValues[tile];
@@ -134,7 +144,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   state.offer=[];state.destinations={};
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
-  return {tile,copied,stampApplied,playCost,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
+  return {tile,copied,copies,stampApplied,playCost,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
 }
 function cardEvents(state){
   const events=[];
@@ -174,7 +184,8 @@ export function redraw(state,random=Math.random) {
   const candidates=[...state.bag].filter(n=>!oldBalls.has(n));
   if(candidates.length)state.offer=[candidates[Math.floor(random()*candidates.length)]];
   const empty=Array.from({length:25},(_,i)=>i+1).filter(t=>!state.stamps.has(t)&&!oldTiles.has(t));
-  const tile=empty.length?empty[Math.floor(random()*empty.length)]:Object.values(state.destinations)[0];
+  const available=empty.filter(t=>!isStamp(state,state.offer[0])||tileStampList(state,t).length<4);
+  const tile=available.length?available[Math.floor(random()*available.length)]:Object.values(state.destinations)[0];
   state.destinations=Object.fromEntries(state.offer.map(n=>[n,tile]));
   return true;
 }

@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=6764d5d61b40';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=bfb7e7ccf9db';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=3ad896fcb393';
+import {newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=e4a472006c1e';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 // One tempo for animation and sequencing keeps effects and input locks aligned.
@@ -126,7 +126,17 @@ function showTooltip(n,anchor,space=false){
   const upgrade=state.upgrades[n],item=ITEM_TYPES[state.items?.[n]];
   $('tooltip-effect').textContent=item?item.text:upgrade?BALL_UPGRADES[upgrade].text:space?'Nothing special':'';
   const modifier=state.valueModifiers?.[n]||0;if(modifier)$('tooltip-effect').textContent+=`${$('tooltip-effect').textContent?' ':''}Permanent value change: ${signed(modifier)}.${isDie(state,n)?` Future rolls: ${1+modifier}–${20+modifier}.`:''}`;
-  if(space){if(state.tileCopiers?.[Number(anchor.id.replace('cell-',''))])$('tooltip-effect').textContent+=' Copier: playing here adds an exact copy to the bag. Persists between rounds.';const mult=state.tileMultipliers?.[Number(anchor.id.replace('cell-',''))]||1;if(mult>1)$('tooltip-effect').textContent+=` Tile stamp: ×${mult} points after card bonuses. Persists between rounds.`;}
+  if(space){
+    const tile=Number(anchor.id.replace('cell-','')),list=tileStampList(state,tile),mult=state.tileMultipliers?.[tile]||1;
+    const details=[state.stamps.has(tile)?`ITEM: ${item?.name||'Ball'}${state.stampValues[tile]!=null?` · ${state.stampValues[tile]}`:''}
+${$('tooltip-effect').textContent}`:'ITEM: Empty'];
+    details.push(`STAMPS · ${list.length}/4`);
+    list.forEach((type,i)=>details.push(`${i+1}. ${type==='copier'?'Copier · add one copy to the bag on placement':type==='x2'?'×2 · double this tile’s points':'×3 · triple this tile’s points'}`));
+    if(!list.length)details.push('None');
+    if(mult>1)details.push(`Combined multiplier: ×${mult}`);
+    $('tooltip-effect').textContent=details.join('\n');
+  }
+
   $('tooltip-effect').hidden=!space&&!upgrade&&!item&&!modifier;
   tip.classList.toggle('space-tooltip',space);
   tooltipAnchor=anchor;
@@ -520,7 +530,7 @@ async function play(n,b,ghost,tile=state.destinations[n]){
   await wait(180);
   render(result.effectBoard||state);if(result.roll!==null)cell.querySelector('span').textContent='?';renderCalls(result.callsBeforeBonuses);renderScore(state.score-result.points);
   if(result.roll!==null)await rollDie(cell,result.roll);
-  if(result.copied)await animateCopy(result.copied);
+  for(const copy of result.copies||[])await animateCopy(copy);
   if(result.stampApplied){const ink=cell.querySelector('.board-ink');await animate(ink,[{transform:'scale(2) rotate(-12deg)',opacity:0},{transform:'scale(.9)',opacity:1,offset:.6},{transform:'scale(1)',opacity:.65}],{duration:400});}
   if(result.valueChanges.length)await animateValueChanges(result);
   $('announcer').textContent=`${pieceLabel(n)} played.${result.roll!==null?` Rolled ${result.roll}.`:''} ${result.playCost===0?'No play used.':'One play used.'}`;
@@ -730,6 +740,8 @@ function loadRun(){
       if(saved.shopOffer?.balls)saved.shopOffer.balls=saved.shopOffer.balls.map(type=>type==='dynamite'?'tornado':type);
     }
     saved.upgradeVersion=2;
+    saved.tileStamps??=Object.fromEntries(Array.from({length:25},(_,i)=>[i+1,tileStampList(saved,i+1)]).filter(([,list])=>list.length));
+    if(typeof saved.tileStamps!=='object'||Array.isArray(saved.tileStamps)||!Object.entries(saved.tileStamps).every(([tile,list])=>Number.isInteger(Number(tile))&&Number(tile)>=1&&Number(tile)<=25&&Array.isArray(list)&&list.every(type=>['x2','x3','copier'].includes(type))))throw new Error('Invalid tile stamps');
     saved.tileCopiers??={};
     if(typeof saved.tileCopiers!=='object'||Array.isArray(saved.tileCopiers)||!Object.entries(saved.tileCopiers).every(([tile,value])=>Number.isInteger(Number(tile))&&Number(tile)>=1&&Number(tile)<=25&&value===true))throw new Error('Invalid copier tiles');
     saved.tileMultipliers??={};
