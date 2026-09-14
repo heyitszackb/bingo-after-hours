@@ -86,3 +86,6 @@ Silver Lining adds +30 each time a negative-valued tile scores. It is a points m
 Full Sweep introduces active cards: inspect the card, then Activate to score every occupied tile in board order through the same points-card pipeline. It costs no play/pass, keeps the offered piece/location and all stamps, does not trigger placement powers or alter Bingo history, and can win the round. Each copy is usable once per round and remembers its used state across reloads; a new round refreshes it. Encore immediately to its left retriggers that activation. Empty boards cannot spend an activation. Cards remain draggable/removable. Both cards join the four-choice reward shop pool.
 
 `node scripts/active-cards-check.mjs` verifies contribution animations, activation/reload, wins/payout, and reward purchases. Use `REAL_MOTION=1` for full-motion checks.
+
+### Compact reward layout
+The reward shop shows all four offers together: two smaller cards on the top row, two tokens beneath. Short effect summaries replace full paragraphs and owned counts; full descriptions remain in accessible labels. There is no scrolling shelf or browse control. The one-free-choice flow is unchanged. Responsive browser checks verify all four choices fit simultaneously at 320×568, 390×844, 1000×800, and 844×390.

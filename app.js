@@ -616,15 +616,21 @@ $('patterns-button').onclick=showPatterns;$('score-patterns').onclick=showPatter
 for(const dialog of document.querySelectorAll('#bag-dialog,#stage-dialog,#help-dialog,#patterns-dialog')){dialog.addEventListener('close',hideTooltip);dialog.querySelector('.close').onclick=()=>dialog.close();dialog.addEventListener('pointerdown',e=>{if(e.target!==dialog)return;const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();});}
 
 
-function updateShopScroll(){
-  const shelf=$('shop-shelf'),max=shelf.scrollWidth-shelf.clientWidth;
-  $('shop-prev').disabled=shelf.scrollLeft<3;$('shop-more').disabled=shelf.scrollLeft>=max-3;
-  $('shop-browse').hidden=max<3;
-}
+const shopCopy={
+  'silver-lining':'Negative scores: +30',
+  'full-sweep':'Score all · once per round',
+  encore:'Retrigger the card to the right',
+  'high-five':'Play 1–5: score it + 4 neighbors',
+  seed:'Starts at 1 · grows with each play',
+  bomb:'Destroy itself + 8 neighboring pieces',
+  d20:'Roll 1–20 when placed',
+  hundred:'Worth 100 · 4 neighbors lose 1',
+  rock:'Free play · scores 0'
+};
 function renderShop(){
   hideTooltip();$('money').textContent=state.money;
-  const shelf=$('shop-shelf'),scroll=shelf.scrollLeft,focused=document.activeElement?.id;
-  shelf.replaceChildren();
+  const shelf=$('shop-shelf'),focused=document.activeElement?.id;
+  shelf.innerHTML='<section class=reward-row aria-label=Cards><h3>CARDS</h3><div id=shop-cards class=reward-options></div></section><section class=reward-row aria-label=Tokens><h3>TOKENS</h3><div id=shop-tokens class=reward-options></div></section>';
   const full=state.jokers.filter(id=>!isRuleCard(id)).length>=5;
   for(const type of [...state.shopOffer.cards,...state.shopOffer.items].filter(Boolean)){
     const definition=CARD_TYPES[type]||ITEM_TYPES[type];
@@ -635,7 +641,7 @@ function renderShop(){
     const action=sold?'ADDED':isCard&&full?'5 / 5 CARDS':'FREE · CHOOSE';
     card.disabled=busy||sold||(isCard&&full);card.setAttribute('aria-label',`${item.name}. ${item.text} ${action}. ${owned} owned.`);
     const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='hundred'?'<i class="hundred-art" aria-hidden="true">100</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='d20'?'?':type==='seed'?'1':''}</i>`;
-    card.innerHTML=`<small class="product-kind">${isCard?'CARD':'BAG PIECE'}</small><strong class="product-name">${item.name.toUpperCase()}</strong>${art}<span class="product-description">${item.text}</span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span><b class="product-action">${action}</b>`;
+    card.innerHTML=`<strong class="product-name">${item.name.toUpperCase()}</strong>${art}<span class="product-description">${shopCopy[type]||item.short||item.text}</span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span><b class="product-action">${action}</b>`;
     card.onclick=async()=>{
       if(busy||!claimReward(state,type))return;
       busy=true;saveRun();shelf.querySelectorAll('button').forEach(b=>b.disabled=true);$('shop-menu').disabled=true;
@@ -643,13 +649,11 @@ function renderShop(){
       await animate(card,[{transform:'scale(.96)'},{transform:'scale(1.06)',offset:.4},{transform:'scale(1)',opacity:.4}],{duration:400});
       await finishShop();
     };
-    shelf.append(card);
+    $(isCard?'shop-cards':'shop-tokens').append(card);
   }
-  shelf.scrollLeft=scroll;if(focused?.startsWith('shop-')&&$(focused)&&!$(focused).disabled)$(focused).focus({preventScroll:true});
-  $('shop-menu').disabled=busy;requestAnimationFrame(updateShopScroll);
+  if(focused?.startsWith('shop-')&&$(focused)&&!$(focused).disabled)$(focused).focus({preventScroll:true});
+  $('shop-menu').disabled=busy;
 }
-$('shop-shelf').addEventListener('scroll',updateShopScroll,{passive:true});window.addEventListener('resize',updateShopScroll);
-for(const [id,direction] of [['shop-prev',-1],['shop-more',1]])$(id).onclick=()=>$('shop-shelf').scrollBy({left:direction*200,behavior:reduced?'instant':'smooth'});
 function showShop(){
   openShop(state);if(state.shopOffer.claimed){finishShop();return;}shopping=true;busy=false;
   $('patterns-button').disabled=false;$('score-patterns').disabled=false;
