@@ -494,3 +494,10 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 #shop-shelf .product-action{font-size:12px;padding-top:5px}
 @media(max-height:600px){.cabinet.shopping{gap:8px;padding:8px 0}.cabinet.shopping #shop-screen{gap:6px}#shop-shelf{gap:10px}#shop-shelf .shop-product{height:156px;gap:4px}#shop-tokens .shop-product{height:140px}}
 @media(max-height:480px){.cabinet.shopping{width:min(calc(100% - 28px),600px);gap:5px;padding:5px 0}.cabinet.shopping .shop-heading{display:block}.cabinet.shopping .shop-heading h2{font-size:19px}#shop-shelf{gap:8px}.reward-row h3{font-size:10px;margin-bottom:4px}#shop-shelf .shop-product{height:94px;display:grid;grid-template-columns:40px 1fr;grid-template-rows:auto 1fr auto;gap:3px 7px;padding:6px}#shop-shelf .product-name{grid-column:2;font-size:16px}#shop-shelf i{grid-column:1;grid-row:1/4;width:38px;height:38px}#shop-shelf .product-description{grid-column:2;font-size:13px;max-width:none}#shop-shelf .product-action{grid-column:2;font-size:11px;padding-top:3px}}
+
+/* Board ink is distinct from removable pieces and remains visible under them. */
+.cell .board-ink{position:absolute;inset:0;display:grid;place-items:center;z-index:0;font-style:normal;font-size:clamp(22px,5vw,40px);color:#b6a27c;pointer-events:none}
+.cell.stamped .board-ink{inset:auto 2px 1px auto;display:block;font-size:clamp(12px,2.8vw,17px);z-index:3;color:#8e7956;background:#ebdcb6bb;padding:0 2px}
+.ball.stamp-item{border-radius:5px;background:#daca9f!important;box-shadow:3px 4px #1a302c,inset 0 0 0 4px #9d895f;border:3px solid #d8bf86}
+.ball.stamp-item:before,.ball.stamp-item:after{display:none}.ball.stamp-item .face{background:transparent;box-shadow:none;border:0;color:#7f6a44;font-size:calc(var(--size)*.4)}
+.x2-art,.x3-art{background:#dbcaa0;color:#88734c;border:3px double #9c865a;border-radius:3px;font-size:25px;box-shadow:2px 3px #00191e}

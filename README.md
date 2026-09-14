@@ -89,3 +89,10 @@ Full Sweep introduces active cards: inspect the card, then Activate to score eve
 
 ### Compact reward layout
 The reward shop shows all four offers together: two smaller cards on the top row, two tokens beneath. Short effect summaries replace full paragraphs and owned counts; full descriptions remain in accessible labels. There is no scrolling shelf or browse control. The one-free-choice flow is unchanged. Responsive browser checks verify all four choices fit simultaneously at 320×568, 390×844, 1000×800, and 844×390.
+
+### Permanent tile stamps
+×2 and ×3 Stamps are one-use, numberless bag items offered alongside other tokens and available in Debug. Playing costs one play, consumes the item permanently, and inks the highlighted empty tile without occupying it or triggering a scoring group. Passing returns the stamp normally. Existing Seeds grow for a stamp placement, as for other played items.
+
+Tile multipliers persist between rounds and reloads, survive Bomb explosions, and stack multiplicatively (×2 then ×3 = ×6). They multiply the tile's total points after card contributions; 20 on ×3 scores 60. A negative tile with Silver Lining also has its final net points multiplied. They never change the ball's stored number or placement eligibility. Ink pulses after the points-card activations and before points reach the score meter. New runs and applying a fresh Debug bag reset the board ink.
+
+`node scripts/tile-stamps-check.mjs` checks ink visuals, consumption, reload/round persistence, scoring animation, rewards, and Debug support; add `REAL_MOTION=1` to check full animation timing.
