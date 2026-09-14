@@ -6,13 +6,19 @@ const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
 const animate=(el,frames,options)=>el.animate(frames,{...options,duration:reduced?1:options.duration}).finished.catch(()=>{});
 function burst(rect,scoring=false){if(reduced)return;for(let i=0;i<(scoring?28:12);i++){const p=document.createElement('i');p.className='particle';p.style.left=`${rect.left+rect.width/2}px`;p.style.top=`${rect.top+rect.height/2}px`;p.style.background=scoring?'#f4c66c':i%2?'#a9b7b8':'#e4e9dd';$('effects').append(p);const angle=Math.random()*Math.PI*2,d=25+Math.random()*(scoring?150:65);animate(p,[{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+25}px) scale(0)`,opacity:0}],{duration:450+Math.random()*250,easing:'cubic-bezier(.1,.7,.3,1)'}).then(()=>p.remove());}}
 for(let n=1;n<=25;n++){const c=document.createElement('button');c.type='button';c.id=`cell-${n}`;c.className='cell';c.innerHTML='<span></span>';c.onclick=()=>{if(!busy&&!drag)inspectSpace(n);};$('board').append(c);}
+function renderScore(value=state.score){
+  $('score').textContent=value;$('target').textContent=state.target;
+  $('score-meter').setAttribute('aria-label',`${value} of ${state.target} points`);
+  $('score-meter').classList.toggle('target-met',value>=state.target);
+  $('progress').style.width=`${Math.min(100,value/state.target*100)}%`;
+}
 function render(){
   renderJokers();
   $('redraw').classList.toggle('exhausted',state.passes===0);$('play-ball').disabled=busy||!!drag||state.status!=='playing'||!state.offer.length;$('play-ball').setAttribute('aria-label',`Play ball ${ballValue(state,state.offer[0])??'X'} on the highlighted space. ${state.calls} plays remaining.`);
   $('plasma-pick').hidden=!state.plasmaActive||state.status!=='playing';$('plasma-pick').disabled=busy;
   $('patterns-button').disabled=busy||payingOut;$('score-patterns').disabled=busy||payingOut;
   $('score-patterns').setAttribute('aria-label',`${state.score} of ${state.target} points. View scoring patterns and run counts`);
-  $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);for(const k of ['score','target','calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw-cost').textContent=state.passes;$('redraw').disabled=busy||state.passes<1||state.status!=='playing';$('redraw').setAttribute('aria-label',`Pass: ${state.passes} remaining. Return this ball and draw a new ball and space without spending a play.`);renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
+  $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);renderScore();for(const k of ['calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw-cost').textContent=state.passes;$('redraw').disabled=busy||state.passes<1||state.status!=='playing';$('redraw').setAttribute('aria-label',`Pass: ${state.passes} remaining. Return this ball and draw a new ball and space without spending a play.`);renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
     const c=$(`cell-${tile}`),offered=Object.values(state.destinations).includes(tile),number=state.stampBalls[tile];
     c.className=`cell paint-grey upgrade-${state.upgrades[number]||'plain'}${state.stamps.has(tile)?' stamped':''}${offered?' offered':''}`;
     c.querySelector('span').textContent=state.stamps.has(tile)?(state.stampValues[tile]??'X'):'';
@@ -255,11 +261,11 @@ async function scoreLink(from,to,color){
 async function activateSpaces(result){
   let displayedScore=state.score-result.points,displayedCalls=result.callsBeforeBonuses,total=0,lineIndex=0;
   let activePattern=[];
-  const rack=$('joker-rack'),board=$('board'),area=document.querySelector('.draw-area'),readout=$('score-readout');
+  const rack=$('joker-rack'),board=$('board'),area=document.querySelector('.draw-area'),readout=$('score-meter');
   const colors={row:'#83e0b5',column:'#91c6ff',diagonal:'#ffb18b'};
   const allTiles=[...new Set(result.activations.map(a=>a.tile))].map(n=>$(`cell-${n}`));
   rack.classList.add('scoring-rack');board.classList.add('scoring-board');area.classList.add('scoring-draw');
-  readout.hidden=false;$('score-gain').textContent='+0';$('score-running').textContent=`${displayedScore}/${state.target} pts`;
+  readout.classList.add('scoring-total');$('score-line-label').hidden=false;renderScore(displayedScore);
   allTiles.forEach(cell=>cell.classList.add('score-pending'));
   try{
     for(const [index,activation] of result.activations.entries()){
@@ -309,23 +315,22 @@ async function activateSpaces(result){
       await tileImpact;
       point.hidden=false;point.textContent=`+${tilePoints}`;
       if(tilePoints>0)burst(r);
-      const to=$('score-gain').getBoundingClientRect();
+      const to=$('score').getBoundingClientRect();
       await animate(point,[{transform:'translate(-50%,-85%) scale(1)',opacity:1},{transform:'translate(-50%,-105%) scale(1.12)',opacity:1,offset:.25},{transform:`translate(calc(-50% + ${to.left+to.width/2-r.left-r.width/2}px),calc(-50% + ${to.top+to.height/2-r.top-r.height/2}px)) scale(.5)`,opacity:0}],{duration:Math.max(180,270-index%5*18),easing:'cubic-bezier(.4,0,.7,.4)'});
       point.remove();
       displayedScore+=activation.points;total+=activation.points;
-      $('score-gain').textContent=`+${total}`;$('score-running').textContent=`${displayedScore}/${state.target} pts`;
-      $('score').textContent=displayedScore;$('progress').style.width=`${Math.min(100,displayedScore/state.target*100)}%`;
-      await animate($('score-gain'),reduced?[{opacity:.75},{opacity:1}]:[{transform:'scale(1.22,1.08) rotate(-2deg)'},{transform:'scale(.97,1.03)',offset:.55},{transform:'scale(1)'}],{duration:130});
+      renderScore(displayedScore);
+      await animate($('score'),reduced?[{opacity:.75},{opacity:1}]:[{transform:'scale(1.22,1.08) rotate(-2deg)'},{transform:'scale(.97,1.03)',offset:.55},{transform:'scale(1)'}],{duration:130});
       cell.classList.remove('activating');
     }
     $('score-line-label').textContent=state.jokers.includes('face-value')?'BINGO':'NO POINTS RULE';
-    if(total>0){pulseBackground();navigator.vibrate?.([15,25,25]);burst($('score-gain').getBoundingClientRect(),true);}
+    if(total>0){pulseBackground();navigator.vibrate?.([15,25,25]);burst($('score').getBoundingClientRect(),true);}
     await animate(readout,reduced?[{opacity:.85},{opacity:1}]:[{transform:'scale(1)'},{transform:'scale(1.08) rotate(-1deg)',offset:.25},{transform:'scale(1)',offset:.65},{transform:'scale(1)'}],{duration:360});
     await wait(600);
     const names=result.scoredPatterns.map(p=>PATTERN_TYPES.find(type=>type.id===p.type).label);
     $('announcer').textContent=`${names.join(', ')}. ${result.activations.length} spaces activated for ${result.points} points.`;
   }finally{
-    rack.classList.remove('scoring-rack');board.classList.remove('scoring-board');area.classList.remove('scoring-draw');readout.hidden=true;
+    rack.classList.remove('scoring-rack');board.classList.remove('scoring-board');area.classList.remove('scoring-draw');readout.classList.remove('scoring-total');$('score-line-label').hidden=true;
     rack.querySelectorAll('.scoring-card').forEach(releaseCard);
     allTiles.forEach(c=>c.classList.remove('score-pending','pattern-active','charged','activating'));
   }
@@ -362,7 +367,7 @@ async function play(n,b,ghost,tile=state.destinations[n]){
     }));
     animate($('bag'),[{transform:'scale(1.15)'},{transform:'scale(1)'}],{duration:180});
   }
-  render();renderCalls(result.callsBeforeBonuses);$('score').textContent=state.score-result.points;$('progress').style.width=`${Math.min(100,(state.score-result.points)/state.target*100)}%`;
+  render();renderCalls(result.callsBeforeBonuses);renderScore(state.score-result.points);
   result.doubled.forEach(change=>$(`cell-${change.tile}`).querySelector('span').textContent=change.before);
   for(const change of result.doubled){
     const target=$(`cell-${change.tile}`);target.querySelector('span').textContent=change.before;
