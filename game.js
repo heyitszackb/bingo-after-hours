@@ -22,7 +22,7 @@ export const isRuleCard=id=>Object.hasOwn(RULE_CARDS,id);
 // Add new definitions here as the shop grows. Empty slots cannot be purchased.
 export const CARD_TYPES={'high-five':{name:'High Five',text:'When you play a 1–5, score it and its occupied orthogonal neighbors.',icon:'✚',short:'Play 1–5: score ✚'}};
 export const BALL_UPGRADES={};
-export const ITEM_TYPES={bomb:{name:'Bomb',text:'After scoring, destroy this bomb and all items in the 8 neighboring spaces for the rest of the run.',price:0},d20:{name:'20-Sided Die',text:'Roll 1–20 when placed. Keep that number on this space for the round.',price:0}};
+export const ITEM_TYPES={bomb:{name:'Bomb',text:'After scoring, destroy this bomb and all items in the 8 neighboring spaces for the rest of the run.',price:0},d20:{name:'20-Sided Die',text:'Roll 1–20 when placed. Keep that number on this space for the round.',price:0},hundred:{name:'100 Ball',text:'Before scoring, permanently reduce occupied orthogonal neighbors by 1. Starts at 100.',price:0}};
 export const isDie=(state,id)=>state.items?.[id]==='d20';
 export const isBomb=(state,id)=>state.items?.[id]==='bomb';
 export const cardType=id=>id.split(':')[0];
@@ -40,10 +40,19 @@ export const normalizeJokers=jokers=>{
     return CARD_TYPES[cardType(id)]&&cardDetails(id)&&purchased++<5;
   });
 };
-export const ballValue=(state,number)=>state.items?.[number]?null:(state.ballValues?.[number]??number);
+export const ballValue=(state,number)=>number==null||isBomb(state,number)||isDie(state,number)?null:((state.ballValues?.[number]??(state.items?.[number]==='hundred'?100:number))+(state.valueModifiers?.[number]||0));
+const boardSnapshot=state=>({stamps:new Set(state.stamps),stampBalls:{...state.stampBalls},stampValues:{...state.stampValues}});
+export const orthogonalNeighbors=tile=>[tile-5,tile+1,tile+5,tile-1].filter(t=>t>=1&&t<=25&&Math.abs(Math.floor((t-1)/5)-Math.floor((tile-1)/5))+Math.abs((t-1)%5-(tile-1)%5)===1);
+// Effects produce a common before/after event for the UI, independent of scoring.
+export function changeTileValue(state,tile,delta,source){
+  const before=state.stampValues[tile];if(!state.stamps.has(tile)||!Number.isSafeInteger(before))return null;
+  const id=state.stampBalls[tile],after=before+delta;
+  state.valueModifiers??={};state.valueModifiers[id]=(state.valueModifiers[id]||0)+delta;state.stampValues[tile]=after;
+  return {source,tile,id,before,after,delta};
+}
 export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['bingo','face-value'],inventory=null) {
   const collection=inventory?[...inventory.collection]:Array.from({length:25},(_,i)=>i+1),items={...inventory?.items},nextItemId=inventory?.nextItemId??26;
-  return {inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:15,shopOffer:null,stage,target:targetFor(stage),score:0,calls:15,money,bonusPaid:false,stamps:new Set(),bag:new Set(collection),played:Array(nextItemId).fill(0),status:collection.length?'playing':'over',offer:[]};
+  return {inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{...inventory?.ballValues},valueModifiers:{...inventory?.valueModifiers},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls:{},stampValues:{},destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:15,shopOffer:null,stage,target:targetFor(stage),score:0,calls:15,money,bonusPaid:false,stamps:new Set(),bag:new Set(collection),played:Array(nextItemId).fill(0),status:collection.length?'playing':'over',offer:[]};
 }
 const shuffled=(values,random)=>{
   const result=[...values];for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;
@@ -62,8 +71,12 @@ export function draw(state=newStage(),random=Math.random,count=1) {
 }
 export function choose(state,number,tile=state.destinations[number],random=Math.random) {
   if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||!Object.values(state.destinations).includes(tile)||tile<1||tile>25||state.stamps.has(tile))return null;
-  const roll=isDie(state,number)?1+Math.floor(random()*20):null;
+  const roll=isDie(state,number)?1+Math.floor(random()*20)+(state.valueModifiers?.[number]||0):null;
   state.stamps.add(tile);state.stampBalls[tile]=number;state.stampValues[tile]=roll??ballValue(state,number);state.bag.delete(number);state.played[number]=(state.played[number]||0)+1;state.calls--;
+  const effectBoard=state.items[number]==='hundred'?boardSnapshot(state):null,valueChanges=[];
+  if(effectBoard)for(const neighbor of orthogonalNeighbors(tile)){
+    const change=changeTileValue(state,neighbor,-1,tile);if(change)valueChanges.push(change);
+  }
   const callsBeforeBonuses=state.calls;
   const scoredPatterns=completedPatterns(state.stamps).filter(p=>!state.scoredLines.includes(p.id)&&p.tiles.includes(tile)&&state.jokers.includes('bingo'));
   const patterns=scoredPatterns.map(p=>p.tiles);
@@ -75,8 +88,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   for(const joker of state.jokers){
     if(joker==='bingo')scoringGroups.push(...scoredPatterns.map(p=>({trigger:joker,type:p.type,tiles:p.tiles})));
     if(cardType(joker)==='high-five'&&state.stampValues[tile]>=1&&state.stampValues[tile]<=5){
-      const row=Math.floor((tile-1)/5),col=(tile-1)%5;
-      const neighbors=[tile,tile-5,tile+1,tile+5,tile-1].filter(t=>state.stamps.has(t)&&Math.abs(Math.floor((t-1)/5)-row)+Math.abs((t-1)%5-col)<=1);
+      const neighbors=[tile,...orthogonalNeighbors(tile)].filter(t=>state.stamps.has(t));
       scoringGroups.push({trigger:joker,type:'cross',tiles:neighbors});
     }
   }
@@ -89,7 +101,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   }));
   const points=activations.reduce((sum,a)=>sum+a.points,0);state.score+=points;
   // Snapshot scoring before removing any items: the UI plays these phases in order.
-  const scoringBoard=isBomb(state,number)?{stamps:new Set(state.stamps),stampBalls:{...state.stampBalls},stampValues:{...state.stampValues}}:null;
+  const scoringBoard=isBomb(state,number)?boardSnapshot(state):null;
   const destroyed=[];
   if(isBomb(state,number)){
     const row=Math.floor((tile-1)/5),col=(tile-1)%5;
@@ -97,14 +109,14 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
       if(Math.abs(Math.floor((occupied-1)/5)-row)>1||Math.abs((occupied-1)%5-col)>1)continue;
       const id=state.stampBalls[occupied];destroyed.push({tile:occupied,id,value:state.stampValues[occupied]});
       state.collection=state.collection.filter(n=>n!==id);state.bag.delete(id);
-      state.stamps.delete(occupied);delete state.stampBalls[occupied];delete state.stampValues[occupied];delete state.ballValues[id];delete state.upgrades[id];
+      state.stamps.delete(occupied);delete state.stampBalls[occupied];delete state.stampValues[occupied];delete state.ballValues[id];delete state.valueModifiers[id];delete state.upgrades[id];
     }
   }
 
   state.offer=[];state.destinations={};
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
-  return {tile,roll,scoringBoard,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
+  return {tile,roll,effectBoard,valueChanges,scoringBoard,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
 }
 export function redraw(state,random=Math.random) {
   if(state.status!=='playing'||state.passes<1||!state.offer.length)return false;

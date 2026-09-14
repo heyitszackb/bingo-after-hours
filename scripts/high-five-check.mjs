@@ -1,3 +1,4 @@
+import {checkShopLayout} from './shop-layout.mjs';
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 import {newStage} from '../game.js';
@@ -17,10 +18,8 @@ try{
  const restore=async s=>{await page.evaluate(s=>sessionStorage.setItem('fixture',JSON.stringify(s)),{...s,stamps:[...s.stamps],bag:[...s.bag]});await page.reload();await page.locator('#play-button').click();};
  const ready=()=>page.locator('#balls .ball:not([disabled])').first().waitFor();
  const s=newStage(1,0);s.status='passed';s.bonusPaid=true;s.shopOffer={cards:[null,null],balls:[null,null],items:['bomb','d20']};await restore(s);await page.locator('#shop-screen').waitFor({state:'visible'});
- for(const [width,height] of [[390,844],[320,568],[1000,800],[844,390]]){
-  await page.setViewportSize({width,height});for(const sel of ['#shop-screen','.shop-rule-card','#shop-d20','#shop-next','.dashboard']){const r=await page.locator(sel).boundingBox();assert.ok(r&&r.x>=0&&r.y>=0&&r.x+r.width<=width+1&&r.y+r.height<=height+1,JSON.stringify({sel,width,height,r}));}await page.screenshot({path:`/tmp/binglatro-high-five-shop-${width}.png`});
- }
- await page.setViewportSize({width:390,height:844});await page.locator('[data-shop-card="high-five"]').click();assert.equal((await read()).money,0);assert.ok((await read()).jokers.includes('high-five:1'));assert.equal(await page.locator('.shop-rule-card').count(),0);await page.reload();await page.locator('#play-button').click();assert.equal(await page.locator('.shop-rule-card').count(),0);await page.locator('#shop-next').click();await ready();assert.equal(await page.locator('[data-joker="high-five:1"]').count(),1);
+ await checkShopLayout(page,'high-five-check');
+ await page.setViewportSize({width:390,height:844});await page.locator('[data-shop-card="high-five"]').click();assert.equal((await read()).money,0);assert.ok((await read()).jokers.includes('high-five:1'));assert.equal(await page.locator('.shop-rule-card:enabled').count(),0);await page.reload();await page.locator('#play-button').click();assert.equal(await page.locator('.shop-rule-card:enabled').count(),0);await page.locator('#shop-next').click();await ready();assert.equal(await page.locator('[data-joker="high-five:1"]').count(),1);
  const turn=newStage(10,0,{}, {},['bingo','face-value','high-five:1']);[[6,1],[7,2],[8,3],[9,4],[10,10]].forEach(([n,t])=>{turn.stamps.add(t);turn.stampBalls[t]=n;turn.stampValues[t]=n;turn.bag.delete(n);});turn.offer=[5];turn.destinations={5:5};await restore(turn);await ready();await page.keyboard.press('ArrowUp');
  if(process.env.REAL_MOTION){await page.locator('[data-joker="bingo"].scoring-card').waitFor();await page.screenshot({path:'/tmp/binglatro-high-five-line.png'});await page.locator('[data-joker="high-five:1"].scoring-card').waitFor({timeout:30000});await page.screenshot({path:'/tmp/binglatro-high-five-cross.png'});}
  await page.waitForFunction(()=>window.cardEvents.some(e=>e.id==='high-five:1')&&!document.querySelector('.scoring-rack')&&document.querySelector('#balls .ball:not([disabled])'),null,{timeout:45000});

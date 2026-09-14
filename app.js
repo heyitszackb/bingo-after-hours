@@ -1,8 +1,9 @@
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,migrateShop,migrateInventory,buyCard,isRuleCard,buyItem,isBomb,isDie,ITEM_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openShop,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=0fba27e386cf';
+import {newStage,deal,choose,migrateShop,migrateInventory,buyCard,isRuleCard,buyItem,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openShop,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=e874638f8fca';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
+const signed=n=>n>=0?`+${n}`:String(n);
 const animate=(el,frames,options)=>el.animate(frames,{...options,duration:reduced?1:options.duration}).finished.catch(()=>{});
 function burst(rect,scoring=false){if(reduced)return;for(let i=0;i<(scoring?28:12);i++){const p=document.createElement('i');p.className='particle';p.style.left=`${rect.left+rect.width/2}px`;p.style.top=`${rect.top+rect.height/2}px`;p.style.background=scoring?'#f4c66c':i%2?'#a9b7b8':'#e4e9dd';$('effects').append(p);const angle=Math.random()*Math.PI*2,d=25+Math.random()*(scoring?150:65);animate(p,[{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+25}px) scale(0)`,opacity:0}],{duration:450+Math.random()*250,easing:'cubic-bezier(.1,.7,.3,1)'}).then(()=>p.remove());}}
 for(let n=1;n<=25;n++){const c=document.createElement('button');c.type='button';c.id=`cell-${n}`;c.className='cell';c.innerHTML='<span></span>';c.onclick=()=>{if(!busy&&!drag)inspectSpace(n);};$('board').append(c);}
@@ -10,14 +11,14 @@ function renderScore(value=state.score){
   $('score').textContent=value;$('target').textContent=state.target;
   $('score-meter').setAttribute('aria-label',`${value} of ${state.target} points`);
   $('score-meter').classList.toggle('target-met',value>=state.target);
-  $('progress').style.width=`${Math.min(100,value/state.target*100)}%`;
+  $('progress').style.width=`${Math.max(0,Math.min(100,value/state.target*100))}%`;
 }
 function render(boardState=state){
   renderJokers();$('bag').disabled=busy;
   $('redraw').classList.toggle('exhausted',state.passes===0);$('play-ball').disabled=busy||!!drag||state.status!=='playing'||!state.offer.length;$('play-ball').setAttribute('aria-label',`Play ball ${pieceLabel(state.offer[0])} on the highlighted space. ${state.calls} plays remaining.`);
   $('patterns-button').disabled=busy||payingOut;$('score-patterns').disabled=busy||payingOut;
   $('score-patterns').setAttribute('aria-label',`${state.score} of ${state.target} points. View scoring patterns and run counts`);
-  $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);renderScore();for(const k of ['calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.min(100,state.score/state.target*100)}%`;$('redraw-cost').textContent=state.passes;$('redraw').disabled=busy||state.passes<1||state.status!=='playing';$('redraw').setAttribute('aria-label',`Pass: ${state.passes} remaining. Return this ball and draw a new ball and space without spending a play.`);renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
+  $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);renderScore();for(const k of ['calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.max(0,Math.min(100,state.score/state.target*100))}%`;$('redraw-cost').textContent=state.passes;$('redraw').disabled=busy||state.passes<1||state.status!=='playing';$('redraw').setAttribute('aria-label',`Pass: ${state.passes} remaining. Return this ball and draw a new ball and space without spending a play.`);renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
     const c=$(`cell-${tile}`),offered=Object.values(state.destinations).includes(tile),number=boardState.stampBalls[tile];
     c.className=`cell paint-grey upgrade-${state.upgrades[number]||'plain'}${itemClass(number)}${boardState.stamps.has(tile)?' stamped':''}${offered?' offered':''}`;
     c.querySelector('span').textContent=boardState.stamps.has(tile)?(boardState.stampValues[tile]??''):'';
@@ -70,10 +71,10 @@ function renderJokers(){
 function overTrash(x,y){const r=$('joker-trash').getBoundingClientRect();return x>=r.left-12&&x<=r.right+12&&y>=r.top-12&&y<=r.bottom+12;}
 function cancelJokerDrag(removeGhost=true){if(!jokerDrag)return;const d=jokerDrag;jokerDrag=null;d.card.classList.remove('held');if(removeGhost)d.ghost?.remove();$('joker-trash').hidden=true;$('joker-trash').classList.remove('ready');if(d.card.hasPointerCapture(d.pointer))d.card.releasePointerCapture(d.pointer);}
 
-const itemClass=n=>isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':'';
-const pieceLabel=n=>ITEM_TYPES[state.items?.[n]]?.name??ballValue(state,n)??'';
+const itemClass=n=>isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':'';
+const pieceLabel=n=>state.items[n]?`${ITEM_TYPES[state.items[n]].name}${ballValue(state,n)!==null?` (${ballValue(state,n)})`:''}`:ballValue(state,n)??'';
 const pieceFace=n=>isDie(state,n)?'?':ballValue(state,n)??'';
-function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)}`;b.dataset.number=n;b.innerHTML=`<span class="face">${pieceFace(n)}</span>`;b.setAttribute('aria-label',`Inspect ${pieceLabel(n)}`);return b;}
+function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)}`;b.classList.toggle('large-value',String(pieceFace(n)).length>2);b.dataset.number=n;b.innerHTML=`<span class="face">${pieceFace(n)}</span>`;b.setAttribute('aria-label',`Inspect ${pieceLabel(n)}`);return b;}
 function hideTooltip(){
   const tip=$('inspect-tooltip');
   if(tip.matches(':popover-open'))tip.hidePopover();
@@ -102,10 +103,11 @@ function showTooltip(n,anchor,space=false){
   hideTooltip();
   const tip=$('inspect-tooltip');
   (anchor.closest('dialog')||document.body).append(tip);
-  $('tooltip-number').textContent=space?(state.stamps.has(Number(anchor.id.replace('cell-','')))?state.stampValues[Number(anchor.id.replace('cell-',''))]??'Bomb':'EMPTY'):(n==null?'':isDie(state,n)?'?':pieceLabel(n));
+  $('tooltip-number').textContent=space?(state.stamps.has(Number(anchor.id.replace('cell-','')))?state.stampValues[Number(anchor.id.replace('cell-',''))]??'Bomb':'EMPTY'):(n==null?'':isDie(state,n)?'?':ballValue(state,n)??pieceLabel(n));
   const upgrade=state.upgrades[n],item=ITEM_TYPES[state.items?.[n]];
   $('tooltip-effect').textContent=item?item.text:upgrade?BALL_UPGRADES[upgrade].text:space?'Nothing special':'';
-  $('tooltip-effect').hidden=!space&&!upgrade&&!item;
+  const modifier=state.valueModifiers?.[n]||0;if(modifier)$('tooltip-effect').textContent+=`${$('tooltip-effect').textContent?' ':''}Permanent value change: ${signed(modifier)}.${isDie(state,n)?` Future rolls: ${1+modifier}–${20+modifier}.`:''}`;
+  $('tooltip-effect').hidden=!space&&!upgrade&&!item&&!modifier;
   tip.classList.toggle('space-tooltip',space);
   tooltipAnchor=anchor;
   anchor.setAttribute('aria-describedby','inspect-tooltip');
@@ -179,7 +181,7 @@ function moveDrag(e){
   const d=drag;
   if(!d.moved&&Math.hypot(e.clientX-d.x,e.clientY-d.y)>7){
     d.moved=true;hideTooltip();d.ghost=d.b.cloneNode(true);d.ghost.className=`ball drag-ghost paint-grey upgrade-${state.upgrades[d.n]||'plain'}${itemClass(d.n)}`;
-    d.ghost.removeAttribute('disabled');d.ghost.setAttribute('aria-hidden','true');d.ghost.tabIndex=-1;
+    d.ghost.classList.toggle('large-value',String(pieceFace(d.n)).length>2);d.ghost.removeAttribute('disabled');d.ghost.setAttribute('aria-hidden','true');d.ghost.tabIndex=-1;
     d.size=d.b.getBoundingClientRect().width;d.ghost.style.setProperty('--size',`${d.size}px`);
     document.body.append(d.ghost);d.b.classList.add('held');
   }
@@ -299,7 +301,7 @@ async function activateSpaces(result){
       for(const contribution of activation.contributions){
         const card=document.querySelector(`[data-joker="${contribution.joker}"]`),calls=contribution.calls;
         const accent=contribution.joker==='face-value'?'#91c6ff':calls!==undefined?'#83e0b5':'#f4c66c';
-        const label=calls!==undefined?(calls?'+1 PLAY':'15 MAX'):`+${contribution.points}`;
+        const label=calls!==undefined?(calls?'+1 PLAY':'15 MAX'):signed(contribution.points);
         await cardImpact(card,label,accent);
         await scoreLink(card,cell,accent);
         if(calls!==undefined){
@@ -308,13 +310,13 @@ async function activateSpaces(result){
           await animate(token,[{transform:'translate(-50%,-100%)',opacity:1},{transform:`translate(calc(-50% + ${to.left+to.width/2-r.left-r.width/2}px),${to.top-r.top}px) scale(.5)`,opacity:0}],{duration:220});
           token.remove();displayedCalls+=calls;renderCalls(displayedCalls);
         }else{
-          tilePoints+=contribution.points;point.hidden=false;point.textContent=`+${tilePoints}`;
+          tilePoints+=contribution.points;point.hidden=false;point.textContent=signed(tilePoints);
           await animate(point,reduced?[{opacity:.7},{opacity:1}]:[{transform:'translate(-50%,-65%) scale(.7)',opacity:.7},{transform:'translate(-50%,-95%) scale(1.28)',opacity:1,offset:.35},{transform:'translate(-50%,-85%) scale(1)',opacity:1}],{duration:170,easing:'cubic-bezier(.2,.8,.3,1)'});
         }
         releaseCard(card);
       }
       await tileImpact;
-      point.hidden=false;point.textContent=`+${tilePoints}`;
+      point.hidden=false;point.textContent=signed(tilePoints);
       if(tilePoints>0)burst(r);
       const to=$('score').getBoundingClientRect();
       await animate(point,[{transform:'translate(-50%,-85%) scale(1)',opacity:1},{transform:'translate(-50%,-105%) scale(1.12)',opacity:1,offset:.25},{transform:`translate(calc(-50% + ${to.left+to.width/2-r.left-r.width/2}px),calc(-50% + ${to.top+to.height/2-r.top-r.height/2}px)) scale(.5)`,opacity:0}],{duration:Math.max(180,270-index%5*18),easing:'cubic-bezier(.4,0,.7,.4)'});
@@ -350,7 +352,7 @@ async function explodeBomb(result){
       const angle=Math.atan2(rect.top-r.top,rect.left-r.left)+(i-2.5)*.45,d=30+Math.random()*70;
       fragments.push(animate(chip,[{transform:'scale(1.3)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+20}px) rotate(${i*65}deg) scale(.2)`,opacity:0}],{duration:360+i*20,easing:'cubic-bezier(.1,.65,.2,1)'}).then(()=>chip.remove()));
     }}
-    cell.classList.remove('stamped','bomb-item','die-item','just-stamped');cell.querySelector('span').textContent='';
+    cell.classList.remove('stamped','bomb-item','die-item','hundred-item','just-stamped');cell.querySelector('span').textContent='';
   }
   if(!reduced){
     const ring=document.createElement('i');ring.className='bomb-wave';ring.style.left=`${r.left+r.width/2}px`;ring.style.top=`${r.top+r.height/2}px`;ring.style.width=`${r.width*2.6}px`;ring.style.height=`${r.height*2.6}px`;$('effects').append(ring);
@@ -362,13 +364,40 @@ async function explodeBomb(result){
   affected.forEach(c=>c.classList.remove('blast-zone'));center.classList.remove('bomb-armed');frame.classList.remove('bomb-exploding');
   $('announcer').textContent=`Bomb exploded. ${result.destroyed.length} items permanently removed from this run.`;
 }
+// Shared number-change language: source pulse → travel → old value out → new
+// value snaps in. This phase always finishes before any scoring card activates.
+async function animateValueChanges(result){
+  const board=$('board'),source=$(`cell-${result.tile}`),changes=result.valueChanges;
+  board.classList.add('value-effects');source.classList.add('effect-source');
+  const targets=changes.map(change=>$(`cell-${change.tile}`));
+  targets.forEach(cell=>cell.classList.add('value-target'));
+  try{
+    pulseBackground();
+    await animate(source,reduced?[{opacity:.7},{opacity:1}]:[{transform:'scale(1)'},{transform:'scale(.94)',offset:.2},{transform:'scale(1.13) rotate(-3deg)',offset:.5},{transform:'scale(1)'}],{duration:300});
+    await Promise.all(changes.map(async(change,index)=>{
+      const cell=$(`cell-${change.tile}`),face=cell.querySelector('span'),color=change.delta<0?'#ffaf94':'#99e6bb';
+      await wait(index*65);await scoreLink(source,cell,color);
+      cell.style.setProperty('--value-color',color);cell.classList.add('value-changing');
+      const rect=cell.getBoundingClientRect(),badge=document.createElement('b');badge.className='value-delta';badge.textContent=signed(change.delta);badge.style.color=color;badge.style.left=`${rect.left+rect.width/2}px`;badge.style.top=`${rect.top+5}px`;$('effects').append(badge);
+      try{
+        face.textContent=change.before;
+        await animate(face,reduced?[{opacity:1},{opacity:.3}]:[{transform:'rotate(-12deg) translateY(0) scale(1)',opacity:1},{transform:'rotate(-12deg) translateY(10px) scale(.65)',opacity:0}],{duration:140,easing:'ease-in'});
+        face.textContent=change.after;cell.classList.toggle('large-value',String(change.after).length>2);cell.dataset.valueAfter=change.after;
+        navigator.vibrate?.(10);
+        await animate(face,reduced?[{opacity:.3},{opacity:1}]:[{transform:'rotate(-12deg) translateY(-9px) scale(1.25)',opacity:0},{transform:'rotate(-12deg) translateY(0) scale(1.15)',opacity:1,offset:.4},{transform:'rotate(-12deg) scale(1)',opacity:1}],{duration:230,easing:'cubic-bezier(.15,.8,.3,1)'});
+        await animate(badge,[{transform:'translate(-50%,-100%) scale(1)',opacity:1},{transform:'translate(-50%,-145%) scale(.85)',opacity:0}],{duration:200});
+      }finally{badge.remove();face.textContent=change.after;cell.classList.remove('value-changing');delete cell.dataset.valueAfter;}
+    }));
+    await wait(180);
+  }finally{board.classList.remove('value-effects');source.classList.remove('effect-source');targets.forEach(cell=>cell.classList.remove('value-target'));}
+}
 async function rollDie(cell,value){
   const face=cell.querySelector('span');cell.classList.add('die-rolling');
   try{
     if(!reduced){
       // Cosmetic faces never change the committed result or consume another play.
       for(const [i,ms] of [55,65,80,105,140].entries()){
-        face.textContent=1+(value+i*7)%20;
+        face.textContent=1+((value+i*7)%20+20)%20;
         await animate(cell,[{transform:`rotate(${i%2?-13:13}deg) scale(1.06)`},{transform:`rotate(${i%2?9:-9}deg) scale(.96)`}],{duration:ms,easing:'ease-out'});
       }
     }
@@ -384,12 +413,13 @@ async function play(n,b,ghost,tile=state.destinations[n]){
   const cell=$(`cell-${tile}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.classList.add('leave');});
   if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}
   document.querySelectorAll('.cell.offered').forEach(c=>{c.className='cell paint-grey';c.querySelector('span').textContent='';});
-  cell.className=`cell paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)} stamped just-stamped`;cell.querySelector('span').textContent=pieceFace(n);
+  cell.className=`cell paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)} stamped just-stamped`;cell.querySelector('span').textContent=pieceFace(n);cell.classList.toggle('large-value',String(pieceFace(n)).length>2);
   pulseBackground();navigator.vibrate?.(18);burst(r);
   await animate(document.querySelector('.board-frame'),[{transform:'translateY(0)'},{transform:'translateY(3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});
   await wait(180);
-  render(result.scoringBoard||state);if(result.roll!==null)cell.querySelector('span').textContent='?';renderCalls(result.callsBeforeBonuses);renderScore(state.score-result.points);
+  render(result.effectBoard||result.scoringBoard||state);if(result.roll!==null)cell.querySelector('span').textContent='?';renderCalls(result.callsBeforeBonuses);renderScore(state.score-result.points);
   if(result.roll!==null)await rollDie(cell,result.roll);
+  if(result.effectBoard)await animateValueChanges(result);
   $('announcer').textContent=`${pieceLabel(n)} played.${result.roll!==null?` Rolled ${result.roll}.`:''} One play used.`;
   if(result.activations.length)await activateSpaces(result);
   if(result.destroyed.length)await explodeBomb(result);
@@ -509,30 +539,37 @@ $('patterns-button').onclick=showPatterns;$('score-patterns').onclick=showPatter
 for(const dialog of document.querySelectorAll('#bag-dialog,#stage-dialog,#help-dialog,#patterns-dialog')){dialog.addEventListener('close',hideTooltip);dialog.querySelector('.close').onclick=()=>dialog.close();dialog.addEventListener('pointerdown',e=>{if(e.target!==dialog)return;const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();});}
 
 
+function updateShopScroll(){
+  const shelf=$('shop-shelf'),max=shelf.scrollWidth-shelf.clientWidth;
+  $('shop-prev').disabled=shelf.scrollLeft<3;$('shop-more').disabled=shelf.scrollLeft>=max-3;
+  $('shop-browse').hidden=max<3;
+}
 function renderShop(){
   hideTooltip();$('money').textContent=state.money;
-  for(const kind of ['cards','balls']){
-    const container=$(`shop-${kind}`);container.replaceChildren();
-    for(let i=0;i<2;i++){
-      const item=kind==='cards'?cardDetails(state.shopOffer?.cards[i]):null;
-      if(item){
-        const card=document.createElement('button'),full=state.jokers.filter(id=>!isRuleCard(id)).length>=5;
-        card.className='shop-rule-card';card.dataset.shopCard=state.shopOffer.cards[i];card.disabled=busy||full;
-        card.setAttribute('aria-label',`${item.name}. ${item.text} ${full?'5 card limit reached.':'Free. Add card.'}`);
-        card.innerHTML=`<strong>${item.name.toUpperCase()}</strong><i aria-hidden="true">${item.icon}</i><span>Play 1–5: score it<br>+ its ↕ ↔ neighbors</span><b>${full?'5 / 5 CARDS':'FREE · ADD CARD'}</b>`;
-        card.onclick=()=>{if(busy||!buyCard(state,i))return;saveRun();renderShop();renderJokers();$('announcer').textContent=`${item.name} added. Free.`;};
-        container.append(card);continue;
-      }
-      const slot=document.createElement('div');slot.className=`shop-slot ${kind==='cards'?'card-slot':'ball-slot'}`;
-      slot.setAttribute('aria-hidden','true');container.append(slot);
-    }
+  const shelf=$('shop-shelf'),scroll=shelf.scrollLeft,focused=document.activeElement?.id;
+  shelf.replaceChildren();
+  const full=state.jokers.filter(id=>!isRuleCard(id)).length>=5;
+  for(const [type,definition] of [...Object.entries(CARD_TYPES),...Object.entries(ITEM_TYPES)]){
+    const isCard=Object.hasOwn(CARD_TYPES,type),item=isCard?cardDetails(type):definition,index=state.shopOffer.cards.indexOf(type),sold=isCard&&index<0;
+    const card=document.createElement('button');card.id=`shop-${type}`;card.className=`shop-product${isCard?' shop-rule-card':''}`;
+    if(isCard)card.dataset.shopCard=type;
+    const owned=isCard?state.jokers.filter(id=>cardType(id)===type).length:state.collection.filter(id=>state.items[id]===type).length;
+    const action=sold?'ADDED':isCard&&full?'5 / 5 CARDS':isCard?'FREE · ADD CARD':'FREE · ADD TO BAG';
+    card.disabled=busy||sold||(isCard&&full);card.setAttribute('aria-label',`${item.name}. ${item.text} ${action}. ${owned} owned.`);
+    const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='hundred'?'<i class="hundred-art" aria-hidden="true">100</i>':`<i class="${type==='bomb'?'bomb-art':'die-art'}" aria-hidden="true">${type==='d20'?'?':''}</i>`;
+    card.innerHTML=`<small class="product-kind">${isCard?'CARD':'BAG PIECE'}</small><strong class="product-name">${item.name.toUpperCase()}</strong>${art}<span class="product-description">${item.text}</span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span><b class="product-action">${action}</b>`;
+    card.onclick=()=>{
+      if(busy)return;const added=isCard?buyCard(state,index):buyItem(state,type);if(added===false)return;
+      saveRun();renderShop();renderJokers();$('announcer').textContent=`${item.name} added. Free.`;
+      const updated=$(`shop-${type}`);animate(updated,[{transform:'scale(.96)'},{transform:'scale(1.025)',offset:.4},{transform:'scale(1)'}],{duration:240});
+    };
+    shelf.append(card);
   }
-  for(const type of Object.keys(ITEM_TYPES)){
-    $(`shop-${type}`).disabled=busy;
-    $(type==='bomb'?'shop-item-count':`shop-${type}-count`).textContent=state.collection.filter(id=>state.items[id]===type).length;
-  }
-  $('shop-next').disabled=busy;$('shop-menu').disabled=busy;
+  shelf.scrollLeft=scroll;if(focused?.startsWith('shop-')&&$(focused)&&!$(focused).disabled)$(focused).focus({preventScroll:true});
+  $('shop-next').disabled=busy;$('shop-menu').disabled=busy;requestAnimationFrame(updateShopScroll);
 }
+$('shop-shelf').addEventListener('scroll',updateShopScroll,{passive:true});window.addEventListener('resize',updateShopScroll);
+for(const [id,direction] of [['shop-prev',-1],['shop-more',1]])$(id).onclick=()=>$('shop-shelf').scrollBy({left:direction*200,behavior:reduced?'instant':'smooth'});
 function showShop(){
   openShop(state);shopping=true;busy=false;
   $('patterns-button').disabled=false;$('score-patterns').disabled=false;
@@ -540,12 +577,6 @@ function showShop(){
   $('bag').disabled=false;$('stages').disabled=false;renderShop();saveRun();
   animate($('shop-screen'),[{transform:'translateY(24px)',opacity:0},{transform:'translateY(0)',opacity:1}],{duration:350,easing:'cubic-bezier(.2,.8,.3,1)'});
 }
-for(const type of Object.keys(ITEM_TYPES))$(`shop-${type}`).onclick=async()=>{
-  if(busy)return;
-  const id=buyItem(state,type);if(id===false)return;
-  saveRun();renderShop();$('announcer').textContent=`${ITEM_TYPES[type].name} added to the bag. Free.`;
-  const item=$(`shop-${type}`);await animate(item,[{transform:'scale(.96)'},{transform:'scale(1.04)',offset:.4},{transform:'scale(1)'}],{duration:240});
-};
 $('shop-next').onclick=async()=>{
   if(busy)return;hideTooltip();shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;
   state=newStage(state.stage+1,state.money,state.upgrades,state.patternCounts,state.jokers,state);saveRun();await nextDraw();
@@ -565,7 +596,7 @@ function loadRun(){
     const numbers=a=>Array.isArray(a)&&a.every(n=>Number.isInteger(n)&&n>=1&&n<=25)&&new Set(a).size===a.length;
     const ids=a=>Array.isArray(a)&&a.every(n=>Number.isSafeInteger(n)&&n>=1&&n<saved.nextItemId)&&new Set(a).size===a.length;
     if(!Number.isSafeInteger(saved.nextItemId)||saved.nextItemId<26||saved.nextItemId>10000||!ids(saved.collection)||!saved.items||Array.isArray(saved.items)||!Object.entries(saved.items).every(([id,type])=>Number.isInteger(Number(id))&&Number(id)>=26&&Number(id)<saved.nextItemId&&Object.hasOwn(ITEM_TYPES,type))||!saved.collection.every(id=>id<=25||saved.items[id]))throw new Error('Invalid collection');
-    if(!Number.isInteger(saved.stage)||saved.stage<1||saved.stage>10||!numbers(saved.stamps)||!ids(saved.bag)||!ids(saved.offer)||!saved.bag.every(id=>saved.collection.includes(id))||!saved.offer.every(n=>saved.bag.includes(n))||!Number.isInteger(saved.calls)||saved.calls<0||saved.calls>192||!Number.isInteger(saved.money)||saved.money<0||!Number.isInteger(saved.score)||saved.score<0||!['playing','passed','over'].includes(saved.status)||!Array.isArray(saved.played)||saved.played.length<26||saved.played.length>saved.nextItemId)throw new Error('Invalid save');
+    if(!Number.isInteger(saved.stage)||saved.stage<1||saved.stage>10||!numbers(saved.stamps)||!ids(saved.bag)||!ids(saved.offer)||!saved.bag.every(id=>saved.collection.includes(id))||!saved.offer.every(n=>saved.bag.includes(n))||!Number.isInteger(saved.calls)||saved.calls<0||saved.calls>192||!Number.isInteger(saved.money)||saved.money<0||!Number.isInteger(saved.score)||!['playing','passed','over'].includes(saved.status)||!Array.isArray(saved.played)||saved.played.length<26||saved.played.length>saved.nextItemId)throw new Error('Invalid save');
     const old=saved.rulesVersion!==3;
     delete saved.paints;delete saved.goldSeals;
     const oldTurn=saved.turnVersion!==1;
@@ -585,6 +616,8 @@ function loadRun(){
       if(saved.shopOffer?.balls)saved.shopOffer.balls=saved.shopOffer.balls.map(type=>type==='dynamite'?'tornado':type);
     }
     saved.upgradeVersion=2;
+    saved.valueModifiers??={};
+    if(typeof saved.valueModifiers!=='object'||Array.isArray(saved.valueModifiers)||!Object.entries(saved.valueModifiers).every(([id,value])=>saved.collection.includes(Number(id))&&Number.isSafeInteger(value)))throw new Error('Invalid value modifiers');
     saved.ballValues??={};
     if(typeof saved.ballValues!=='object'||Array.isArray(saved.ballValues)||!Object.entries(saved.ballValues).every(([n,value])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&Number.isSafeInteger(value)&&value>=1))throw new Error('Invalid ball values');
     if(typeof saved.upgrades!=='object'||Array.isArray(saved.upgrades)||!Object.entries(saved.upgrades).every(([n,type])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&BALL_UPGRADES[type]))throw new Error('Invalid upgrades');
@@ -603,7 +636,7 @@ function loadRun(){
       const {stampBalls,destinations,stampValues}=saved;
       if(!stampBalls||typeof stampBalls!=='object'||Array.isArray(stampBalls)||!destinations||typeof destinations!=='object'||Array.isArray(destinations)||!stampValues||typeof stampValues!=='object'||Array.isArray(stampValues))throw new Error('Invalid placements');
       if(Object.keys(stampBalls).length!==saved.stamps.length||!ids(Object.values(stampBalls))||!saved.stamps.every(tile=>stampBalls[tile]&&saved.collection.includes(stampBalls[tile])&&!saved.bag.includes(stampBalls[tile])))throw new Error('Invalid stamps');
-      if(Object.keys(stampValues).length!==saved.stamps.length||!saved.stamps.every(tile=>stampValues[tile]===null||Number.isSafeInteger(stampValues[tile])&&stampValues[tile]>=1))throw new Error('Invalid values');
+      if(Object.keys(stampValues).length!==saved.stamps.length||!saved.stamps.every(tile=>stampValues[tile]===null||Number.isSafeInteger(stampValues[tile])))throw new Error('Invalid values');
       if(Object.keys(destinations).length!==saved.offer.length||!numbers(Object.values(destinations))||!saved.offer.every(n=>destinations[n]&&!saved.stamps.includes(destinations[n])))throw new Error('Invalid destinations');
       state={...newStage(saved.stage,saved.money),...saved,rulesVersion:3,target:STAGE_TARGETS[saved.stage-1],stamps:new Set(saved.stamps),bag:new Set(saved.bag)};
     }

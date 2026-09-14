@@ -15,18 +15,22 @@ The header contains menu, current score / target, and money. Scoring lights the 
 
 ## Shop
 
-All shop additions are **free while testing**. The shop has three categories:
+All shop additions are **free while testing**. Every available purchase appears on one horizontally scrollable shelf, with a type label, effect description, owned count and add action. Swipe sideways, use the browse arrows, or focus the shelf and use the keyboard. Bought cards stay visible as added; bag pieces can be added repeatedly.
 
 - **Cards:** **High Five** is free: playing a 1–5 scores itself and occupied neighbors immediately above, right, below, and left. Trigger groups resolve in rack order. Bingo and High Five can score the same tile separately; each activation uses Face Value if owned. Scoring a tile never re-triggers High Five, and dice qualify by their rolled value. Up to five purchased cards can be held and removed through the rack.
 
-- **Ball Upgrades:** changes to existing balls; two blank slots for now.
-- **Items:** new pieces added to the bag. **Bomb** and **20-Sided Die** are available with a repeatable “Add to Bag” action and an owned count.
+- **Ball Upgrades:** no upgrades are currently available, so there are no empty purchase placeholders.
+- **Items:** new pieces added to the bag. **Bomb**, **20-Sided Die**, and **100 Ball** are available with a repeatable “Add to Bag” action and an owned count.
 
 Each Bomb has a unique identity and the same per-piece draw probability as a numbered ball. It rolls and passes normally, and an unplayed Bomb survives round transitions. It is not a ball upgrade and has no number, so Face Value awards it zero points.
 
 Placing a Bomb first completes and scores any eligible lines, including the Bomb’s occupied space. After every scoring activation finishes, the Bomb explodes. It permanently destroys itself and every item in its eight neighboring spaces for the rest of the run. The board spaces remain usable. Items outside that neighborhood survive; nearby Bombs are destroyed without starting chain explosions. Scored physical lines still activate at most once per round. Winning a round does not skip the explosion.
 
 The **20-Sided Die** has the same draw odds as every other piece and shows `?` before placement. Playing it rolls uniformly from 1–20, then scoring uses that number. Its faceted stamp keeps the result for the round, including later line activations. Passing never rolls it. The next round returns surviving dice to the bag unrolled; Bombs can permanently destroy them. The roll animation finishes before Bingo and Face Value activate.
+
+The **100 Ball** starts at value 100. When played, it permanently subtracts 1 from each occupied orthogonal neighbor with a numeric value, before any scoring groups are built. Empty and numberless spaces are unaffected; diagonals and the source are excluded. Reductions accumulate through zero into negatives and stay with the affected pieces across rounds and reloads. Dice keep the permanent modifier on future rolls. Destruction removes a piece’s modifiers, and a new run resets them.
+
+Number-changing effects emit a common source/tile/before/after/delta event. The UI holds the pre-effect board, pulses the source, sends a colored marker to each target, flips its old number into the new one, and settles all changes before activating scoring cards. Negative scoring uses signed labels; the header progress bar never becomes negative.
 
 The collection tracks permanent ownership separately from the current bag. Every new round refills the bag from surviving items only. A new run restores the original 25 numbered balls. Saves preserve added Bombs, destroyed items, played availability and progress; pre-item saves receive the original collection.
 
@@ -39,7 +43,7 @@ Previous shop effects remain retired. The earlier migration removes them and res
 Browser checks use local Chrome and Playwright. Set `GAME_URL` to check deployment:
 
 - `node scripts/bomb-check.mjs`: free repeated additions, responsive shop, dynamic bag/tooltip, scoring-before-explosion, no-line explosions, passing, reload and round persistence. Set `REAL_MOTION=1` for full-speed animation checks.
-- `node scripts/shop-scaffold-check.mjs`: responsive shop, inert placeholders, no obsolete purchase controls, saved-shop and active-run migrations, menu/reload, and next-round resources.
+- `node scripts/shop-scaffold-check.mjs`: responsive horizontal shop, no obsolete purchase controls, saved-shop and active-run migrations, menu/reload, and next-round resources.
 - `node scripts/swipe-layout-check.mjs`: portrait layout, persistent score, bag inspection, mouse/touch swipes, pause/reload, payout and next round.
 - `node scripts/starting-rules-check.mjs`: trigger-before-points order, five Face Value activations, score-counter increments, absent rules, save migration, input locking and no audio. Set `REAL_MOTION=1` to inspect full animation timing.
 

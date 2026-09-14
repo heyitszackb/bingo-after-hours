@@ -1,3 +1,4 @@
+import {checkShopLayout} from './shop-layout.mjs';
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 import {newStage,openShop,buyItem,ballValue} from '../game.js';
@@ -18,9 +19,7 @@ try{
  const restore=async s=>{await page.evaluate(s=>sessionStorage.setItem('fixture',JSON.stringify(s)),{...s,stamps:[...s.stamps],bag:[...s.bag]});await page.reload();await page.locator('#play-button').click();};
  const ready=()=>page.locator('#balls .ball:not([disabled])').first().waitFor();
  const s=newStage(1,0);s.status='passed';s.bonusPaid=true;openShop(s);await restore(s);await page.locator('#shop-screen').waitFor({state:'visible'});
- for(const [width,height] of [[390,844],[320,568],[1000,800],[844,390]]){
-  await page.setViewportSize({width,height});for(const sel of ['#shop-screen','#shop-bomb','#shop-next','.dashboard']){const r=await page.locator(sel).boundingBox();assert.ok(r&&r.x>=0&&r.y>=0&&r.x+r.width<=width+1&&r.y+r.height<=height+1,JSON.stringify({sel,width,height,r}));}await page.screenshot({path:`/tmp/binglatro-bomb-shop-${width}.png`});
- }
+ await checkShopLayout(page,'bomb-check');
  await page.setViewportSize({width:390,height:844});await page.locator('#shop-bomb').click();await page.locator('#shop-bomb').click();assert.equal((await read()).money,0);assert.equal((await read()).collection.length,27);assert.equal(await page.locator('#shop-item-count').textContent(),'2');
  await page.reload();await page.locator('#play-button').click();await page.locator('#shop-screen').waitFor({state:'visible'});assert.equal(await page.locator('#shop-item-count').textContent(),'2');await page.locator('#shop-next').click();await ready();assert.equal((await read()).collection.length,27);
  await page.locator('#bag').click();assert.equal(await page.locator('#bag-grid .bomb-item').count(),2);assert.equal(await page.locator('#bag-grid .ball').count(),27);await page.locator('#bag-grid [data-number="26"]').click();assert.equal(await page.locator('#tooltip-number').textContent(),'Bomb');assert.match(await page.locator('#tooltip-effect').textContent(),/After scoring/);await page.locator('#bag-dialog .close').click();
