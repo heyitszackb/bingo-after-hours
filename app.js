@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=98c745eac36f';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=8ea77a707573';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,migrateShop,migrateInventory,buyCard,isRuleCard,buyItem,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openShop,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=6b306e773610';
+import {newStage,deal,choose,migrateShop,migrateInventory,buyCard,isRuleCard,buyItem,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openShop,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=51c6796c7d59';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
@@ -36,42 +36,54 @@ function renderJokers(){
   for(const id of ids){
     const type=cardType(id),item=cardDetails(id),description=item.text,card=document.createElement('button'),pattern={previewTiles:[3,8,11,12,13,14,15,18,23,1,7,19,25]};
     card.className=`joker-card joker-${type}`;card.dataset.joker=id;
-    card.setAttribute('aria-label',`${description}. Drag to trash to remove this effect, or press Delete.`);
+    card.setAttribute('aria-label',`${description}. Drag to reorder or trash. Use Left and Right arrows to reorder, or Delete to remove.`);
     card.innerHTML=`<span class="joker-heading">${type==='bingo'?'BINGO':item.name.toUpperCase()}</span><span class="joker-art ${type!=='bingo'?'digits-art':''}" aria-hidden="true">${type!=='bingo'?`<b>${item.icon}</b>`:Array.from({length:25},(_,i)=>`<i class="${pattern.previewTiles.includes(i+1)?'filled':''}"></i>`).join('')}</span><span class="joker-description">${type==='bingo'?'Lines of 5':type==='face-value'?'Number → pts':item.short||description}</span>`;
     card.onpointerdown=e=>{
       if(busy||e.button!==0||jokerDrag||drag)return;
       const selected=tooltipAnchor===card;
       e.preventDefault();hideTooltip();card.setPointerCapture(e.pointerId);
-      jokerDrag={card,id,pointer:e.pointerId,x:e.clientX,y:e.clientY,ghost:null,selected,scrollStart:rack.scrollLeft,scrolling:false};
+      jokerDrag={card,id,pointer:e.pointerId,x:e.clientX,y:e.clientY,ghost:null,selected,originalOrder:[...state.jokers]};
     };
     card.onpointermove=e=>{
       const d=jokerDrag;if(!d||d.pointer!==e.pointerId)return;
       const dx=e.clientX-d.x,dy=e.clientY-d.y;
-      if(!d.ghost&&!d.selected&&Math.abs(dx)>8&&Math.abs(dx)>Math.abs(dy)*1.4)d.scrolling=true;
-      if(d.scrolling){rack.scrollLeft=d.scrollStart-dx;return;}
       if(!d.ghost&&Math.hypot(dx,dy)>6){
         const r=card.getBoundingClientRect();d.ghost=card.cloneNode(true);d.ghost.removeAttribute('data-joker');d.ghost.classList.add('joker-ghost');d.ghost.setAttribute('aria-hidden','true');d.ghost.style.width=`${r.width}px`;d.ghost.style.height=`${r.height}px`;d.w=r.width;d.h=r.height;document.body.append(d.ghost);card.classList.add('held');$('joker-trash').hidden=false;
       }
-      if(d.ghost){d.ghost.style.transform=`translate(${e.clientX-d.w/2}px,${e.clientY-d.h/2}px) rotate(${Math.max(-12,Math.min(12,(e.clientX-d.x)*.04))}deg)`;$('joker-trash').classList.toggle('ready',overTrash(e.clientX,e.clientY));}
+      if(d.ghost){
+        const bounds=rack.getBoundingClientRect();
+        if(e.clientY>=bounds.top-30&&e.clientY<=bounds.bottom+30){
+          if(e.clientX<bounds.left+28)rack.scrollLeft-=12;
+          if(e.clientX>bounds.right-28)rack.scrollLeft+=12;
+          const others=[...rack.querySelectorAll('[data-joker]')].filter(c=>c!==card);
+          const before=others.find(c=>{const r=c.getBoundingClientRect();return e.clientX<r.left+r.width/2;});
+          const positions=new Map(others.map(c=>[c,c.getBoundingClientRect().left]));
+          const order=[...others];order.splice(before?others.indexOf(before):others.length,0,card);
+          // Keep the captured card attached; moving it would cancel touch capture.
+          let anchor=rack.querySelector('.joker-slot');
+          for(const sibling of order.reverse()){if(sibling!==card)rack.insertBefore(sibling,anchor);anchor=sibling;}
+          for(const c of others){const dx=positions.get(c)-c.getBoundingClientRect().left;if(dx)animate(c,[{transform:`translateX(${dx}px)`},{transform:'translateX(0)'}],{duration:150,easing:'ease-out'});}
+        }
+        d.ghost.style.transform=`translate(${e.clientX-d.w/2}px,${e.clientY-d.h/2}px) rotate(${Math.max(-12,Math.min(12,(e.clientX-d.x)*.04))}deg)`;$('joker-trash').classList.toggle('ready',overTrash(e.clientX,e.clientY));}
     };
     card.onpointerup=async e=>{
       const d=jokerDrag;if(!d||d.pointer!==e.pointerId)return;
-      if(d.scrolling){cancelJokerDrag();return;}
       if(!d.ghost){showTooltip(null,card);$('tooltip-number').textContent=type==='bingo'?'Bingo':item.name;$('tooltip-effect').textContent=description;$('tooltip-effect').hidden=false;positionTooltip();}
       const discard=d.ghost&&overTrash(e.clientX,e.clientY),ghost=d.ghost;
+      if(ghost){state.jokers=[...rack.querySelectorAll('[data-joker]')].map(c=>c.dataset.joker);saveRun();}
       if(discard){removeJoker(state,id);saveRun();if(shopping)renderShop();}
       cancelJokerDrag(false);renderJokers();
-      if(ghost){if(discard){navigator.vibrate?.(20);await animate(ghost,[{transform:ghost.style.transform,opacity:1},{transform:ghost.style.transform+' scale(.05)',opacity:0}],{duration:220});}else{const r=card.getBoundingClientRect();await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left}px,${r.top}px) rotate(0)`}],{duration:200,easing:'cubic-bezier(.2,.8,.2,1)'});}ghost.remove();}
+      if(ghost){if(discard){navigator.vibrate?.(20);await animate(ghost,[{transform:ghost.style.transform,opacity:1},{transform:ghost.style.transform+' scale(.05)',opacity:0}],{duration:220});}else{const r=rack.querySelector(`[data-joker="${id}"]`).getBoundingClientRect();await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left}px,${r.top}px) rotate(0)`}],{duration:200,easing:'cubic-bezier(.2,.8,.2,1)'});}ghost.remove();}
       if(discard)$('announcer').textContent=`${id} card removed.`;
     };
     card.onpointercancel=()=>cancelJokerDrag();card.onlostpointercapture=()=>{if(jokerDrag)cancelJokerDrag();};
-    card.onkeydown=e=>{if(busy)return;if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeJoker(state,id);saveRun();renderJokers();if(shopping)renderShop();}};
+    card.onkeydown=e=>{if(busy)return;if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();const from=state.jokers.indexOf(id),to=from+(e.key==='ArrowLeft'?-1:1);if(to>=0&&to<state.jokers.length){[state.jokers[from],state.jokers[to]]=[state.jokers[to],state.jokers[from]];saveRun();renderJokers();rack.querySelector(`[data-joker="${id}"]`).focus();}return;}if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeJoker(state,id);saveRun();renderJokers();if(shopping)renderShop();}};
     rack.append(card);
   }
   for(let i=ids.length;i<5;i++){const slot=document.createElement('div');slot.className='joker-slot';slot.setAttribute('aria-hidden','true');rack.append(slot);}
 }
 function overTrash(x,y){const r=$('joker-trash').getBoundingClientRect();return x>=r.left-12&&x<=r.right+12&&y>=r.top-12&&y<=r.bottom+12;}
-function cancelJokerDrag(removeGhost=true){if(!jokerDrag)return;const d=jokerDrag;jokerDrag=null;d.card.classList.remove('held');if(removeGhost)d.ghost?.remove();$('joker-trash').hidden=true;$('joker-trash').classList.remove('ready');if(d.card.hasPointerCapture(d.pointer))d.card.releasePointerCapture(d.pointer);}
+function cancelJokerDrag(removeGhost=true){if(!jokerDrag)return;const d=jokerDrag;jokerDrag=null;if(removeGhost){const rack=$('joker-rack');for(const id of d.originalOrder){const c=rack.querySelector(`[data-joker="${id}"]`);if(c)rack.insertBefore(c,rack.querySelector('.joker-slot'));}}d.card.classList.remove('held');if(removeGhost)d.ghost?.remove();$('joker-trash').hidden=true;$('joker-trash').classList.remove('ready');if(d.card.hasPointerCapture(d.pointer))d.card.releasePointerCapture(d.pointer);}
 
 const itemClass=n=>isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':'';
 const pieceLabel=n=>state.items[n]?`${ITEM_TYPES[state.items[n]].name}${ballValue(state,n)!==null?` (${ballValue(state,n)})`:''}`:ballValue(state,n)??'';
@@ -300,6 +312,9 @@ async function scoreLink(from,to,color){
   await animate(spark,[{transform:'scale(1.6)',opacity:1},{transform:`translate(${b.left+b.width/2-a.left-a.width/2}px,${b.top+b.height/2-a.bottom+5}px) scale(.6)`,opacity:1}],{duration:125,easing:'cubic-bezier(.5,0,.8,.4)'});
   spark.remove();
 }
+async function animateRetriggers(ids,target,color){
+  for(const id of ids||[]){const source=document.querySelector(`[data-joker="${id}"]`);await cardImpact(source,'AGAIN',color,true);await scoreLink(source,target,color);releaseCard(source);}
+}
 async function activateSpaces(result){
   let displayedScore=state.score-result.points,displayedCalls=result.callsBeforeBonuses,total=0,lineIndex=0;
   let activePattern=[];
@@ -321,6 +336,7 @@ async function activateSpaces(result){
         const trigger=document.querySelector(`[data-joker="${activation.trigger}"]`);
         pulseBackground();
         // Light this entire group while its trigger card announces it, before any points.
+        await animateRetriggers(activation.retriggers,trigger,color);
         await cardImpact(trigger,`SCORE ${activePattern.length}`,color,true);
         await Promise.all(activePattern.map(target=>scoreLink(trigger,target,color)));
         releaseCard(trigger);
@@ -341,6 +357,7 @@ async function activateSpaces(result){
         const card=document.querySelector(`[data-joker="${contribution.joker}"]`),calls=contribution.calls;
         const accent=contribution.joker==='face-value'?'#91c6ff':calls!==undefined?'#83e0b5':'#f4c66c';
         const label=calls!==undefined?(calls?'+1 PLAY':'15 MAX'):signed(contribution.points);
+        await animateRetriggers(contribution.retriggers,card,accent);
         await cardImpact(card,label,accent);
         await scoreLink(card,cell,accent);
         if(calls!==undefined){

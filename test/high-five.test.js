@@ -7,7 +7,7 @@ const stamp=(s,n,t)=>{s.stamps.add(t);s.stampBalls[t]=n;s.stampValues[t]=n;s.bag
 const play=(s,n,t,random)=>{s.offer=[n];s.destinations={[n]:t};return choose(s,n,t,random);};
 test('High Five scores itself and occupied orthogonal neighbors, without diagonals or recursive triggers',()=>{
  const s=make();[[2,8],[3,14],[4,18],[5,12],[20,7]].forEach(([n,t])=>stamp(s,n,t));const r=play(s,1,13);
- assert.deepEqual(r.scoringGroups,[{trigger:joker,type:'cross',tiles:[13,8,14,18,12]}]);assert.equal(r.points,15);assert.equal(r.activations.length,5);assert.equal(s.calls,14);assert.equal(s.stamps.size,6);assert.deepEqual(s.scoredLines,[]);
+ assert.deepEqual(r.scoringGroups,[{trigger:joker,retriggers:[],type:'cross',tiles:[13,8,14,18,12]}]);assert.equal(r.points,15);assert.equal(r.activations.length,5);assert.equal(s.calls,14);assert.equal(s.stamps.size,6);assert.deepEqual(s.scoredLines,[]);
  assert.ok(r.activations.every(a=>a.trigger===joker&&a.contributions[0].joker==='face-value'));
 });
 test('all low values qualify; six through twenty-five do not, and edge neighbors never wrap',()=>{
@@ -33,6 +33,6 @@ test('fresh low placements can rescore neighbors; duplicate cards each trigger o
  s.calls=1;s.target=87;r=play(s,3,14);assert.equal(r.points,46);assert.equal(s.status,'passed');assert.equal(s.calls,0);assert.equal(r.scoringGroups.length,2);
 });
 test('shop adds High Five free once per shop; purchases, limits, removal and saved-offer migration work',()=>{
- const s=newStage(1,0);s.status='passed';s.bonusPaid=true;s.shopOffer={cards:[null,null],balls:[null,null],items:['bomb','d20']};openShop(s);assert.deepEqual(s.shopOffer.cards,['high-five',null]);assert.ok(buyCard(s,0));assert.equal(s.money,0);assert.ok(s.jokers.includes(joker));assert.equal(buyCard(s,0),false);openShop(s);assert.deepEqual(s.shopOffer.cards,[null,null]);
+ const s=newStage(1,0);s.status='passed';s.bonusPaid=true;s.shopOffer={cards:[null,null],balls:[null,null],items:['bomb','d20']};openShop(s);assert.deepEqual(s.shopOffer.cards,['high-five','encore']);assert.ok(buyCard(s,0));assert.equal(s.money,0);assert.ok(s.jokers.includes(joker));assert.equal(buyCard(s,0),false);openShop(s);assert.deepEqual(s.shopOffer.cards,[null,'encore']);
  for(let i=0;i<4;i++){s.shopOffer=null;openShop(s);assert.ok(buyCard(s,0));}s.shopOffer=null;openShop(s);assert.equal(buyCard(s,0),false);assert.equal(s.jokers.length,7);removeJoker(s,joker);assert.ok(buyCard(s,0));assert.equal(s.money,0);
 });

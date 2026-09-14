@@ -11,7 +11,7 @@ const oldRun=()=>{
  return s;
 };
 test('retired cards remain unavailable while High Five joins the catalog',()=>{
- assert.deepEqual(Object.keys(CARD_TYPES),['high-five']);assert.deepEqual(BALL_UPGRADES,{});retiredCards.forEach(id=>assert.equal(cardDetails(id),null));
+ assert.deepEqual(Object.keys(CARD_TYPES),['encore','high-five']);assert.deepEqual(BALL_UPGRADES,{});retiredCards.forEach(id=>assert.equal(cardDetails(id),null));
  const s=newStage(1,5,{1:'x'}, {},['bingo','face-value',...retiredCards]);assert.deepEqual(s.jokers,['bingo','face-value']);assert.deepEqual(s.upgrades,{});assert.equal(ballValue(s,1),1);
 });
 test('retired ball powers have no placement, movement, destruction, or draw effects',()=>{

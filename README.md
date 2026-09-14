@@ -64,3 +64,10 @@ Run `python3 scripts/version-assets.py` before committing to fingerprint browser
 Motion references: [LocalThunk on the solitaire feel](https://localthunk.com/blog/solitaire), [Indieklem’s Balatro UI analysis](https://indieklem.substack.com/p/20-a-look-at-100-interface-games), and [Folmer Kelly on contextual game polish](https://www.gdcvault.com/play/1020861/).
 
 `node scripts/rock-check.mjs` verifies shop/debug availability, free placement, numberless presentation, zero-point scoring, reloads, preserved-play payout, and next-round availability.
+
+### Encore and card order
+Drag the cards above the board to reorder them; nearby cards slide aside to preview the position. Left/Right arrow keys also move a focused card. Drag to the trash or press Delete to remove it. Order persists across reloads and rounds.
+
+Encore is a free shop card that retriggers the card immediately to its right. It repeats Bingo/High Five scoring groups or Face Value contributions per tile. Rightward Encore chains are finite; a rightmost Encore does nothing. Each replay animates Encore, then its target card. Physical Bingo history still counts each completed line once.
+
+Checks: `node scripts/encore-check.mjs` (optional `REAL_MOTION=1`) covers reordering, saved order, replay animations, removal, and shop purchase.

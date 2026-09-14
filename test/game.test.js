@@ -39,9 +39,9 @@ test('last-call win takes precedence over failure and settles exactly once',()=>
 test('stages retain money but reset all placements and replenish balls',()=>{
  const s=newStage(1,12,{25:'doubler'});place(s,25,1);const next=newStage(2,s.money,s.upgrades);assert.equal(next.money,12);assert.deepEqual(next.upgrades,{});assert.equal(next.stamps.size,0);assert.deepEqual(next.stampBalls,{});assert.equal(next.bag.size,25);assert.equal(next.calls,15);assert.deepEqual(STAGE_TARGETS,[5,10,15,20,30,40,55,70,90,120]);
 });
-test('empty shop offers cannot consume money or grant effects',()=>{
+test('shop cards are free while empty ball-upgrade slots remain unavailable',()=>{
  const s=newStage(1,20);assert.equal(openShop(s),false);s.status='passed';settleStage(s);assert.ok(openShop(s));
- assert.deepEqual(s.shopOffer,{cards:['high-five',null],balls:[null,null],items:['bomb','d20','hundred','rock'],cardCatalogVersion:1});const cash=s.money;
- assert.equal(buyCard(s,1),false);assert.equal(upgradeBall(s,0,1),false);assert.equal(redrawShop(s),true);assert.equal(s.money,cash);
+ assert.deepEqual({...s.shopOffer,cards:[...s.shopOffer.cards].sort()},{cards:['encore','high-five'],balls:[null,null],items:['bomb','d20','hundred','rock'],cardCatalogVersion:1,encoreVersion:1});const cash=s.money;
+ assert.equal(buyCard(s,1),true);assert.equal(buyCard(s,1),false);assert.equal(upgradeBall(s,0,1),false);assert.equal(redrawShop(s),true);assert.equal(s.money,cash);
  s.stage=10;assert.equal(openShop(s),false);
 });

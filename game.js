@@ -20,7 +20,7 @@ export const RULE_CARDS={
 };
 export const isRuleCard=id=>Object.hasOwn(RULE_CARDS,id);
 // Add new definitions here as the shop grows. Empty slots cannot be purchased.
-export const CARD_TYPES={'high-five':{name:'High Five',text:'Play a 1–5, including a die roll, to score it and its occupied orthogonal neighbors.',icon:'✚',short:'Play 1–5: score ✚'}};
+export const CARD_TYPES={encore:{name:'Encore',text:'Retrigger the card immediately to the right. No effect without a card to its right.',icon:'↻',short:'Retrigger right →'},'high-five':{name:'High Five',text:'Play a 1–5, including a die roll, to score it and its occupied orthogonal neighbors.',icon:'✚',short:'Play 1–5: score ✚'}};
 export const BALL_UPGRADES={};
 export const ITEM_TYPES={bomb:{name:'Bomb',text:'On placement, destroy this bomb and all items in the 8 neighboring spaces for the rest of the run.',price:0},d20:{name:'20-Sided Die',text:'Roll 1–20 when placed. Keep that number on this space for the round.',price:0},hundred:{name:'100 Ball',text:'Before scoring, permanently reduce occupied orthogonal neighbors by 1. Starts at 100.',price:0},rock:{name:'Rock',text:'Costs no play to place. Fills a space for combos, but has no number and scores 0 points.',price:0}};
 export const isRock=(state,id)=>state.items?.[id]==='rock';
@@ -98,20 +98,28 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   state.scoredLines.push(...scoredPatterns.map(p=>p.id));
   // Trigger cards build independent groups in rack order. Scoring a tile never
   // counts as playing it, so neighboring low numbers cannot trigger a cascade.
+  // Resolve only toward the right, so Encore chains are finite. Preserve the
+  // source chain for both group triggers and per-tile points animations.
+  const events=[];
+  function resolveCard(index,retriggers=[]){
+    const joker=state.jokers[index];if(!joker)return;
+    if(cardType(joker)==='encore')resolveCard(index+1,[...retriggers,joker]);
+    else events.push({joker,retriggers});
+  }
+  state.jokers.forEach((_,index)=>resolveCard(index));
   const scoringGroups=[];
-  for(const joker of state.jokers){
-    if(joker==='bingo')scoringGroups.push(...scoredPatterns.map(p=>({trigger:joker,type:p.type,tiles:p.tiles})));
+  for(const {joker,retriggers} of events){
+    if(joker==='bingo')scoringGroups.push(...scoredPatterns.map(p=>({trigger:joker,retriggers,type:p.type,tiles:p.tiles})));
     if(cardType(joker)==='high-five'&&state.stampValues[tile]>=1&&state.stampValues[tile]<=5){
       const neighbors=[tile,...orthogonalNeighbors(tile)].filter(t=>state.stamps.has(t));
-      scoringGroups.push({trigger:joker,type:'cross',tiles:neighbors});
+      scoringGroups.push({trigger:joker,retriggers,type:'cross',tiles:neighbors});
     }
   }
-  const hasPointsRule=state.jokers.includes('face-value');
   const activations=scoringGroups.flatMap(group=>group.tiles.map((tile,j)=>{
     const number=state.stampValues[tile],bonuses=[];
-    const basePoints=hasPointsRule?(number??0):0;
-    const contributions=hasPointsRule?[{joker:'face-value',points:basePoints}]:[];
-    return {tile,number,basePoints,bonuses,contributions,points:basePoints,trigger:group.trigger,type:group.type,pattern:j===0?group.tiles:null};
+    const contributions=events.filter(e=>e.joker==='face-value').map(e=>({...e,points:number??0}));
+    const basePoints=state.jokers.includes('face-value')?(number??0):0;
+    return {tile,number,basePoints,bonuses,contributions,points:contributions.reduce((sum,c)=>sum+c.points,0),trigger:group.trigger,retriggers:group.retriggers,type:group.type,pattern:j===0?group.tiles:null};
   }));
   const points=activations.reduce((sum,a)=>sum+a.points,0);state.score+=points;
 
@@ -148,6 +156,10 @@ export function openShop(state,random=Math.random){
   if(state.shopOffer.cardCatalogVersion!==1){
     if(!state.shopOffer.cards.includes('high-five')){const slot=state.shopOffer.cards.indexOf(null);if(slot>=0)state.shopOffer.cards[slot]='high-five';}
     state.shopOffer.cardCatalogVersion=1;
+  }
+  if(state.shopOffer.encoreVersion!==1){
+    if(!state.shopOffer.cards.includes('encore')){const slot=state.shopOffer.cards.indexOf(null);if(slot>=0)state.shopOffer.cards[slot]='encore';else state.shopOffer.cards.push('encore');}
+    state.shopOffer.encoreVersion=1;
   }
   return true;
 }
