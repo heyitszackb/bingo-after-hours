@@ -106,3 +106,6 @@ Copies retain item type, custom base value and permanent modifiers; numbered cop
 
 ### Anvil (formerly 100 Ball)
 The former 100 Ball is now Anvil, starting at 50. Its power is unchanged: permanently reduce the four occupied orthogonal numeric neighbors by 1 before scoring. Placement uses a descending anvil and impact animation before the number changes. Shop, bag, board, copies and Debug use anvil artwork/name. The internal `hundred` identifier is retained for saved-run compatibility; standard old pieces now use base 50 while permanent modifiers and explicit Debug base values remain intact. Earned score is preserved. `node scripts/anvil-check.mjs` verifies the full-motion drop/effect/scoring order, migration, and reward purchase.
+
+### Crowd
+Crowd is a shop points-modifier card: every scored tile gains points equal to the number of occupied board spaces after placement effects resolve. All placed items count, including numberless Rocks; permanent multiplier/Copier ink and items still in the bag do not. It does not trigger scoring. Its per-tile activation follows rack order, works with Encore, and contributes before tile multipliers. `node scripts/crowd-check.mjs` verifies animated contributions and reward purchase.
