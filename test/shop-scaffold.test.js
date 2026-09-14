@@ -10,8 +10,8 @@ const oldRun=()=>{
  s.ballValues={2:8,3:12,4:16,5:20};s.plasmaActive=true;s.offer=[6,7,8];s.destinations={6:13,7:13,8:13};s.patternCounts.row=1;s.scoredLines=['row-1'];
  return s;
 };
-test('catalogs are blank and retired cards cannot normalize into a new run',()=>{
- assert.deepEqual(CARD_TYPES,{});assert.deepEqual(BALL_UPGRADES,{});retiredCards.forEach(id=>assert.equal(cardDetails(id),null));
+test('retired cards remain unavailable while High Five joins the catalog',()=>{
+ assert.deepEqual(Object.keys(CARD_TYPES),['high-five']);assert.deepEqual(BALL_UPGRADES,{});retiredCards.forEach(id=>assert.equal(cardDetails(id),null));
  const s=newStage(1,5,{1:'x'}, {},['bingo','face-value',...retiredCards]);assert.deepEqual(s.jokers,['bingo','face-value']);assert.deepEqual(s.upgrades,{});assert.equal(ballValue(s,1),1);
 });
 test('retired ball powers have no placement, movement, destruction, or draw effects',()=>{

@@ -8,7 +8,7 @@ A solo arcade bingo game with a portrait table, numbered stamps, a bag, and two 
 - A deliberate swipe commits on release; returning to its start cancels. Arrow Up/Down are keyboard equivalents. Dragging onto the board also works.
 - Start with $5, 15 plays and 10 passes. A placement uses one play and removes its ball from the bag for the round. Plays and passes replenish each round. Targets are **5, 10, 15, 20, 30, 40, 55, 70, 90, 120**.
 - **Bingo:** score rows, columns, and diagonals of five. Each physical line activates once per round. Stamps remain on the board and may activate in other newly completed lines. Squares and corners alone do not score.
-- **Face Value:** scored tiles earn their ball’s number in points. Removing Bingo prevents all activations; removing Face Value preserves activations but awards zero points. Drag either rule card to the trash to remove it for the run.
+- **Face Value:** scored tiles earn their ball’s number in points. Removing Bingo prevents line activations; other trigger cards still work. Removing Face Value preserves activations but awards zero points. Drag either rule card to the trash to remove it for the run.
 - Each unused play pays $1 after a win, then the shop opens. The next round resets placements and refills the bag, plays, and passes. Money and run pattern counts carry over.
 
 The header contains menu, current score / target, and money. Scoring lights the complete line with Bingo, then activates each tile and Face Value in order. Points fly into the persistent header counter. No sound is generated. Mobile layouts fit without scrolling.
@@ -17,7 +17,8 @@ The header contains menu, current score / target, and money. Scoring lights the 
 
 All shop additions are **free while testing**. The shop has three categories:
 
-- **Cards:** persistent effects above the board; two blank slots for now.
+- **Cards:** **High Five** is free: playing a 1–5 scores itself and occupied neighbors immediately above, right, below, and left. Trigger groups resolve in rack order. Bingo and High Five can score the same tile separately; each activation uses Face Value if owned. Scoring a tile never re-triggers High Five, and dice qualify by their rolled value. Up to five purchased cards can be held and removed through the rack.
+
 - **Ball Upgrades:** changes to existing balls; two blank slots for now.
 - **Items:** new pieces added to the bag. **Bomb** and **20-Sided Die** are available with a repeatable “Add to Bag” action and an owned count.
 
@@ -38,7 +39,7 @@ Previous shop effects remain retired. The earlier migration removes them and res
 Browser checks use local Chrome and Playwright. Set `GAME_URL` to check deployment:
 
 - `node scripts/bomb-check.mjs`: free repeated additions, responsive shop, dynamic bag/tooltip, scoring-before-explosion, no-line explosions, passing, reload and round persistence. Set `REAL_MOTION=1` for full-speed animation checks.
-- `node scripts/shop-scaffold-check.mjs`: responsive empty shop, inert placeholders, no obsolete purchase controls, saved-shop and active-run migrations, menu/reload, and next-round resources.
+- `node scripts/shop-scaffold-check.mjs`: responsive shop, inert placeholders, no obsolete purchase controls, saved-shop and active-run migrations, menu/reload, and next-round resources.
 - `node scripts/swipe-layout-check.mjs`: portrait layout, persistent score, bag inspection, mouse/touch swipes, pause/reload, payout and next round.
 - `node scripts/starting-rules-check.mjs`: trigger-before-points order, five Face Value activations, score-counter increments, absent rules, save migration, input locking and no audio. Set `REAL_MOTION=1` to inspect full animation timing.
 

@@ -20,7 +20,7 @@ export const RULE_CARDS={
 };
 export const isRuleCard=id=>Object.hasOwn(RULE_CARDS,id);
 // Add new definitions here as the shop grows. Empty slots cannot be purchased.
-export const CARD_TYPES={};
+export const CARD_TYPES={'high-five':{name:'High Five',text:'When you play a 1–5, score it and its occupied orthogonal neighbors.',icon:'✚',short:'Play 1–5: score ✚'}};
 export const BALL_UPGRADES={};
 export const ITEM_TYPES={bomb:{name:'Bomb',text:'After scoring, destroy this bomb and all items in the 8 neighboring spaces for the rest of the run.',price:0},d20:{name:'20-Sided Die',text:'Roll 1–20 when placed. Keep that number on this space for the round.',price:0}};
 export const isDie=(state,id)=>state.items?.[id]==='d20';
@@ -33,8 +33,12 @@ export function cardDetails(id){
 }
 export const normalizeJokers=jokers=>{
   if(!Array.isArray(jokers))return ['bingo','face-value'];
-  const cards=[...new Set(jokers.filter(id=>typeof id==='string'&&CARD_TYPES[cardType(id)]&&cardDetails(id)))].slice(0,5);
-  return [...(jokers.some(id=>['bingo','row','column','diagonal'].includes(id))?['bingo']:[]),...(jokers.includes('face-value')?['face-value']:[]),...cards];
+  let purchased=0;
+  return [...new Set(jokers.map(id=>['row','column','diagonal'].includes(id)?'bingo':id))].filter(id=>{
+    if(typeof id!=='string')return false;
+    if(isRuleCard(id))return true;
+    return CARD_TYPES[cardType(id)]&&cardDetails(id)&&purchased++<5;
+  });
 };
 export const ballValue=(state,number)=>state.items?.[number]?null:(state.ballValues?.[number]??number);
 export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['bingo','face-value'],inventory=null) {
@@ -65,12 +69,23 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   const patterns=scoredPatterns.map(p=>p.tiles);
   for(const {type} of scoredPatterns)state.patternCounts[type]=(state.patternCounts[type]||0)+1;
   state.scoredLines.push(...scoredPatterns.map(p=>p.id));
+  // Trigger cards build independent groups in rack order. Scoring a tile never
+  // counts as playing it, so neighboring low numbers cannot trigger a cascade.
+  const scoringGroups=[];
+  for(const joker of state.jokers){
+    if(joker==='bingo')scoringGroups.push(...scoredPatterns.map(p=>({trigger:joker,type:p.type,tiles:p.tiles})));
+    if(cardType(joker)==='high-five'&&state.stampValues[tile]>=1&&state.stampValues[tile]<=5){
+      const row=Math.floor((tile-1)/5),col=(tile-1)%5;
+      const neighbors=[tile,tile-5,tile+1,tile+5,tile-1].filter(t=>state.stamps.has(t)&&Math.abs(Math.floor((t-1)/5)-row)+Math.abs((t-1)%5-col)<=1);
+      scoringGroups.push({trigger:joker,type:'cross',tiles:neighbors});
+    }
+  }
   const hasPointsRule=state.jokers.includes('face-value');
-  const activations=patterns.flatMap((pattern,i)=>pattern.map((tile,j)=>{
+  const activations=scoringGroups.flatMap(group=>group.tiles.map((tile,j)=>{
     const number=state.stampValues[tile],bonuses=[];
     const basePoints=hasPointsRule?(number??0):0;
-    const contributions=[...(hasPointsRule?[{joker:'face-value',points:basePoints}]:[]),...bonuses];
-    return {tile,number,basePoints,bonuses,contributions,points:basePoints+bonuses.reduce((sum,b)=>sum+b.points,0),trigger:'bingo',type:scoredPatterns[i].type,pattern:j===0?pattern:null};
+    const contributions=hasPointsRule?[{joker:'face-value',points:basePoints}]:[];
+    return {tile,number,basePoints,bonuses,contributions,points:basePoints,trigger:group.trigger,type:group.type,pattern:j===0?group.tiles:null};
   }));
   const points=activations.reduce((sum,a)=>sum+a.points,0);state.score+=points;
   // Snapshot scoring before removing any items: the UI plays these phases in order.
@@ -89,7 +104,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   state.offer=[];state.destinations={};
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
-  return {tile,roll,scoringBoard,destroyed,callsBeforeBonuses,patterns,scoredPatterns,activations,points};
+  return {tile,roll,scoringBoard,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
 }
 export function redraw(state,random=Math.random) {
   if(state.status!=='playing'||state.passes<1||!state.offer.length)return false;
@@ -114,7 +129,13 @@ export function settleStage(state){
 
 export function openShop(state,random=Math.random){
   if(state.status!=='passed'||!state.bonusPaid||state.stage>=10)return false;
-  state.shopOffer??=Object.fromEntries([['cards',CARD_TYPES],['balls',BALL_UPGRADES]].map(([kind,catalog])=>{const choices=shuffled(Object.keys(catalog),random);return [kind,[choices[0]??null,choices[1]??null]];}));state.shopOffer.items=Object.keys(ITEM_TYPES);return true;
+  state.shopOffer??=Object.fromEntries([['cards',CARD_TYPES],['balls',BALL_UPGRADES]].map(([kind,catalog])=>{const choices=shuffled(Object.keys(catalog),random);return [kind,[choices[0]??null,choices[1]??null]];}));state.shopOffer.items=Object.keys(ITEM_TYPES);
+  // Introduce this card once to existing blank shops, without refilling a bought slot.
+  if(state.shopOffer.cardCatalogVersion!==1){
+    if(!state.shopOffer.cards.includes('high-five')){const slot=state.shopOffer.cards.indexOf(null);if(slot>=0)state.shopOffer.cards[slot]='high-five';}
+    state.shopOffer.cardCatalogVersion=1;
+  }
+  return true;
 }
 export function buyItem(state,type){
   if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!Object.hasOwn(ITEM_TYPES,type)||!state.shopOffer?.items?.includes(type))return false;

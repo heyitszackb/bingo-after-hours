@@ -1,5 +1,5 @@
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,migrateShop,migrateInventory,buyItem,isBomb,isDie,ITEM_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openShop,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=79c7d5b28375';
+import {newStage,deal,choose,migrateShop,migrateInventory,buyCard,isRuleCard,buyItem,isBomb,isDie,ITEM_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openShop,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=0fba27e386cf';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 const wait=ms=>new Promise(r=>setTimeout(r,reduced?15:ms));
@@ -34,7 +34,7 @@ function renderJokers(){
     const type=cardType(id),item=cardDetails(id),description=item.text,card=document.createElement('button'),pattern={previewTiles:[3,8,11,12,13,14,15,18,23,1,7,19,25]};
     card.className=`joker-card joker-${type}`;card.dataset.joker=id;
     card.setAttribute('aria-label',`${description}. Drag to trash to remove this effect, or press Delete.`);
-    card.innerHTML=`<span class="joker-heading">${type==='bingo'?'BINGO':item.name.toUpperCase()}</span><span class="joker-art ${type!=='bingo'?'digits-art':''}" aria-hidden="true">${type!=='bingo'?`<b>${item.icon}</b>`:Array.from({length:25},(_,i)=>`<i class="${pattern.previewTiles.includes(i+1)?'filled':''}"></i>`).join('')}</span><span class="joker-description">${type==='bingo'?'Lines of 5':type==='face-value'?'Number → pts':description}</span>`;
+    card.innerHTML=`<span class="joker-heading">${type==='bingo'?'BINGO':item.name.toUpperCase()}</span><span class="joker-art ${type!=='bingo'?'digits-art':''}" aria-hidden="true">${type!=='bingo'?`<b>${item.icon}</b>`:Array.from({length:25},(_,i)=>`<i class="${pattern.previewTiles.includes(i+1)?'filled':''}"></i>`).join('')}</span><span class="joker-description">${type==='bingo'?'Lines of 5':type==='face-value'?'Number → pts':item.short||description}</span>`;
     card.onpointerdown=e=>{
       if(busy||e.button!==0||jokerDrag||drag)return;
       const selected=tooltipAnchor===card;
@@ -263,24 +263,24 @@ async function activateSpaces(result){
   let displayedScore=state.score-result.points,displayedCalls=result.callsBeforeBonuses,total=0,lineIndex=0;
   let activePattern=[];
   const rack=$('joker-rack'),board=$('board'),area=document.querySelector('.draw-area'),readout=$('score-meter');
-  const colors={row:'#83e0b5',column:'#91c6ff',diagonal:'#ffb18b'};
+  const colors={row:'#83e0b5',column:'#91c6ff',diagonal:'#ffb18b',cross:'#eab6f3'};
   const allTiles=[...new Set(result.activations.map(a=>a.tile))].map(n=>$(`cell-${n}`));
   rack.classList.add('scoring-rack');board.classList.add('scoring-board');area.classList.add('scoring-draw');
   readout.classList.add('scoring-total');$('score-line-label').hidden=false;renderScore(displayedScore);
-  allTiles.forEach(cell=>cell.classList.add('score-pending'));
+
   try{
     for(const [index,activation] of result.activations.entries()){
       const cell=$(`cell-${activation.tile}`),color=colors[activation.type];
       if(activation.pattern){
         lineIndex++;
-        activePattern.forEach(c=>c.classList.remove('pattern-active','charged'));
+        activePattern.forEach(c=>c.classList.remove('pattern-active','charged','score-pending'));
         activePattern=activation.pattern.map(n=>$(`cell-${n}`));
-        activePattern.forEach(c=>{c.style.setProperty('--scoring-color',color);c.classList.add('pattern-active');});
-        $('score-line-label').textContent=`${activation.type.toUpperCase()}${result.patterns.length>1?` ${lineIndex}/${result.patterns.length}`:''}`;
+        activePattern.forEach(c=>{c.style.setProperty('--scoring-color',color);c.classList.add('pattern-active','score-pending');});
+        $('score-line-label').textContent=`${activation.type.toUpperCase()}${result.scoringGroups.length>1?` ${lineIndex}/${result.scoringGroups.length}`:''}`;
         const trigger=document.querySelector(`[data-joker="${activation.trigger}"]`);
         pulseBackground();
-        // All five spaces are lit while the rule announces the line, before any points.
-        await cardImpact(trigger,'SCORE 5',color,true);
+        // Light this entire group while its trigger card announces it, before any points.
+        await cardImpact(trigger,`SCORE ${activePattern.length}`,color,true);
         await Promise.all(activePattern.map(target=>scoreLink(trigger,target,color)));
         releaseCard(trigger);
         await wait(70);
@@ -324,11 +324,11 @@ async function activateSpaces(result){
       await animate($('score'),reduced?[{opacity:.75},{opacity:1}]:[{transform:'scale(1.22,1.08) rotate(-2deg)'},{transform:'scale(.97,1.03)',offset:.55},{transform:'scale(1)'}],{duration:130});
       cell.classList.remove('activating');
     }
-    $('score-line-label').textContent=state.jokers.includes('face-value')?'BINGO':'NO POINTS RULE';
+    $('score-line-label').textContent=state.jokers.includes('face-value')?(result.scoringGroups.some(g=>g.type==='cross')?'SCORED':'BINGO'):'NO POINTS RULE';
     if(total>0){pulseBackground();navigator.vibrate?.([15,25,25]);burst($('score').getBoundingClientRect(),true);}
     await animate(readout,reduced?[{opacity:.85},{opacity:1}]:[{transform:'scale(1)'},{transform:'scale(1.08) rotate(-1deg)',offset:.25},{transform:'scale(1)',offset:.65},{transform:'scale(1)'}],{duration:360});
     await wait(600);
-    const names=result.scoredPatterns.map(p=>PATTERN_TYPES.find(type=>type.id===p.type).label);
+    const names=result.scoringGroups.map(g=>g.type==='cross'?cardDetails(g.trigger).name:PATTERN_TYPES.find(type=>type.id===g.type).label);
     $('announcer').textContent=`${names.join(', ')}. ${result.activations.length} spaces activated for ${result.points} points.`;
   }finally{
     rack.classList.remove('scoring-rack');board.classList.remove('scoring-board');area.classList.remove('scoring-draw');readout.classList.remove('scoring-total');$('score-line-label').hidden=true;
@@ -514,6 +514,15 @@ function renderShop(){
   for(const kind of ['cards','balls']){
     const container=$(`shop-${kind}`);container.replaceChildren();
     for(let i=0;i<2;i++){
+      const item=kind==='cards'?cardDetails(state.shopOffer?.cards[i]):null;
+      if(item){
+        const card=document.createElement('button'),full=state.jokers.filter(id=>!isRuleCard(id)).length>=5;
+        card.className='shop-rule-card';card.dataset.shopCard=state.shopOffer.cards[i];card.disabled=busy||full;
+        card.setAttribute('aria-label',`${item.name}. ${item.text} ${full?'5 card limit reached.':'Free. Add card.'}`);
+        card.innerHTML=`<strong>${item.name.toUpperCase()}</strong><i aria-hidden="true">${item.icon}</i><span>Play 1–5: score it<br>+ its ↕ ↔ neighbors</span><b>${full?'5 / 5 CARDS':'FREE · ADD CARD'}</b>`;
+        card.onclick=()=>{if(busy||!buyCard(state,i))return;saveRun();renderShop();renderJokers();$('announcer').textContent=`${item.name} added. Free.`;};
+        container.append(card);continue;
+      }
       const slot=document.createElement('div');slot.className=`shop-slot ${kind==='cards'?'card-slot':'ball-slot'}`;
       slot.setAttribute('aria-hidden','true');container.append(slot);
     }
