@@ -96,3 +96,10 @@ The reward shop shows all four offers together: two smaller cards on the top row
 Tile multipliers persist between rounds and reloads, survive Bomb explosions, and stack multiplicatively (×2 then ×3 = ×6). They multiply the tile's total points after card contributions; 20 on ×3 scores 60. A negative tile with Silver Lining also has its final net points multiplied. They never change the ball's stored number or placement eligibility. Ink pulses after the points-card activations and before points reach the score meter. New runs and applying a fresh Debug bag reset the board ink.
 
 `node scripts/tile-stamps-check.mjs` checks ink visuals, consumption, reload/round persistence, scoring animation, rewards, and Debug support; add `REAL_MOTION=1` to check full animation timing.
+
+### Copier Stamp
+A free shop/Debug stamp that permanently marks an empty tile with ▣, costs one play, and consumes itself. Every subsequent item placed there adds one independent exact copy to the bag before placement effects. The first Copier application does not copy itself. Additional Copier stamps do not stack extra copy counts, but an existing Copier can copy a new stamp before that stamp is consumed.
+
+Copies retain item type, custom base value and permanent modifiers; numbered copies receive explicit values independent of their new physical IDs. Copied dice remain dice and roll on their own placement. A Bomb's bag copy survives the original's explosion. Copies are immediately drawable and persist across rounds. Copier ink coexists with multiplier ink, survives explosions and round resets, and resets on a new run or fresh Debug board. Passing, scoring and bag insertion itself never trigger copying.
+
+`node scripts/copier-check.mjs` checks the copy-to-bag animation, consumption, reward/Debug support, independent values and persistence. `REAL_MOTION=1` checks the full animation.

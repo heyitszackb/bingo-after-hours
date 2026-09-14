@@ -500,4 +500,4 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .cell.stamped .board-ink{inset:auto 2px 1px auto;display:block;font-size:clamp(12px,2.8vw,17px);z-index:3;color:#8e7956;background:#ebdcb6bb;padding:0 2px}
 .ball.stamp-item{border-radius:5px;background:#daca9f!important;box-shadow:3px 4px #1a302c,inset 0 0 0 4px #9d895f;border:3px solid #d8bf86}
 .ball.stamp-item:before,.ball.stamp-item:after{display:none}.ball.stamp-item .face{background:transparent;box-shadow:none;border:0;color:#7f6a44;font-size:calc(var(--size)*.4)}
-.x2-art,.x3-art{background:#dbcaa0;color:#88734c;border:3px double #9c865a;border-radius:3px;font-size:25px;box-shadow:2px 3px #00191e}
+.copier-art,.x2-art,.x3-art{background:#dbcaa0;color:#88734c;border:3px double #9c865a;border-radius:3px;font-size:25px;box-shadow:2px 3px #00191e}
