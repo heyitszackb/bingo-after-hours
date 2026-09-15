@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=8af84a852bd0';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=b8ec913539a0';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=c38fd30d39b5';
+import {defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=5eb59d2651ac';
 function newStage(...args){const round=legacyNewStage(...args);round.plainRules=true;round.jokers=[];return round;}
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
