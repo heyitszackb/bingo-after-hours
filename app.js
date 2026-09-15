@@ -209,7 +209,8 @@ $('bag-debug-toggle').onclick=()=>{
   debugDraft=bagRecipe(state);$('bag-dialog').setAttribute('aria-label','Developer bag editor');$('bag-dialog').classList.add('debug-editing');$('bag-grid').hidden=true;$('bag-debug').hidden=false;$('bag-heading').textContent='DEBUG BAG';$('bag-debug-toggle').textContent='BACK';$('bag-debug-toggle').setAttribute('aria-expanded','true');debugRows();
 };
 $('bag-dialog').addEventListener('close',closeDebugBag);
-for(const [id,recipe] of [['debug-base',baseBagRecipe],['debug-current',()=>bagRecipe(state)],['debug-clear',()=>[]]])$(id).onclick=()=>{debugDraft=recipe();debugRows();};
+for(const [id,recipe] of [['debug-current',()=>bagRecipe(state)],['debug-clear',()=>[]]])$(id).onclick=()=>{debugDraft=recipe();debugRows();};
+$('debug-base').onclick=()=>{if(busy)return;debugDraft=baseBagRecipe();debugRows();$('debug-apply').click();};
 $('debug-add').onclick=()=>{debugDraft.push({type:'number',value:1,count:1});debugRows();const last=$('debug-rows').lastElementChild;last.scrollIntoView({block:'nearest'});last.querySelector('select').focus();};
 $('debug-apply').onclick=async()=>{
   if(busy||!debugDraft)return;
