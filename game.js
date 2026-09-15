@@ -201,7 +201,8 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   const movementBoard=boardSnapshot(state);
   for(const {from,id} of kings){
     if(state.stampBalls[from]!==id)continue; // A scoring Trash stamp may have destroyed it.
-    const available=kingNeighbors(from).filter(t=>!state.stamps.has(t));if(!available.length)continue;
+    const available=kingNeighbors(from).filter(t=>!state.stamps.has(t));
+    if(!available.length){timeline.push({kind:'blocked',tile:from,id,board:boardSnapshot(state),scoreBefore:state.score});continue;}
     const to=available[Math.floor(random()*available.length)],value=state.stampValues[from],before=boardSnapshot(state),scoreBefore=state.score;
     state.stamps.delete(from);delete state.stampBalls[from];delete state.stampValues[from];
     state.stamps.add(to);state.stampBalls[to]=id;state.stampValues[to]=value;

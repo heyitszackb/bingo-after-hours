@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=b8ec913539a0';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=503de01dd8c9';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=5eb59d2651ac';
+import {defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=bd283531c824';
 function newStage(...args){const round=legacyNewStage(...args);round.plainRules=true;round.jokers=[];return round;}
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
@@ -480,6 +480,20 @@ async function dropAnvil(id,cell){
   cell.classList.remove('anvil-pending');ghost.remove();
   await animate(cell.querySelector('span'),[{transform:'scale(1.25,.6)'},{transform:'scale(.95,1.1)',offset:.6},{transform:'scale(1)'}],{duration:180});
 }
+async function animateBlockedKing(phase){
+  render(phase.board);renderScore(phase.scoreBefore);
+  const cell=$(`cell-${phase.tile}`),r=cell.getBoundingClientRect(),cue=document.createElement('div');
+  cue.className='king-blocked-cue';cue.textContent='No move';
+  cue.style.left=`${r.left+r.width/2}px`;cue.style.top=`${r.top+4}px`;
+  document.body.append(cue);cell.classList.add('king-blocked');
+  $('announcer').textContent='King cannot move: no empty adjacent space.';
+  try{
+    await Promise.all([
+      animate(cell,[{transform:'translateX(0)'},{transform:'translateX(-3px)',offset:.2},{transform:'translateX(3px)',offset:.4},{transform:'translateX(-2px)',offset:.6},{transform:'translateX(0)'}],{duration:650,easing:'ease-in-out'}),
+      animate(cue,[{opacity:0,transform:'translate(-50%,4px)'},{opacity:1,transform:'translate(-50%,0)',offset:.15},{opacity:1,transform:'translate(-50%,0)',offset:.85},{opacity:0,transform:'translate(-50%,-3px)'}],{duration:1700,easing:'ease-out'})
+    ]);
+  }finally{cue.remove();cell.classList.remove('king-blocked');}
+}
 async function animateKings(result){
   for(const move of result.kingMoves){
     render(move.before);renderScore(result.scoreBefore??state.score-result.points);
@@ -520,7 +534,8 @@ async function play(n,b,ghost,tile=state.destinations[n]){
   $('announcer').textContent=`${pieceLabel(n)} played.${result.roll!==null?` Rolled ${result.roll}.`:''} ${result.playCost===0?'No play used.':'One play used.'}`;
   if(result.destroyed.length){await explodeBomb(result);render(result.scoringBoard||state);renderScore(state.score-result.points);}
   for(const phase of result.timeline){
-    if(phase.kind==='move')await animateKings({kingMoves:[phase.move],scoreBefore:phase.scoreBefore});
+    if(phase.kind==='blocked')await animateBlockedKing(phase);
+    else if(phase.kind==='move')await animateKings({kingMoves:[phase.move],scoreBefore:phase.scoreBefore});
     else{render(phase.scoringBoard);renderScore(phase.scoreBefore);await activateSpaces(phase);}
   }
   await wait(120);render();refreshBag();

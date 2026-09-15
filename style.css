@@ -575,3 +575,6 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .bingo-multiplier small{font-size:16px;letter-spacing:3px;color:#f7dfb6}.bingo-multiplier>div{display:flex;justify-content:center;align-items:center;gap:12px;font-size:clamp(32px,9vw,44px);line-height:1.1;color:#f6d36b;font-variant-numeric:tabular-nums}.bingo-multiplier b{color:#ffe9c6;background:#ad2f40;padding:1px 7px;border:2px solid #fc8f89}.bingo-multiplier strong{color:#fff0b6}
 .multiplier-source{outline:3px solid #fa777e;outline-offset:-3px;z-index:5;filter:brightness(1.2)!important}
 .multiplier-pop{position:fixed;z-index:90;color:#fff0c7;background:#ad2f40;border:2px solid #ff9b90;padding:2px 6px;font-size:32px;pointer-events:none;text-shadow:2px 2px #6b182a}
+
+.king-blocked{outline:2px solid #b4c6be;outline-offset:-5px;z-index:2}
+.king-blocked-cue{position:fixed;z-index:85;pointer-events:none;padding:5px 8px;background:#123331;color:#e1ebe5;border:2px solid #91aaa0;font:14px monospace;white-space:nowrap;box-shadow:2px 3px 0 #061b1d;transform:translateX(-50%)}
