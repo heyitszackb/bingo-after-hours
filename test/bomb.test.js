@@ -16,12 +16,12 @@ test('Bomb and numbered balls each occupy one equally selectable position in the
 });
 test('passing a Bomb spends a pass and neither removes it nor explodes neighbors',()=>{
  const {s,id}=withBomb();stamp(s,1,1);s.offer=[id];s.destinations={[id]:7};const roster=[...s.collection];assert.ok(redraw(s,()=>.5));
- assert.equal(s.calls,15);assert.equal(s.passes,9);assert.deepEqual(s.collection,roster);assert.ok(s.bag.has(id));assert.equal(s.stampBalls[1],1);
+ assert.equal(s.calls,20);assert.equal(s.passes,9);assert.deepEqual(s.collection,roster);assert.ok(s.bag.has(id));assert.equal(s.stampBalls[1],1);
 });
 test('Bomb destroys itself and adjacent items before a newly completed line can score',()=>{
  const {s,id}=withBomb();[1,2,3,4].forEach(n=>stamp(s,n,n));stamp(s,6,9);stamp(s,7,10);stamp(s,8,11);
  const r=play(s,id,5);assert.equal(r.points,0);assert.deepEqual(r.activations,[]);assert.deepEqual(r.scoredPatterns,[]);assert.ok(r.effectBoard.stamps.has(5));assert.equal(r.effectBoard.stampBalls[5],id);assert.deepEqual(r.destroyed.map(d=>d.id).sort((a,b)=>a-b),[4,6,7,id]);
- assert.equal(s.patternCounts.row,0);assert.deepEqual(s.scoredLines,[]);assert.equal(s.score,0);assert.equal(s.calls,14);assert.ok(s.stamps.has(11));assert.ok(!s.stamps.has(4)&&!s.stamps.has(5));
+ assert.equal(s.patternCounts.row,0);assert.deepEqual(s.scoredLines,[]);assert.equal(s.score,0);assert.equal(s.calls,19);assert.ok(s.stamps.has(11));assert.ok(!s.stamps.has(4)&&!s.stamps.has(5));
  const next=newStage(10,s.money,s.upgrades,s.patternCounts,s.jokers,s);for(const d of r.destroyed){assert.ok(!next.bag.has(d.id));assert.ok(!next.collection.includes(d.id));}assert.ok(next.bag.has(8));assert.equal(newStage().collection.length,25);
 });
 test('center blast removes all eight neighbors; emptied board spaces remain playable',()=>{

@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=3edf4816c755';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=08500458a1e1';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=fc34074a957a';
+import {newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=0536525620a1';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 // One tempo for animation and sequencing keeps effects and input locks aligned.
@@ -90,7 +90,7 @@ function renderJokers(){
 function overTrash(x,y){const r=$('joker-trash').getBoundingClientRect();return x>=r.left-12&&x<=r.right+12&&y>=r.top-12&&y<=r.bottom+12;}
 function cancelJokerDrag(removeGhost=true){if(!jokerDrag)return;const d=jokerDrag;jokerDrag=null;if(removeGhost){const rack=$('joker-rack');for(const id of d.originalOrder){const c=rack.querySelector(`[data-joker="${id}"]`);if(c)rack.insertBefore(c,rack.querySelector('.joker-slot'));}}d.card.classList.remove('held');if(removeGhost)d.ghost?.remove();$('joker-trash').hidden=true;$('joker-trash').classList.remove('ready');if(d.card.hasPointerCapture(d.pointer))d.card.releasePointerCapture(d.pointer);}
 
-const itemClass=n=>state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';
+const itemClass=n=>state.items[n]==='king'?' king-item':state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';
 const pieceLabel=n=>state.items[n]?`${ITEM_TYPES[state.items[n]].name}${ballValue(state,n)!==null?` (${ballValue(state,n)})`:''}`:ballValue(state,n)??'';
 const pieceFace=n=>state.items[n]==='question'?'?':state.items[n]?.startsWith('plus')?`+${state.items[n].slice(4)}`:state.items[n]==='copier'?'COPY':['x2','x3'].includes(state.items[n])?`×${state.items[n].slice(1)}`:isDie(state,n)?'?':ballValue(state,n)??'';
 function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)}`;b.classList.toggle('large-value',String(pieceFace(n)).length>2);b.dataset.number=n;b.innerHTML=`<span class="face">${pieceFace(n)}</span>`;b.setAttribute('aria-label',`Inspect ${pieceLabel(n)}`);return b;}
@@ -191,7 +191,7 @@ function debugRows(){
     const value=document.createElement('input');value.type='number';value.step='1';value.inputMode='text';value.value=row.value??'';value.disabled=['question','bomb','rock','x2','x3','copier','plus10','plus50','plus100'].includes(row.type);value.setAttribute('aria-label',`Piece ${index+1} ${row.type==='d20'?'roll modifier':'value'}`);
     const count=document.createElement('input');count.type='number';count.step='1';count.min='1';count.max='500';count.inputMode='numeric';count.value=row.count;count.setAttribute('aria-label',`Piece ${index+1} copies`);
     const remove=document.createElement('button');remove.textContent='×';remove.setAttribute('aria-label',`Remove piece ${index+1}`);
-    select.onchange=()=>{row.type=select.value;row.value=['question','bomb','rock','x2','x3','copier','plus10','plus50','plus100'].includes(row.type)?null:row.type==='d20'?0:row.type==='hundred'?50:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
+    select.onchange=()=>{row.type=select.value;row.value=['question','bomb','rock','x2','x3','copier','plus10','plus50','plus100'].includes(row.type)?null:row.type==='d20'?0:row.type==='hundred'?50:row.type==='king'?10:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
     value.oninput=()=>{row.value=value.value===''?null:value.valueAsNumber;validateDebugDraft();};count.oninput=()=>{row.count=count.value===''?null:count.valueAsNumber;validateDebugDraft();};
     remove.onclick=()=>{debugDraft.splice(index,1);debugRows();const next=$('debug-rows').children[Math.min(index,debugDraft.length-1)];(next?.querySelector('select')||$('debug-add')).focus();};
     line.append(select,value,count,remove);list.append(line);
@@ -453,7 +453,7 @@ async function explodeBomb(result){
       const angle=Math.atan2(rect.top-r.top,rect.left-r.left)+(i-2.5)*.45,d=30+Math.random()*70;
       fragments.push(animate(chip,[{transform:'scale(1.3)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+20}px) rotate(${i*65}deg) scale(.2)`,opacity:0}],{duration:360+i*20,easing:'cubic-bezier(.1,.65,.2,1)'}).then(()=>chip.remove()));
     }}
-    cell.classList.remove('stamped','bomb-item','die-item','hundred-item','rock-item','seed-item','just-stamped');cell.querySelector('span').textContent='';
+    cell.classList.remove('stamped','bomb-item','die-item','hundred-item','rock-item','seed-item','king-item','just-stamped');cell.querySelector('span').textContent='';
   }
   if(!reduced){
     const ring=document.createElement('i');ring.className='bomb-wave';ring.style.left=`${r.left+r.width/2}px`;ring.style.top=`${r.top+r.height/2}px`;ring.style.width=`${r.width*2.6}px`;ring.style.height=`${r.height*2.6}px`;$('effects').append(ring);
@@ -525,6 +525,18 @@ async function dropAnvil(id,cell){
   cell.classList.remove('anvil-pending');ghost.remove();
   await animate(cell.querySelector('span'),[{transform:'scale(1.25,.6)'},{transform:'scale(.95,1.1)',offset:.6},{transform:'scale(1)'}],{duration:180});
 }
+async function animateKings(result){
+  for(const move of result.kingMoves){
+    render(move.before);renderScore(state.score-result.points);
+    const from=$(`cell-${move.from}`),to=$(`cell-${move.to}`),a=from.getBoundingClientRect(),b=to.getBoundingClientRect();
+    const ghost=ball(move.id),size=a.width*.9;ghost.classList.add('drag-ghost','king-moving');ghost.style.setProperty('--size',`${size}px`);ghost.setAttribute('aria-hidden','true');document.body.append(ghost);
+    from.classList.remove('stamped','king-item');from.querySelector('span').textContent='';to.classList.add('king-destination');
+    await animate(ghost,[{transform:`translate(${a.left}px,${a.top}px)`},{transform:`translate(${(a.left+b.left)/2}px,${Math.min(a.top,b.top)-18}px) rotate(-5deg)`,offset:.5},{transform:`translate(${b.left}px,${b.top}px)`}],{duration:620,easing:'ease-in-out'});
+    ghost.remove();to.classList.remove('king-destination');render(move.after);renderScore(state.score-result.points);navigator.vibrate?.(10);
+    await animate(to.querySelector('span'),[{transform:'scale(1.1,.85)'},{transform:'scale(1)'}],{duration:150});
+    for(const copy of move.copies)await animateCopy(copy);
+  }
+}
 async function play(n,b,ghost,tile=state.destinations[n]){
   if(busy){ghost?.remove();return;}lock();const result=choose(state,n,tile);if(!result){ghost?.remove();unlock();return;}
   saveRun();renderCalls(result.callsBeforeBonuses);$('bag-count').textContent=state.bag.size;
@@ -546,7 +558,8 @@ async function play(n,b,ghost,tile=state.destinations[n]){
   if(result.stampApplied){const ink=cell.querySelector('.board-ink');await animate(ink,[{transform:'scale(2) rotate(-12deg)',opacity:0},{transform:'scale(.9)',opacity:1,offset:.6},{transform:'scale(1)',opacity:.65}],{duration:400});}
   if(result.valueChanges.length)await animateValueChanges(result);
   $('announcer').textContent=`${pieceLabel(n)} played.${result.roll!==null?` Rolled ${result.roll}.`:''} ${result.playCost===0?'No play used.':'One play used.'}`;
-  if(result.destroyed.length){await explodeBomb(result);render(result.scoringBoard||state);renderScore(state.score-result.points);}
+  if(result.destroyed.length){await explodeBomb(result);render(result.movementBoard||result.scoringBoard||state);renderScore(state.score-result.points);}
+  if(result.kingMoves?.length)await animateKings(result);
   if(result.activations.length)await activateSpaces(result);
   await wait(120);render();refreshBag();
   if(state.status!=='playing'){showResult();return;}await nextDraw();
@@ -665,6 +678,7 @@ for(const dialog of document.querySelectorAll('#bag-dialog,#stage-dialog,#help-d
 
 
 const shopCopy={
+  king:'Worth 10 · wanders after each play',
   square:'Score a filled 2×2 block',corners:'Score all four board corners',
   question:'When scored: swap with bag item',
   plus10:'+10 tile points · permanent',plus50:'+50 tile points · permanent',plus100:'+100 tile points · permanent',
@@ -695,7 +709,7 @@ function renderShop(){
     const owned=isCard?state.jokers.filter(id=>cardType(id)===type).length:state.collection.filter(id=>state.items[id]===type).length;
     const action=sold?'ADDED':isCard&&full?'5 / 5 CARDS':'FREE · CHOOSE';
     card.disabled=busy||sold||(isCard&&full);card.setAttribute('aria-label',`${item.name}. ${item.text} ${action}. ${owned} owned.`);
-    const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='question'?'?':type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'COPY':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;
+    const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='king'?'<i class=king-art aria-hidden=true>10</i>':type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='question'?'?':type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'COPY':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;
     card.innerHTML=`<strong class="product-name">${item.name.toUpperCase()}</strong>${art}<span class="product-description">${shopCopy[type]||item.short||item.text}</span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span><b class="product-action">${action}</b>`;
     card.onclick=async()=>{
       if(busy||!claimReward(state,type))return;

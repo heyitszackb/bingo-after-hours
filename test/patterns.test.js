@@ -47,13 +47,13 @@ test('overlapping row and column score together; all stamps including the diagon
 test('removing every card gives no points, clears no stamps, and still spends calls',()=>{
  const s=newStage(10);[...s.jokers].forEach(id=>removeJoker(s,id));
  for(let i=1;i<=5;i++)assert.equal(place(s,i,i).points,0);
- assert.equal(s.calls,10);assert.equal(s.stamps.size,5);assert.deepEqual(s.jokers,[]);
+ assert.equal(s.calls,15);assert.equal(s.stamps.size,5);assert.deepEqual(s.jokers,[]);
 });
 
 test('completed lines pay once, while retained stamps can score in another line; stages reset both',()=>{
  const s=newStage(10,5,{});
  for(let n=1;n<=5;n++)place(s,n,n);
- assert.equal(s.score,15);assert.equal(s.money,5);assert.equal(s.calls,10);
+ assert.equal(s.score,15);assert.equal(s.money,5);assert.equal(s.calls,15);
  assert.deepEqual(s.scoredLines,['row-1']);
  const nextChoice=place(s,6,6);assert.equal(nextChoice.points,0);
  place(s,7,11);place(s,8,16);const column=place(s,9,21);

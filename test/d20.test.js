@@ -12,12 +12,12 @@ test('die is a free independent item, including when reopening a saved Bomb-only
 test('all 20 outcomes occur evenly, only after a valid placement',()=>{
  for(let i=0;i<200;i++){const {s,id}=fixture();offer(s,id,13);let calls=0;const random=()=>{calls++;return i/200;};
  assert.equal(choose(s,id,12,random),null);assert.equal(calls,0);assert.equal(ballValue(s,id),null);
- const r=choose(s,id,13,random);assert.equal(r.roll,1+Math.floor(i/10));assert.equal(s.stampValues[13],r.roll);assert.equal(calls,1);assert.equal(s.calls,14);assert.ok(!s.bag.has(id));
+ const r=choose(s,id,13,random);assert.equal(r.roll,1+Math.floor(i/10));assert.equal(s.stampValues[13],r.roll);assert.equal(calls,1);assert.equal(s.calls,19);assert.ok(!s.bag.has(id));
  assert.equal(choose(s,id,13,random),null);assert.equal(calls,1);
  }
 });
 test('passing an unknown die preserves it without setting any value',()=>{
- const {s,id}=fixture();offer(s,id,13);redraw(s,()=>.5);assert.equal(s.calls,15);assert.equal(s.passes,9);assert.ok(s.bag.has(id));assert.equal(ballValue(s,id),null);assert.deepEqual(s.stampValues,{});
+ const {s,id}=fixture();offer(s,id,13);redraw(s,()=>.5);assert.equal(s.calls,20);assert.equal(s.passes,9);assert.ok(s.bag.has(id));assert.equal(ballValue(s,id),null);assert.deepEqual(s.stampValues,{});
 });
 test('roll resolves before a completed line scores and the same value scores in later lines',()=>{
  const {s,id}=fixture();[1,2,3,4].forEach(n=>stamp(s,n,n));offer(s,id,5);const first=choose(s,id,5,()=>.9999);

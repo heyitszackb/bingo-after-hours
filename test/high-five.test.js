@@ -7,7 +7,7 @@ const stamp=(s,n,t)=>{s.stamps.add(t);s.stampBalls[t]=n;s.stampValues[t]=n;s.bag
 const play=(s,n,t,random)=>{s.offer=[n];s.destinations={[n]:t};return choose(s,n,t,random);};
 test('High Five scores itself and occupied orthogonal neighbors, without diagonals or recursive triggers',()=>{
  const s=make();[[2,8],[3,14],[4,18],[5,12],[20,7]].forEach(([n,t])=>stamp(s,n,t));const r=play(s,1,13);
- assert.deepEqual(r.scoringGroups,[{trigger:joker,retriggers:[],type:'cross',tiles:[13,8,14,18,12]}]);assert.equal(r.points,15);assert.equal(r.activations.length,5);assert.equal(s.calls,14);assert.equal(s.stamps.size,6);assert.deepEqual(s.scoredLines,[]);
+ assert.deepEqual(r.scoringGroups,[{trigger:joker,retriggers:[],type:'cross',tiles:[13,8,14,18,12]}]);assert.equal(r.points,15);assert.equal(r.activations.length,5);assert.equal(s.calls,19);assert.equal(s.stamps.size,6);assert.deepEqual(s.scoredLines,[]);
  assert.ok(r.activations.every(a=>a.trigger===joker&&a.contributions[0].joker==='face-value'));
 });
 test('all low values qualify; six through twenty-five do not, and edge neighbors never wrap',()=>{
