@@ -19,7 +19,7 @@ function renderScore(value=state.score){
 }
 function render(boardState=state){
   renderJokers();$('bag').disabled=busy;
-  const freePlay=state.items[state.offer[0]]==='rock';$('play-ball').querySelector('span').textContent=freePlay?'↑ FREE PLAY':'↑ PLAY';$('play-ball').classList.toggle('free-play',freePlay);
+  const freePlay=state.items[state.offer[0]]==='rock';$('play-ball').querySelector('span').textContent=freePlay?'↑ PLAY · 0 PLAYS':'↑ PLAY';$('play-ball').classList.toggle('free-play',freePlay);
   $('redraw').classList.toggle('exhausted',state.passes===0);$('play-ball').disabled=busy||!!drag||state.status!=='playing'||!state.offer.length;$('play-ball').setAttribute('aria-label',`Play ball ${pieceLabel(state.offer[0])} on the highlighted space. ${state.calls} plays remaining.`);
   $('patterns-button').disabled=busy||payingOut;$('score-patterns').disabled=busy||payingOut;
   $('score-patterns').setAttribute('aria-label',`${state.score} of ${state.target} points. View scoring patterns and run counts`);
@@ -656,7 +656,7 @@ const shopCopy={
   bomb:'Destroy itself + 8 neighboring pieces',
   d20:'Roll 1–20 when placed',
   hundred:'Worth 50 · crush 4 neighbors by 1',
-  rock:'Free play · scores 0',
+  rock:'Uses 0 plays · scores 0',
   copier:'On score: copy item into bag',
   x2:'×2 tile points · permanent',
   x3:'×3 tile points · permanent'
