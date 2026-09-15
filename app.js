@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=0a19a278a849';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=c709a7bb6514';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=3d2bb3809e68';
+import {removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=8c195f64af8a';
 function newStage(...args){const round=legacyNewStage(...args);round.plainRules=true;round.jokers=[];return round;}
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
@@ -43,7 +43,7 @@ function render(boardState=state){
     c.setAttribute('aria-label',`Row ${Math.floor((tile-1)/5)+1}, column ${(tile-1)%5+1}${boardState.stamps.has(tile)?`, stamped ${boardState.stampValues[tile]??pieceLabel(number)}`:offered?', available for any drawn ball':', empty'}. ${multiplier>1?`Tile multiplier ×${multiplier}. `:''}Complete a row, column, or diagonal to score item values and tile stamps.`);
   }}
 
-const itemClass=n=>state.items[n]==='doubleball'?' doubleball-item':state.items[n]==='trash'?' stamp-item trash-item':state.items[n]==='statue'?' statue-item':state.items[n]==='king'?' king-item':state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','trash','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';
+const itemClass=n=>state.items[n]==='earth'?' earth-item':state.items[n]==='doubleball'?' doubleball-item':state.items[n]==='trash'?' stamp-item trash-item':state.items[n]==='statue'?' statue-item':state.items[n]==='king'?' king-item':state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','trash','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';
 const pieceLabel=n=>state.items[n]?`${ITEM_TYPES[state.items[n]].name}${ballValue(state,n)!==null?` (${ballValue(state,n)})`:''}`:ballValue(state,n)??'';
 const pieceFace=n=>state.items[n]==='doubleball'?'×2':state.items[n]==='trash'?'':state.items[n]==='question'?'?':state.items[n]?.startsWith('plus')?`+${state.items[n].slice(4)}`:state.items[n]==='copier'?'COPY':['x2','x3'].includes(state.items[n])?`×${state.items[n].slice(1)}`:isDie(state,n)?'?':ballValue(state,n)??'';
 function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)}`;b.classList.toggle('large-value',String(pieceFace(n)).length>2);b.dataset.number=n;b.innerHTML=`<span class="face">${pieceFace(n)}</span>`;b.setAttribute('aria-label',`Inspect ${pieceLabel(n)}`);return b;}
@@ -73,19 +73,18 @@ function positionTooltip(){
   tip.style.setProperty('--pointer-x',`${Math.max(15,Math.min(mainW-15,r.left+r.width/2-x-mainX))}px`);
   tip.classList.toggle('below',below);
 }
-function showTooltip(n,anchor,space=false){
+function showTooltip(n,anchor,space=false,catalogType=null){
   if(tooltipAnchor===anchor){hideTooltip();return;}
   hideTooltip();
   const tip=$('inspect-tooltip');
   (anchor.closest('dialog')||document.body).append(tip);
-  const upgrade=state.upgrades[n],item=ITEM_TYPES[state.items?.[n]],tile=space?Number(anchor.id.replace('cell-','')):null;
+  const upgrade=state.upgrades[n],item=ITEM_TYPES[catalogType||state.items?.[n]],tile=space?Number(anchor.id.replace('cell-','')):null;
   const occupied=!space||state.stamps.has(tile);
-  const value=space&&occupied?state.stampValues[tile]:ballValue(state,n);
+  const value=catalogType?item.startingValue:space&&occupied?state.stampValues[tile]:ballValue(state,n);
   $('tooltip-number').textContent=occupied?(item?.name||'Ball'):'Nothing here';
   $('tooltip-value').hidden=!occupied;
   $('tooltip-value').innerHTML=item?.startingValue===null?'<span class=stamp-tag>STAMP</span>':`${value??(item?.startingValue==='?'?'?':0)} ${star}`;
-  $('tooltip-effect').textContent=item?[item.text,item.details].filter(Boolean).join(' '):upgrade?BALL_UPGRADES[upgrade].text:'';
-  const modifier=state.valueModifiers?.[n]||0;if(modifier)$('tooltip-effect').textContent+=`${$('tooltip-effect').textContent?' ':''}Change: ${signed(modifier)} ★.${isDie(state,n)?` Future rolls: ${1+modifier}–${20+modifier}.`:''}`;
+  $('tooltip-effect').textContent=item?[item.text,item.details].filter(Boolean).join('. '):upgrade?BALL_UPGRADES[upgrade].text:'';
   const stamps=space?tileStampList(state,tile):[];
   $('tooltip-stamps').replaceChildren(...[...new Set(stamps)].map(type=>{
     const count=stamps.filter(stamp=>stamp===type).length;
@@ -140,7 +139,7 @@ function debugRows(){
     const value=document.createElement('input');value.type='number';value.step='1';value.inputMode='text';value.value=row.value??'';value.disabled=['doubleball','question','bomb','rock','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type);value.setAttribute('aria-label',`Piece ${index+1} ${row.type==='d20'?'roll modifier':'value'}`);
     const count=document.createElement('input');count.type='number';count.step='1';count.min='1';count.max='500';count.inputMode='numeric';count.value=row.count;count.setAttribute('aria-label',`Piece ${index+1} copies`);
     const remove=document.createElement('button');remove.textContent='×';remove.setAttribute('aria-label',`Remove piece ${index+1}`);
-    select.onchange=()=>{row.type=select.value;row.value=['doubleball','question','bomb','rock','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type)?null:row.type==='d20'?0:row.type==='hundred'?50:['king','statue'].includes(row.type)?10:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
+    select.onchange=()=>{row.type=select.value;row.value=['doubleball','question','bomb','rock','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type)?null:['d20','earth'].includes(row.type)?0:row.type==='hundred'?50:['king','statue'].includes(row.type)?10:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
     value.oninput=()=>{row.value=value.value===''?null:value.valueAsNumber;validateDebugDraft();};count.oninput=()=>{row.count=count.value===''?null:count.valueAsNumber;validateDebugDraft();};
     remove.onclick=()=>{debugDraft.splice(index,1);debugRows();const next=$('debug-rows').children[Math.min(index,debugDraft.length-1)];(next?.querySelector('select')||$('debug-add')).focus();};
     line.append(select,value,count,remove);list.append(line);
@@ -434,6 +433,15 @@ async function explodeBomb(result){
 // Shared number-change language: source pulse → travel → old value out → new
 // value snaps in. This phase always finishes before any scoring card activates.
 async function animateValueChanges(result){
+  if(result.valueChanges.every(change=>state.items[change.id]==='seed')){
+    await Promise.all(result.valueChanges.map(async change=>{
+      const cell=$(`cell-${change.tile}`),face=cell.querySelector('span');
+      face.textContent=change.after;cell.classList.toggle('large-value',String(change.after).length>2);
+      await animate(cell,[{transform:'rotate(0) translateX(0)'},{transform:'rotate(-5deg) translateX(3px)',offset:.35},{transform:'rotate(2deg) translateX(-1px)',offset:.7},{transform:'rotate(0) translateX(0)'}],{duration:360,easing:'ease-out'});
+    }));
+    return;
+  }
+
   const board=$('board'),source=$(`cell-${result.tile}`),changes=result.valueChanges;
   board.classList.add('value-effects');source.classList.add('effect-source');
   const targets=changes.map(change=>$(`cell-${change.tile}`));
@@ -491,6 +499,25 @@ async function dropAnvil(id,cell){
   cell.classList.remove('anvil-pending');ghost.remove();
   await animate(cell.querySelector('span'),[{transform:'scale(1.25,.6)'},{transform:'scale(.95,1.1)',offset:.6},{transform:'scale(1)'}],{duration:180});
 }
+async function animateGravity(phase){
+  render(phase.before);renderScore(phase.scoreBefore);
+  const ghosts=phase.moves.map(move=>{
+    const source=$(`cell-${move.from}`),a=source.getBoundingClientRect(),b=$(`cell-${move.to}`).getBoundingClientRect();
+    const ghost=ball(move.id),size=a.width*.88;
+    ghost.classList.add('drag-ghost','gravity-item');ghost.style.setProperty('--size',`${size}px`);ghost.setAttribute('aria-hidden','true');
+    if(move.value!==null)ghost.querySelector('.face').textContent=move.value;
+    const x=a.left+(a.width-size)/2,y=a.top+(a.height-size)/2,end=b.top+(b.height-size)/2;
+    ghost.style.transform=`translate(${x}px,${y}px)`;document.body.append(ghost);
+    source.classList.remove('stamped');source.querySelector('span').textContent='';
+    return {ghost,x,y,end,move};
+  });
+  try{
+    await Promise.all(ghosts.map(async({ghost,x,y,end,move})=>{
+      await animate(ghost,[{transform:`translate(${x}px,${y}px)`},{transform:`translate(${x}px,${end}px) scale(1.08,.88)`,offset:.8},{transform:`translate(${x}px,${end-3}px) scale(.97,1.03)`,offset:.92},{transform:`translate(${x}px,${end}px)`}],{duration:650+(move.to-move.from)*10,easing:'cubic-bezier(.4,0,.8,1)'});
+    }));
+  }finally{ghosts.forEach(({ghost})=>ghost.remove());render(phase.after);renderScore(phase.scoreBefore);}
+  $('announcer').textContent='Earth: all items settled downward.';
+}
 async function animateBlockedKing(phase){
   render(phase.board);renderScore(phase.scoreBefore);
   const cell=$(`cell-${phase.tile}`),r=cell.getBoundingClientRect(),cue=document.createElement('div');
@@ -545,7 +572,8 @@ async function play(n,b,ghost,tile=state.destinations[n]){
   $('announcer').textContent=`${pieceLabel(n)} played.${result.roll!==null?` Rolled ${result.roll}.`:''} ${result.playCost===0?'No play used.':'One play used.'}`;
   if(result.destroyed.length){await explodeBomb(result);render(result.scoringBoard||state);renderScore(state.score-result.points);}
   for(const phase of result.timeline){
-    if(phase.kind==='blocked')await animateBlockedKing(phase);
+    if(phase.kind==='gravity')await animateGravity(phase);
+    else if(phase.kind==='blocked')await animateBlockedKing(phase);
     else if(phase.kind==='move')await animateKings({kingMoves:[phase.move],scoreBefore:phase.scoreBefore});
     else{render(phase.scoringBoard);renderScore(phase.scoreBefore);await activateSpaces(phase);}
   }
@@ -612,7 +640,7 @@ async function passTurn(ghost=null){
 document.addEventListener('keydown',e=>{if(inMenu||shopping||busy||document.querySelector('dialog[open]')||e.repeat||e.altKey||e.ctrlKey||e.metaKey)return;if(e.key==='ArrowDown'){e.preventDefault();passTurn();}else if(e.key==='ArrowUp'){e.preventDefault();playOfferedBall();}});
 $('bag').onclick=()=>{hideTooltip();refreshBag();$('bag-dialog').showModal();};$('stages').onclick=showStages;
 $('patterns-button').onclick=showPatterns;$('score-patterns').onclick=showPatterns;
-for(const dialog of document.querySelectorAll('#bag-dialog,#stage-dialog,#patterns-dialog')){dialog.addEventListener('close',hideTooltip);dialog.querySelector('.close').onclick=()=>dialog.close();dialog.addEventListener('pointerdown',e=>{if(e.target!==dialog)return;const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();});}
+for(const dialog of document.querySelectorAll('#bag-dialog,#stage-dialog,#patterns-dialog,#catalog-dialog')){dialog.addEventListener('close',hideTooltip);dialog.querySelector('.close').onclick=()=>dialog.close();dialog.addEventListener('pointerdown',e=>{if(e.target!==dialog)return;const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();});}
 
 
 function pointCopy(text){
@@ -622,6 +650,20 @@ function pointCopy(text){
     .replace(/(When played:|When scored:|Each play:)/g,'<b class="effect-trigger">$1</b>')
     .replace(/★/g,star);
 }
+function itemArt(type){return type==='statue'?'<i class=statue-art aria-hidden=true>10</i>':type==='king'?'<i class=king-art aria-hidden=true>10</i>':type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='doubleball'?'×2':type==='question'?'?':type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'COPY':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;}
+function showCatalog(){
+  if(busy)return;hideTooltip();
+  $('catalog-grid').replaceChildren(...Object.entries(ITEM_TYPES).map(([type,item])=>{
+    const owned=state.collection.filter(id=>state.items[id]===type).length,button=document.createElement('button');
+    button.className=`catalog-item${owned?' owned':''}`;button.dataset.type=type;
+    button.setAttribute('aria-label',`${item.name}. ${owned?'In your bag':'Not in your bag'}. Inspect effect.`);
+    button.innerHTML=`${itemArt(type)}<strong>${pointCopy(item.name)}</strong>${owned?`<small>×${owned}</small>`:''}`;
+    button.onclick=()=>showTooltip(null,button,false,type);return button;
+  }));
+  $('catalog-dialog').showModal();
+}
+$('see-all').onclick=showCatalog;
+$('catalog-dialog').addEventListener('close',hideTooltip);
 function renderShop(){
   hideTooltip();
   const shelf=$('shop-shelf'),focused=document.activeElement?.id;
@@ -630,14 +672,14 @@ function renderShop(){
     const item=ITEM_TYPES[type],card=document.createElement('button');card.id=`shop-${type}`;card.className='shop-product';
     const owned=state.collection.filter(id=>state.items[id]===type).length;
     const action='CHOOSE';card.disabled=busy;card.setAttribute('aria-label',`${item.name}. ${item.startingValue===null?'Stamp.':`Starting stars: ${item.startingValue}.`} ${item.text} ${owned} owned.`);
-    const art=type==='statue'?'<i class=statue-art aria-hidden=true>10</i>':type==='king'?'<i class=king-art aria-hidden=true>10</i>':type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='doubleball'?'×2':type==='question'?'?':type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'COPY':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;
+    const art=itemArt(type);
     const badge=item.startingValue===null?'<span class="stamp-tag shop-stamp-tag" title="One-use item. Permanently marks a tile.">STAMP</span>':`<span class="starting-points" aria-label="Starting stars: ${item.startingValue}">${item.startingValue} ${star}</span>`;
     card.innerHTML=`<span class="product-art-well">${art}</span><span class="product-body"><span class="product-top"><strong class="product-name">${pointCopy(item.name.toUpperCase())}</strong>${badge}</span><span class="product-description">${pointCopy(item.text)}</span></span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span>`;
     card.onclick=async()=>{
       if(busy)return;
       const id=state.nextItemId;
       if(!claimReward(state,type))return;
-      busy=true;saveRun();shelf.querySelectorAll('button').forEach(b=>b.disabled=true);$('shop-menu').disabled=true;$('bag').disabled=true;
+      busy=true;saveRun();shelf.querySelectorAll('button').forEach(b=>b.disabled=true);$('shop-menu').disabled=true;$('see-all').disabled=true;$('bag').disabled=true;
       $('announcer').textContent=`${item.name} chosen. Next round.`;
       await collectShopItem(card,id);
       await finishShop();
@@ -645,7 +687,7 @@ function renderShop(){
     $('shop-tokens').append(card);
   }
   if(focused?.startsWith('shop-')&&$(focused)&&!$(focused).disabled)$(focused).focus({preventScroll:true});
-  $('shop-menu').disabled=busy;
+  $('shop-menu').disabled=busy;$('see-all').disabled=busy;
 }
 const playSurface=()=>[$('score-meter'),document.querySelector('.board-frame'),document.querySelector('.draw-area')];
 async function slideSurface(elements,entering,direction){

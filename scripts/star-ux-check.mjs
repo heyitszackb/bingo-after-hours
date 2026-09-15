@@ -12,7 +12,7 @@ assert.ok(await p.evaluate(()=>document.documentElement.scrollHeight<=innerHeigh
 await p.screenshot({path:'/tmp/star-game.png'});
 await p.locator('#bag').click();assert.ok(!(await p.locator('#bag-grid').innerText()).includes('Anvil'));
 const seed=s.collection.find(id=>s.items[id]==='seed');await p.locator(`#bag-grid [data-number="${seed}"]`).click();
-assert.equal(await p.locator('#tooltip-value .star').count(),1);assert.match(await p.locator('#tooltip-effect').innerText(),/Increases by 1/);
+assert.equal(await p.locator('#tooltip-value .star').count(),1);assert.match(await p.locator('#tooltip-effect').innerText(),/increases by 1/);
 await p.screenshot({path:'/tmp/star-tooltip.png'});
 s.status='passed';s.bonusPaid=true;s.score=30;s.offer=[];s.destinations={};s.shopOffer={rewardVersion:2,items:['plus10','bomb','x3'],claimed:false,cards:[],balls:[null,null]};
 await store(s);await p.locator('#shop-plus10').waitFor();assert.equal(await p.locator('.shop-stamp-tag').count(),2);assert.equal(await p.locator('#shop-bomb .destroy-text').count(),1);assert.equal(await p.locator('#shop-plus10 .product-description .star').count(),1);assert.ok(!/\b(points?|pts)\b/i.test(await p.locator('body').innerText()));

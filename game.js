@@ -35,9 +35,10 @@ export const ITEM_TYPES={
   copier:{name:'Copier',text:'When scored: copy this item into the bag',startingValue:null,price:0},
   x2:{name:'×2',text:'x2 to this tile’s score',startingValue:null,price:0},
   x3:{name:'×3',text:'x3 to this tile’s score',startingValue:null,price:0},
-  seed:{name:'Seed',text:'Increases by 1 ★ each turn',startingValue:1,price:0},
+  seed:{name:'Seed',text:'When played: increases by 1 ★ each turn',startingValue:1,price:0},
   bomb:{name:'Bomb',text:'Permanently destroy all adjacent items',details:'Also destroys itself. Tile stamps stay.',startingValue:0,price:0},
   d20:{name:'20-Sided Die',text:'When played: random value between 1–20 ★',startingValue:'?',price:0},
+  earth:{name:'Earth',text:'When played: all items respond to gravity',details:'Stamps stay put. Score before and after the fall.',startingValue:0,price:0},
   rock:{name:'Rock',text:'Free to play',startingValue:0,price:0}
 };
 // Retire Anvils from serialized runs without losing the rest of the run or tile ink.
@@ -84,7 +85,7 @@ export const normalizeJokers=jokers=>{
     return CARD_TYPES[cardType(id)]&&cardDetails(id)&&purchased++<5;
   });
 };
-export const ballValue=(state,number)=>number==null||state.items?.[number]==='doubleball'||state.items?.[number]==='question'||isBomb(state,number)||isDie(state,number)||isRock(state,number)||isStamp(state,number)?null:((state.ballValues?.[number]??(['king','statue'].includes(state.items?.[number])?10:state.items?.[number]==='hundred'?50:state.items?.[number]==='seed'?1:number))+(state.valueModifiers?.[number]||0));
+export const ballValue=(state,number)=>number==null||state.items?.[number]==='doubleball'||state.items?.[number]==='question'||isBomb(state,number)||isDie(state,number)||isRock(state,number)||isStamp(state,number)?null:((state.ballValues?.[number]??(['king','statue'].includes(state.items?.[number])?10:state.items?.[number]==='hundred'?50:state.items?.[number]==='seed'?1:state.items?.[number]==='earth'?0:number))+(state.valueModifiers?.[number]||0));
 const boardSnapshot=state=>({stamps:new Set(state.stamps),stampBalls:{...state.stampBalls},stampValues:{...state.stampValues}});
 export const orthogonalNeighbors=tile=>[tile-5,tile+1,tile+5,tile-1].filter(t=>t>=1&&t<=25&&Math.abs(Math.floor((t-1)/5)-Math.floor((tile-1)/5))+Math.abs((t-1)%5-(tile-1)%5)===1);
 // Effects produce a common before/after event for the UI, independent of scoring.
@@ -182,7 +183,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   }
 
   const callsBeforeBonuses=state.calls,kingMoves=[],timeline=[];
-  const kings=[...state.stamps].sort((a,b)=>a-b).filter(t=>state.items[state.stampBalls[t]]==='king'&&state.stampBalls[t]!==(swap?.to??number)).map(from=>({from,id:state.stampBalls[from]}));
+
   function evaluateAt(changedTiles,placement=false){
     const scoreBefore=state.score;
   const scoredPatterns=[...completedPatterns(state.stamps),...EXTRA_PATTERNS.filter(p=>p.tiles.every(t=>state.stamps.has(t)))].filter(p=>!state.scoredLines.includes(p.id)&&p.tiles.some(t=>changedTiles.has(t))&&(p.type==='square'||p.type==='corners'?!state.plainRules&&state.jokers.some(id=>cardType(id)===p.type):(state.plainRules||state.jokers.includes('bingo'))));
@@ -209,6 +210,21 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   }
   // Score placement first, then each King's destination before the next King moves.
   const initial=evaluateAt(new Set([tile]),true);
+  if(state.items[number]==='earth'){
+    const before=boardSnapshot(state),moves=[];
+    state.stamps=new Set();state.stampBalls={};state.stampValues={};
+    for(let col=1;col<=5;col++){
+      let to=col+20;
+      for(let from=col+20;from>=col;from-=5)if(before.stamps.has(from)){
+        const id=before.stampBalls[from],value=before.stampValues[from];
+        state.stamps.add(to);state.stampBalls[to]=id;state.stampValues[to]=value;
+        if(from!==to)moves.push({id,from,to,value});to-=5;
+      }
+    }
+    timeline.push({kind:'gravity',before,after:boardSnapshot(state),moves,scoreBefore:state.score});
+    evaluateAt(new Set(moves.map(move=>move.to)));
+  }
+  const kings=[...state.stamps].sort((a,b)=>a-b).filter(t=>state.items[state.stampBalls[t]]==='king'&&state.stampBalls[t]!==(swap?.to??number)).map(from=>({from,id:state.stampBalls[from]}));
   const movementBoard=boardSnapshot(state);
   for(const {from,id} of kings){
     if(state.stampBalls[from]!==id)continue; // A scoring Trash stamp may have destroyed it.
