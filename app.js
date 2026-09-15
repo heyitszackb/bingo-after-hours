@@ -1,8 +1,8 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=08500458a1e1';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=ee76b0e858a0';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=0536525620a1';
+import {defaultBag,newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=8a867063cf85';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-let state=newStage(),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
+let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 // One tempo for animation and sequencing keeps effects and input locks aligned.
 const motionScale=.4;
 document.documentElement.style.setProperty('--motion-scale',motionScale);
@@ -655,7 +655,7 @@ async function showResult(){
   await wait(250);
   finishResult();
 }
-$('continue').onclick=async()=>{if(payingOut)return;const next=state.status==='passed'&&state.stage<10?state.stage+1:1;state=newStage(next,next===1?5:state.money,next===1?{}:state.upgrades,next===1?{}:state.patternCounts,next===1?undefined:state.jokers,next===1?null:state);hasRun=true;saveRun();resetResultUI();await nextDraw();};
+$('continue').onclick=async()=>{if(payingOut)return;const next=state.status==='passed'&&state.stage<10?state.stage+1:1;state=newStage(next,next===1?5:state.money,next===1?{}:state.upgrades,next===1?{}:state.patternCounts,next===1?undefined:state.jokers,next===1?defaultBag():state);hasRun=true;saveRun();resetResultUI();await nextDraw();};
 function playOfferedBall(){
   if(busy||drag||jokerDrag||state.status!=='playing'||!state.offer.length)return;
   const n=state.offer[0],b=$('balls').querySelector(`[data-number="${n}"]`);if(!b)return;
@@ -820,7 +820,7 @@ function showMenu(){
 async function enterGame(fresh=false){
   if(!inMenu&&!fresh)return;
   document.querySelectorAll('dialog[open]').forEach(d=>d.close());
-  if(fresh||!hasRun){state=newStage();hasRun=true;}
+  if(fresh||!hasRun){state=newStage(1,5,{}, {},undefined,defaultBag());hasRun=true;}
   shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;
   inMenu=false;resetResultUI();$('title-screen').hidden=true;$('game-screen').hidden=false;
   render();
