@@ -62,12 +62,15 @@ function positionTooltip(){
   const viewport=window.visualViewport;
   const left=viewport?.offsetLeft||0,top=viewport?.offsetTop||0;
   const width=viewport?.width||innerWidth,height=viewport?.height||innerHeight;
+  tip.classList.toggle('stamps-left',r.left+r.width/2>left+width/2);
+  tip.style.maxHeight=`${height-20}px`;
   const w=tip.offsetWidth,h=tip.offsetHeight,gap=13,pad=10;
   const x=Math.max(left+pad,Math.min(r.left+r.width/2-w/2,left+width-w-pad));
   const below=r.top-h-gap<top+pad;
   const y=below?Math.min(r.bottom+gap,top+height-h-pad):r.top-h-gap;
   tip.style.left=`${x}px`;tip.style.top=`${Math.max(top+pad,y)}px`;
-  tip.style.setProperty('--pointer-x',`${Math.max(15,Math.min(w-15,r.left+r.width/2-x))}px`);
+  const main=tip.querySelector('.tooltip-main'),mainX=main.offsetLeft,mainW=main.offsetWidth;
+  tip.style.setProperty('--pointer-x',`${Math.max(15,Math.min(mainW-15,r.left+r.width/2-x-mainX))}px`);
   tip.classList.toggle('below',below);
 }
 function showTooltip(n,anchor,space=false){
@@ -78,25 +81,23 @@ function showTooltip(n,anchor,space=false){
   const upgrade=state.upgrades[n],item=ITEM_TYPES[state.items?.[n]],tile=space?Number(anchor.id.replace('cell-','')):null;
   const occupied=!space||state.stamps.has(tile);
   const value=space&&occupied?state.stampValues[tile]:ballValue(state,n);
-  $('tooltip-number').textContent=occupied?(item?.name||'Ball'):'Empty';
+  $('tooltip-number').textContent=occupied?(item?.name||'Ball'):'Nothing here';
   $('tooltip-value').hidden=!occupied;
   $('tooltip-value').innerHTML=item?.startingValue===null?'<span class=stamp-tag>STAMP</span>':`${value??(item?.startingValue==='?'?'?':0)} ${trophy}`;
-  $('tooltip-effect').textContent=item?[item.text,item.details].filter(Boolean).join(' '):upgrade?BALL_UPGRADES[upgrade].text:space?'Nothing special':'';
+  $('tooltip-effect').textContent=item?[item.text,item.details].filter(Boolean).join(' '):upgrade?BALL_UPGRADES[upgrade].text:'';
   const modifier=state.valueModifiers?.[n]||0;if(modifier)$('tooltip-effect').textContent+=`${$('tooltip-effect').textContent?' ':''}Change: ${signed(modifier)} 🏆.${isDie(state,n)?` Future rolls: ${1+modifier}–${20+modifier}.`:''}`;
-  if(space){
-    const tile=Number(anchor.id.replace('cell-','')),list=tileStampList(state,tile),mult=state.tileMultipliers?.[tile]||1;
-    if(list.length)$('tooltip-effect').textContent=$('tooltip-effect').textContent.replace('Nothing special','').trim();
-    const details=[state.stamps.has(tile)?`ITEM: ${item?.name||'Ball'}${state.stampValues[tile]!=null?` · ${state.stampValues[tile]} 🏆`:''}
-${$('tooltip-effect').textContent}`:'ITEM: Empty'];
-    details.push(`STAMPS · ${list.length}/4`);
-    list.forEach(type=>details.push(ITEM_TYPES[type].text));
-    if(!list.length)details.push('None');
-    if(mult>1)details.push(`Combined multiplier: ×${mult}`);
-    $('tooltip-effect').textContent=details.join('\n');
-  }
+  const stamps=space?tileStampList(state,tile):[];
+  $('tooltip-stamps').replaceChildren(...[...new Set(stamps)].map(type=>{
+    const count=stamps.filter(stamp=>stamp===type).length;
+    const effect=document.createElement('div');effect.className='tooltip-stamp-effect';
+    effect.innerHTML=`<span class="stamp-effect-mark" aria-label="${count} ${ITEM_TYPES[type].name} stamp${count>1?'s':''}"><span class="stamp-symbol" aria-hidden="true"></span>${count>1?`<small class="stamp-repeat">×${count}</small>`:''}</span><div>${pointCopy(ITEM_TYPES[type].text)}</div>`;
+    return effect;
+  }));
+  $('tooltip-stamps').hidden=stamps.length===0;
+  tip.classList.toggle('has-stamps',stamps.length>0);
 
   $('tooltip-effect').innerHTML=pointCopy($('tooltip-effect').textContent);
-  $('tooltip-effect').hidden=!space&&!upgrade&&!item&&!modifier;
+  $('tooltip-effect').hidden=!$('tooltip-effect').textContent.trim();
   tip.classList.toggle('space-tooltip',space);
   tooltipAnchor=anchor;
   anchor.setAttribute('aria-describedby','inspect-tooltip');
