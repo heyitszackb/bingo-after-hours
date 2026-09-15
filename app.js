@@ -647,12 +647,23 @@ function renderShop(){
   if(focused?.startsWith('shop-')&&$(focused)&&!$(focused).disabled)$(focused).focus({preventScroll:true});
   $('shop-menu').disabled=busy;
 }
-function showShop(){
-  openShop(state);if(state.shopOffer.claimed){finishShop();return;}shopping=true;busy=false;
-  $('patterns-button').disabled=false;$('score-patterns').disabled=false;
-  hideTooltip();$('game-screen').classList.add('shopping');$('shop-screen').hidden=false;
-  $('bag').disabled=false;$('bag-count').textContent=state.collection.length;$('bag').setAttribute('aria-label',`View bag, ${state.collection.length} items`);$('stages').disabled=false;renderShop();saveRun();
-  animate($('shop-screen'),[{transform:'translateY(24px)',opacity:0},{transform:'translateY(0)',opacity:1}],{duration:350,easing:'cubic-bezier(.2,.8,.3,1)'});
+const playSurface=()=>[$('score-meter'),document.querySelector('.board-frame'),document.querySelector('.draw-area')];
+async function slideSurface(elements,entering,direction){
+  $('game-screen').classList.add('screen-sliding');
+  try{await Promise.all(elements.map(el=>animate(el,reduced?[{opacity:entering?0:1},{opacity:entering?1:0}]:[
+    {transform:`translateX(${entering?direction*innerWidth:0}px)`,opacity:entering?0:1},
+    {transform:`translateX(${entering?0:direction*innerWidth}px)`,opacity:entering?1:0}
+  ],{duration:800,easing:'cubic-bezier(.22,.8,.25,1)'})));}
+  finally{$('game-screen').classList.remove('screen-sliding');}
+}
+async function showShop(){
+  openShop(state);if(state.shopOffer.claimed){await finishShop();return;}
+  busy=true;hideTooltip();$('bag').disabled=true;$('pause-button').disabled=true;
+  await slideSurface(playSurface(),false,-1);
+  shopping=true;$('game-screen').classList.add('shopping');$('shop-screen').hidden=false;
+  $('bag-count').textContent=state.collection.length;$('bag').setAttribute('aria-label',`View bag, ${state.collection.length} items`);renderShop();saveRun();
+  await slideSurface([$('shop-screen')],true,1);
+  busy=false;$('bag').disabled=false;$('patterns-button').disabled=false;$('score-patterns').disabled=false;$('stages').disabled=false;renderShop();
 }
 async function collectShopItem(card,id){
   const source=card.querySelector('.product-art-well i'),from=source.getBoundingClientRect(),bag=$('bag'),to=bag.querySelector('svg').getBoundingClientRect();
@@ -664,14 +675,19 @@ async function collectShopItem(card,id){
     await animate(ghost,[{transform:`translate(${x}px,${y}px) scale(.95)`},{transform:`translate(${x}px,${y-15}px) scale(1.25) rotate(-8deg)`}],{duration:350,easing:'ease-out'});
     await animate(ghost,[{transform:`translate(${x}px,${y-15}px) scale(1.25) rotate(-8deg)`,opacity:1},{transform:`translate(${dx}px,${dy-30}px) scale(.7) rotate(10deg)`,opacity:1,offset:.8},{transform:`translate(${dx}px,${dy}px) scale(.12)`,opacity:0}],{duration:1150,easing:'cubic-bezier(.4,0,.65,1)'});
     $('bag-count').textContent=state.collection.length;refreshBag();
-    await animate(bag,[{transform:'scale(1)'},{transform:'scale(1.22,.88)',offset:.35},{transform:'scale(.96,1.06)',offset:.7},{transform:'scale(1)'}],{duration:450,easing:'ease-out'});
+    await animate(bag.querySelector('svg'),[{transform:'scale(1)'},{transform:'scale(1.22,.88)',offset:.35},{transform:'scale(.96,1.06)',offset:.7},{transform:'scale(1)'}],{duration:450,easing:'ease-out'});
     $('announcer').textContent=`${ITEM_TYPES[state.items[id]].name} added to your bag.`;
     await wait(250);
   }finally{ghost.remove();bag.classList.remove('receiving');}
 }
 async function finishShop(){
-  hideTooltip();shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;
-  state=newStage(state.stage+1,state.money,state.upgrades,state.patternCounts,state.jokers,state);saveRun();await nextDraw();
+  hideTooltip();busy=true;$('bag').disabled=true;
+  if(shopping)await slideSurface([$('shop-screen')],false,1);
+  shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;
+  state=newStage(state.stage+1,state.money,state.upgrades,state.patternCounts,state.jokers,state);
+  resetResultUI();deal(state);render();showBalls();saveRun();
+  await slideSurface(playSurface(),true,-1);
+  unlock();
 }
 $('shop-menu').onclick=()=>{if(!busy)showMenu();};
 

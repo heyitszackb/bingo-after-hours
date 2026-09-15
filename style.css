@@ -685,3 +685,16 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .shop-reward-flight{z-index:115}
 @media(max-height:650px){.cabinet.shopping{gap:8px;padding-top:10px;padding-bottom:10px}.cabinet.shopping>#shop-screen{gap:8px;grid-template-rows:23px minmax(0,1fr) 18px}.cabinet.shopping #shop-tokens{gap:8px}.cabinet.shopping #shop-shelf .product-body{padding:8px;gap:6px}.cabinet.shopping #shop-shelf .product-name{font-size:20px}.cabinet.shopping #shop-shelf .product-description{font-size:17px;line-height:1.05}.cabinet.shopping #shop-shelf .product-art-well i{width:68%}.shop-instruction{font-size:17px}}
 @media(max-height:500px) and (orientation:landscape){.cabinet.shopping #shop-tokens{grid-template-rows:minmax(0,1fr);grid-template-columns:repeat(3,minmax(0,1fr))}.cabinet.shopping #shop-tokens .shop-product{height:100%;max-height:none;grid-template-rows:30% 1fr}.cabinet.shopping #shop-shelf .product-art-well i{height:90%;width:auto}.cabinet.shopping #shop-shelf .product-description{font-size:16px}}
+/* Persistent chrome: the bag never changes position between table and shop. */
+.cabinet:not(.shopping),.cabinet.shopping{--dock-bottom:max(12px,env(safe-area-inset-bottom));--chrome-top:max(16px,env(safe-area-inset-top))}
+.cabinet:not(.shopping)>.bag-inspect,.cabinet.shopping>.bag-inspect{position:fixed;left:calc(50% - 80px);bottom:var(--dock-bottom);width:160px;height:48px;min-width:160px;max-width:160px;margin:0;padding:0 12px;display:flex;align-items:center;justify-content:center;gap:8px;z-index:20}
+.bag-inspect>span{white-space:nowrap}.bag-inspect #bag-count{min-width:3ch;text-align:left}
+.cabinet .bag-inspect svg{width:32px;height:38px}
+.cabinet:not(.shopping){--head-h:90px;--bag-h:48px;--table-pad:16px;--board-size:min(calc(100vw - 28px),420px,calc(100dvh - var(--head-h) - var(--draw-h) - 48px - 3 * var(--table-gap) - var(--chrome-top) - var(--dock-bottom)));padding:var(--chrome-top) 0 calc(60px + var(--dock-bottom));grid-template-rows:var(--head-h) var(--board-size) var(--draw-h);align-content:start}
+.cabinet:not(.shopping)>.dashboard{grid-template-rows:44px 38px;row-gap:8px}
+.cabinet.shopping{padding-top:var(--chrome-top);padding-bottom:calc(60px + var(--dock-bottom));grid-template-rows:44px minmax(0,1fr)}
+.cabinet.shopping>.dashboard>.game-logo,.cabinet:not(.shopping)>.dashboard>.game-logo{font-size:34px;height:44px;line-height:44px;margin:0}
+.cabinet:not(.shopping)>.dashboard>#pause-button{height:44px}
+.screen-sliding .bag-inspect:disabled{opacity:1}
+.cabinet .bag-inspect.receiving:disabled{opacity:1}
+@media(max-height:550px){.cabinet:not(.shopping){--head-h:82px}.cabinet:not(.shopping)>.dashboard{grid-template-rows:44px 30px}}
