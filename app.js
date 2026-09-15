@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=fa7a8cd3956f';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=ebbeb5ae5aa0';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=42f610770ebb';
+import {defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=85df7089c0e0';
 function newStage(...args){const round=legacyNewStage(...args);round.plainRules=true;round.jokers=[];return round;}
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
@@ -71,7 +71,7 @@ function showTooltip(n,anchor,space=false){
   $('tooltip-number').textContent=occupied?(item?.name||'Ball'):'Empty';
   $('tooltip-value').hidden=!occupied||(value==null&&!isDie(state,n));
   $('tooltip-value').textContent=value??(isDie(state,n)?'?':'');
-  $('tooltip-effect').textContent=item?item.text:upgrade?BALL_UPGRADES[upgrade].text:space?'Nothing special':'';
+  $('tooltip-effect').textContent=item?[item.text,item.details].filter(Boolean).join(' '):upgrade?BALL_UPGRADES[upgrade].text:space?'Nothing special':'';
   const modifier=state.valueModifiers?.[n]||0;if(modifier)$('tooltip-effect').textContent+=`${$('tooltip-effect').textContent?' ':''}Permanent value change: ${signed(modifier)}.${isDie(state,n)?` Future rolls: ${1+modifier}–${20+modifier}.`:''}`;
   if(space){
     const tile=Number(anchor.id.replace('cell-','')),list=tileStampList(state,tile),mult=state.tileMultipliers?.[tile]||1;
@@ -85,6 +85,7 @@ ${$('tooltip-effect').textContent}`:'ITEM: Empty'];
     $('tooltip-effect').textContent=details.join('\n');
   }
 
+  $('tooltip-effect').innerHTML=pointCopy($('tooltip-effect').textContent);
   $('tooltip-effect').hidden=!space&&!upgrade&&!item&&!modifier;
   tip.classList.toggle('space-tooltip',space);
   tooltipAnchor=anchor;
@@ -545,27 +546,9 @@ $('patterns-button').onclick=showPatterns;$('score-patterns').onclick=showPatter
 for(const dialog of document.querySelectorAll('#bag-dialog,#stage-dialog,#help-dialog,#patterns-dialog')){dialog.addEventListener('close',hideTooltip);dialog.querySelector('.close').onclick=()=>dialog.close();dialog.addEventListener('pointerdown',e=>{if(e.target!==dialog)return;const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();});}
 
 
-const shopCopy={
-  trash:'On score: destroy item',
-  statue:'Worth 10 · stays between rounds',
-  king:'Worth 10 · wanders after each play',
-  square:'Score a filled 2×2 block',corners:'Fill 4 corners → score entire board',
-  question:'When scored: swap with bag item',
-  plus10:'+10 tile points · permanent',plus50:'+50 tile points · permanent',plus100:'+100 tile points · permanent',
-  crowd:'Scored tiles: +1 per board item',
-  'silver-lining':'Negative scores: +30',
-  'full-sweep':'Score all · once per round',
-  encore:'Retrigger the card to the right',
-  'high-five':'Play 1–5: score it + 4 neighbors',
-  seed:'Starts at 1 · grows with each play',
-  bomb:'Destroy itself + 8 neighboring pieces',
-  d20:'Roll 1–20 when placed',
-  hundred:'Worth 50 · crush 4 neighbors by 1',
-  rock:'Uses 0 plays · scores 0',
-  copier:'On score: copy item into bag',
-  x2:'×2 tile points · permanent',
-  x3:'×3 tile points · permanent'
-};
+function pointCopy(text){
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/([+×−]\d+|1–20|\b\d+ points?\b)/g,'<em class="point-text">$1</em>');
+}
 function renderShop(){
   hideTooltip();
   const shelf=$('shop-shelf'),focused=document.activeElement?.id;
@@ -573,9 +556,9 @@ function renderShop(){
   for(const type of state.shopOffer.items.filter(Boolean)){
     const item=ITEM_TYPES[type],card=document.createElement('button');card.id=`shop-${type}`;card.className='shop-product';
     const owned=state.collection.filter(id=>state.items[id]===type).length;
-    const action='CHOOSE';card.disabled=busy;card.setAttribute('aria-label',`${item.name}. ${item.text} ${owned} owned.`);
+    const action='CHOOSE';card.disabled=busy;card.setAttribute('aria-label',`${item.name}. ${item.startingValue===null?'Stamp.':`Starting points: ${item.startingValue}.`} ${item.text} ${owned} owned.`);
     const art=type==='statue'?'<i class=statue-art aria-hidden=true>10</i>':type==='king'?'<i class=king-art aria-hidden=true>10</i>':type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='question'?'?':type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'COPY':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;
-    card.innerHTML=`<strong class="product-name">${item.name.toUpperCase()}</strong>${art}<span class="product-description">${shopCopy[type]||item.text}</span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span><b class="product-action">${action}</b>`;
+    card.innerHTML=`<span class="starting-points" title="${item.startingValue===null?'Stamp: no starting value':'Starting points'}" aria-label="${item.startingValue===null?'Stamp: no starting value':`Starting points: ${item.startingValue}`}" >${item.startingValue??'—'}</span><strong class="product-name">${pointCopy(item.name.toUpperCase())}</strong>${art}<span class="product-description">${pointCopy(item.text).replace(/ When scored:/g,' <br>When scored:').replace(/ One use\./g,' <br>One use.')}</span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span><b class="product-action">${action}</b>`;
     card.onclick=async()=>{
       if(busy||!claimReward(state,type))return;
       busy=true;saveRun();shelf.querySelectorAll('button').forEach(b=>b.disabled=true);$('shop-menu').disabled=true;
