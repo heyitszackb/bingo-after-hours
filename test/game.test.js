@@ -41,7 +41,7 @@ test('stages retain money but reset all placements and replenish balls',()=>{
 });
 test('shop cards are free while empty ball-upgrade slots remain unavailable',()=>{
  const s=newStage(1,20);assert.equal(openShop(s),false);s.status='passed';settleStage(s);assert.ok(openShop(s));
- assert.ok(s.shopOffer.cards.length>=2);assert.equal(new Set(s.shopOffer.cards).size,s.shopOffer.cards.length);assert.deepEqual(s.shopOffer.items,['doubleball','trash','statue','king','question','plus10','plus50','plus100','copier','x2','x3','seed','bomb','d20','hundred','rock']);const cash=s.money;
+ assert.ok(s.shopOffer.cards.length>=2);assert.equal(new Set(s.shopOffer.cards).size,s.shopOffer.cards.length);assert.deepEqual(s.shopOffer.items,['doubleball','trash','statue','king','question','plus10','plus50','plus100','copier','x2','x3','seed','bomb','d20','rock']);const cash=s.money;
  assert.equal(buyCard(s,1),true);assert.equal(buyCard(s,1),false);assert.equal(upgradeBall(s,0,1),false);assert.equal(redrawShop(s),true);assert.equal(s.money,cash);
  s.stage=10;assert.equal(openShop(s),true);
 });

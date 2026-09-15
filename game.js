@@ -25,21 +25,32 @@ export const isRuleCard=id=>Object.hasOwn(RULE_CARDS,id);
 // Add new definitions here as the shop grows. Empty slots cannot be purchased.
 export const CARD_TYPES={square:{name:'Square',text:'Score each completed 2×2 block of four items. Each block scores once per round.',icon:'▦',short:'Score 2×2 blocks'},corners:{name:'Four Corners',text:'When all four corners are filled, score every occupied tile on the board. Once per round.',icon:'⌗',short:'4 corners → score all'},crowd:{name:'Crowd',text:'Each scored tile earns +1 point for every item on the board. Tile stamps do not count.',icon:'•••',short:'+1 per board item'},'silver-lining':{name:'Silver Lining',text:'Scored negative numbers earn +30 extra points. Their negative value still applies.',icon:'+30',short:'Negative → +30'},'full-sweep':{name:'Full Sweep',text:'Activate once per round to score every occupied tile using your point cards. Costs no play.',icon:'▦',short:'USE · Score all',active:true},encore:{name:'Encore',text:'Retrigger the card immediately to the right. No effect without a card to its right.',icon:'↻',short:'Retrigger right →'},'high-five':{name:'High Five',text:'Play a 1–5, including a die roll, to score it and its occupied orthogonal neighbors.',icon:'✚',short:'Play 1–5: score ✚'}};
 export const BALL_UPGRADES={};
-export const ITEM_TYPES={doubleball:{name:'×2 Ball',text:'x2 to total bingo score',details:'Scores 0 itself. Tile stamps affect only its tile; this ball multiplies the whole bingo. Multiple ×2 balls multiply together.',startingValue:0,price:0},
-  trash:{name:'Trash Stamp',text:'When played: permanently stamp this space. When scored: destroy its item. One use.',details:'Points and Copier effects resolve before destruction. The stamp stays.',startingValue:null,price:0},
-  statue:{name:'Statue',text:'When played: stays on this space between rounds.',details:'Bombs and Trash stamps can destroy it.',startingValue:10,price:0},
-  king:{name:'Wandering King',text:'On the board, after another item is played: move to a random empty adjacent space.',details:'Moves one space horizontally, vertically, or diagonally. Bingos score before and after it moves. Stays still if blocked. Passing does not move it.',startingValue:10,price:0},
-  question:{name:'Question Mark',text:'When played: swap places with a random item in the bag.',details:'Excludes stamps and other Question Marks. The replacement’s when-played effect does not activate.',startingValue:'?',price:0},
-  ...Object.fromEntries([10,50,100].map(n=>[`plus${n}`,{name:`+${n} Stamp`,text:`When played: permanently stamp a +${n} point modifier onto this tile. One use.`,details:'Adds points when this space scores, before multipliers. Leaves the space empty.',startingValue:null,price:0}])),
-  copier:{name:'Copier Stamp',text:'When played: permanently stamp this space. When scored: copy its item into the bag. One use.',details:'Each Copier makes one copy. The original stays on the board unless destroyed.',startingValue:null,price:0},
-  x2:{name:'×2 Stamp',text:'When played: permanently double this tile’s score. One use.',details:'Multiplies this tile’s score when scored. Stacks with other stamps.',startingValue:null,price:0},
-  x3:{name:'×3 Stamp',text:'When played: permanently triple this tile’s score. One use.',details:'Multiplies this tile’s score when scored. Stacks with other stamps.',startingValue:null,price:0},
-  seed:{name:'Seed',text:'On the board, after another item is played: permanently gain +1 value.',details:'Grows before scoring. Passing does not grow it.',startingValue:1,price:0},
-  bomb:{name:'Bomb',text:'When played: destroy itself and all items in the 8 adjacent spaces.',details:'Destroyed items leave the run permanently. Stamps remain. Explodes before scoring.',startingValue:0,price:0},
-  d20:{name:'20-Sided Die',text:'When played: gain a random value from 1–20.',details:'Keeps its rolled value for the round. Permanent value changes also affect future rolls.',startingValue:'?',price:0},
-  hundred:{name:'Anvil',text:'When played: permanently give −1 value to the 4 orthogonal neighbors.',details:'Affects the spaces above, below, left, and right before scoring. Only numbered items are affected.',startingValue:50,price:0},
-  rock:{name:'Rock',text:'Free to play.',details:'Uses no play. Fills a space for bingos, but has no number.',startingValue:0,price:0}
+export const ITEM_TYPES={
+  doubleball:{name:'×2 Ball',text:'x2 to total bingo score',startingValue:0,price:0},
+  trash:{name:'Destroy Item',text:'When scored: destroy item on this tile',startingValue:null,price:0},
+  statue:{name:'Statue',text:'Stays here between rounds',startingValue:10,price:0},
+  king:{name:'Wandering King',text:'Each play: move to a random empty adjacent tile',startingValue:10,price:0},
+  question:{name:'Question Mark',text:'When played: swap with a random item in the bag',details:'No stamps or other Question Marks. The new item’s play effect does not trigger.',startingValue:'?',price:0},
+  ...Object.fromEntries([10,50,100].map(n=>[`plus${n}`,{name:`+${n}`,text:`+${n} 🏆`,startingValue:null,price:0}])),
+  copier:{name:'Copier',text:'When scored: copy this item into the bag',startingValue:null,price:0},
+  x2:{name:'×2',text:'x2 to this tile’s score',startingValue:null,price:0},
+  x3:{name:'×3',text:'x3 to this tile’s score',startingValue:null,price:0},
+  seed:{name:'Seed',text:'Increases by 1 🏆 each turn',startingValue:1,price:0},
+  bomb:{name:'Bomb',text:'Permanently destroy all adjacent items',details:'Also destroys itself. Tile stamps stay.',startingValue:0,price:0},
+  d20:{name:'20-Sided Die',text:'When played: random value between 1–20 🏆',startingValue:'?',price:0},
+  rock:{name:'Rock',text:'Free to play',startingValue:0,price:0}
 };
+// Retire Anvils from serialized runs without losing the rest of the run or tile ink.
+export function removeRetiredItems(saved){
+  const retired=new Set(Object.keys(saved.items||{}).filter(id=>saved.items[id]==='hundred').map(Number));
+  for(const key of ['collection','bag','offer'])if(Array.isArray(saved[key]))saved[key]=saved[key].filter(id=>!retired.has(id));
+  for(const [tile,id] of Object.entries(saved.stampBalls||{}))if(retired.has(id)){
+    saved.stamps=saved.stamps.filter(t=>t!==Number(tile));delete saved.stampBalls[tile];delete saved.stampValues[tile];
+  }
+  for(const id of retired)for(const key of ['items','ballValues','valueModifiers','destinations','upgrades'])if(saved[key])delete saved[key][id];
+  if(saved.shopOffer?.items?.includes('hundred'))saved.shopOffer.items=saved.shopOffer.items.map(type=>type==='hundred'?Object.keys(ITEM_TYPES).find(t=>!saved.shopOffer.items.includes(t)):type);
+  if(retired.size&&saved.status==='playing'&&saved.bag?.length===0)saved.status='over';
+}
 
 export const stampFactor=(state,id)=>state.items?.[id]==='x2'?2:state.items?.[id]==='x3'?3:1;
 export const isStamp=(state,id)=>['x2','x3','copier','trash','plus10','plus50','plus100'].includes(state.items?.[id]);

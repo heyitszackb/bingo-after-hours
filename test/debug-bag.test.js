@@ -8,13 +8,12 @@ test('base preset exactly recreates the original 1–25 collection',()=>{
 test('duplicates have independent identities, placement and High Five scoring',()=>{
  const s=make([{type:'number',value:5,count:3}]);const [a,b,c]=s.collection;assert.equal(new Set(s.collection).size,3);assert.ok(b>25);assert.equal(ballValue(s,b),5);assert.equal(play(s,a,13).points,5);assert.equal(play(s,b,14).points,10);assert.ok(s.bag.has(c));assert.equal(s.stampValues[13],5);assert.equal(s.stampValues[14],5);
 });
-test('plain custom 100 differs from a powered 100 Ball, and zero/negative numbers work',()=>{
- const s=make([{type:'number',value:100,count:1},{type:'hundred',value:100,count:1},{type:'number',value:0,count:1},{type:'number',value:-7,count:1}]);const [plain,powered,zero,negative]=s.collection;
- assert.equal(play(s,zero,13).valueChanges.length,0);assert.equal(play(s,plain,8).valueChanges.length,0);assert.equal(s.stampValues[13],0);assert.equal(play(s,powered,12).valueChanges.length,1);assert.equal(s.stampValues[13],-1);assert.equal(ballValue(s,negative),-7);
- const next=newStage(10,s.money,{}, {},s.jokers,s);assert.equal(ballValue(next,zero),-1);assert.equal(ballValue(next,plain),100);assert.equal(ballValue(next,negative),-7);
+test('custom numeric values include zero and negatives and survive rounds',()=>{
+ const s=make([{type:'number',value:100,count:1},{type:'number',value:0,count:1},{type:'number',value:-7,count:1}]);
+ const next=newStage(10,s.money,{}, {},s.jokers,s);assert.deepEqual(next.collection.map(id=>ballValue(next,id)),[100,0,-7]);
 });
 test('current bag recipes retain powers, values and die modifiers without including destroyed items',()=>{
- const s=make([{type:'number',value:5,count:2},{type:'hundred',value:80,count:1},{type:'d20',value:-2,count:1},{type:'bomb',value:null,count:1}]);
+ const s=make([{type:'number',value:5,count:2},{type:'king',value:80,count:1},{type:'d20',value:-2,count:1},{type:'bomb',value:null,count:1}]);
  play(s,s.collection[0],13);const recipe=bagRecipe(s),rebuilt=make(recipe);assert.deepEqual(bagRecipe(rebuilt),recipe);const die=rebuilt.collection.find(id=>rebuilt.items[id]==='d20');assert.equal(play(rebuilt,die,1).roll,-1);
  const bomb=s.collection.find(id=>s.items[id]==='bomb');play(s,bomb,25);assert.ok(!bagRecipe(s).some(r=>r.type==='bomb'));
 });
