@@ -533,3 +533,13 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 /* Item-only table: no space reserved for the retired card rack. */
 .cabinet:not(.shopping){--cards-h:0px;grid-template-rows:var(--head-h) var(--board-size) var(--draw-h) var(--bag-h)}
 .cabinet:not(.shopping)>.board-frame{grid-row:2}.cabinet:not(.shopping)>.draw-area{grid-row:3}.cabinet:not(.shopping)>.bag-inspect{grid-row:4}
+.cabinet:not(.shopping){--head-h:80px}
+.cabinet:not(.shopping)>.dashboard{grid-template-rows:34px 38px;row-gap:8px}
+.game-logo{font:34px 'VT323',monospace;letter-spacing:2px;color:var(--cream);text-shadow:2px 2px #bc8953,4px 4px #092629;white-space:nowrap;grid-column:2;grid-row:1;justify-self:center}
+.cabinet:not(.shopping)>.dashboard>#pause-button{grid-column:1;grid-row:1}
+.cabinet:not(.shopping)>.dashboard>.game-logo{font-size:34px}
+.cabinet:not(.shopping)>.dashboard>#score-meter{grid-column:1/4;grid-row:2;font-size:36px;max-width:100%;min-width:0}
+.score-numbers .goal-label{margin-right:7px}.cabinet:not(.shopping) #score-meter small{font-size:22px}
+.cabinet.shopping .game-logo{margin:auto;font-size:30px}
+.tooltip-heading{display:flex;align-items:center;justify-content:space-between;gap:18px}#inspect-tooltip .tooltip-heading strong{font-size:28px;text-align:left}#tooltip-value{font:27px 'VT323',monospace;color:#70502b;padding:2px 7px;background:#e3d3ad;border:1px solid #b8a27b;flex-shrink:0}#tooltip-value[hidden]{display:none}
+@media(max-height:550px){.cabinet:not(.shopping){--head-h:61px}.cabinet:not(.shopping)>.dashboard{grid-template-rows:25px 30px;row-gap:6px}.cabinet:not(.shopping)>.dashboard>.game-logo{font-size:26px}.cabinet:not(.shopping)>.dashboard>#score-meter{font-size:29px}}

@@ -14,7 +14,7 @@ function burst(rect,scoring=false){if(reduced)return;for(let i=0;i<(scoring?28:1
 for(let n=1;n<=25;n++){const c=document.createElement('button');c.type='button';c.id=`cell-${n}`;c.className='cell';c.innerHTML='<i class=board-ink aria-hidden=true></i><span></span>';c.onclick=()=>{if(!busy&&!drag)inspectSpace(n);};$('board').append(c);}
 function renderScore(value=state.score){
   $('score').textContent=value;$('target').textContent=state.target;
-  $('score-meter').setAttribute('aria-label',`${value} of ${state.target} points`);
+  $('score-meter').setAttribute('aria-label',`Goal: ${value} of ${state.target} points`);
   $('score-meter').classList.toggle('target-met',value>=state.target);
   $('progress').style.width=`${Math.max(0,Math.min(100,value/state.target*100))}%`;
 }
@@ -65,8 +65,12 @@ function showTooltip(n,anchor,space=false){
   hideTooltip();
   const tip=$('inspect-tooltip');
   (anchor.closest('dialog')||document.body).append(tip);
-  $('tooltip-number').textContent=space?(state.stamps.has(Number(anchor.id.replace('cell-','')))?state.stampValues[Number(anchor.id.replace('cell-',''))]??pieceLabel(n):'EMPTY'):(n==null?'':isDie(state,n)?'?':ballValue(state,n)??pieceLabel(n));
-  const upgrade=state.upgrades[n],item=ITEM_TYPES[state.items?.[n]];
+  const upgrade=state.upgrades[n],item=ITEM_TYPES[state.items?.[n]],tile=space?Number(anchor.id.replace('cell-','')):null;
+  const occupied=!space||state.stamps.has(tile);
+  const value=space&&occupied?state.stampValues[tile]:ballValue(state,n);
+  $('tooltip-number').textContent=occupied?(item?.name||'Ball'):'Empty';
+  $('tooltip-value').hidden=!occupied||(value==null&&!isDie(state,n));
+  $('tooltip-value').textContent=value??(isDie(state,n)?'?':'');
   $('tooltip-effect').textContent=item?item.text:upgrade?BALL_UPGRADES[upgrade].text:space?'Nothing special':'';
   const modifier=state.valueModifiers?.[n]||0;if(modifier)$('tooltip-effect').textContent+=`${$('tooltip-effect').textContent?' ':''}Permanent value change: ${signed(modifier)}.${isDie(state,n)?` Future rolls: ${1+modifier}–${20+modifier}.`:''}`;
   if(space){
@@ -75,7 +79,7 @@ function showTooltip(n,anchor,space=false){
     const details=[state.stamps.has(tile)?`ITEM: ${item?.name||'Ball'}${state.stampValues[tile]!=null?` · ${state.stampValues[tile]}`:''}
 ${$('tooltip-effect').textContent}`:'ITEM: Empty'];
     details.push(`STAMPS · ${list.length}/4`);
-    list.forEach((type,i)=>details.push(`${i+1}. ${type==='copier'?'Copier · add one copy to the bag on placement':type==='x2'?'×2 · double this tile’s points':type==='x3'?'×3 · triple this tile’s points':`+${type.slice(4)} · add ${type.slice(4)} points when scored`}`));
+    list.forEach((type,i)=>details.push(`${i+1}. ${type==='copier'?'Copier · copy item into the bag when scored':type==='trash'?'Trash · permanently delete item after scoring':type==='x2'?'×2 · double this tile’s points':type==='x3'?'×3 · triple this tile’s points':`+${type.slice(4)} · add ${type.slice(4)} points when scored`}`));
     if(!list.length)details.push('None');
     if(mult>1)details.push(`Combined multiplier: ×${mult}`);
     $('tooltip-effect').textContent=details.join('\n');
