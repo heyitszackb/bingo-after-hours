@@ -39,7 +39,7 @@ svg{shape-rendering:crispEdges;stroke-linecap:butt}
 #balls .ball:hover:not(:disabled){filter:brightness(1.1) drop-shadow(0 0 9px #a5ffe0b0)}
 .ball.inspected{outline:none;filter:drop-shadow(2px 0 0 #fff0b0) drop-shadow(-2px 0 0 #fff0b0) drop-shadow(0 2px 0 #fff0b0) drop-shadow(0 -2px 0 #fff0b0)}
 #bag-grid .ball .face{font-size:27px}
-.cell.stamped:before{border:0;border-radius:0;background:url('assets/stamp.svg?v=14bdcbab80b1') center/100% 100% no-repeat;box-shadow:none;image-rendering:pixelated}
+.cell.stamped:before{border:0;border-radius:0;background:url('assets/stamp.svg?v=ff2fb538bdcb') center/100% 100% no-repeat;box-shadow:none;image-rendering:pixelated}
 .rail{border-top-width:4px;box-shadow:0 3px 0 #00171f,inset 0 2px 0 #775c34}
 dialog{border-width:3px;background:#103731;box-shadow:5px 0 0 #001a21,0 6px 0 #001a21,5px 6px 0 #001a21,inset 2px 2px 0 #4e706055}
 #inspect-tooltip{border-radius:0;border-width:3px;box-shadow:3px 0 0 #001b22b0,0 4px 0 #001b22b0,3px 4px 0 #001b22b0,inset 2px 2px 0 #fff4d8}
@@ -425,7 +425,7 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .cell.value-target{outline:2px solid #df9f83;outline-offset:-4px}.cell.value-changing{outline:3px solid var(--value-color);filter:brightness(1.1);z-index:6}
 .value-delta{position:absolute;transform:translate(-50%,-100%);font-size:24px;line-height:1;padding:2px 6px;background:#102c2c;border:2px solid currentColor;box-shadow:3px 3px #00181d;pointer-events:none;font-weight:400}
 .ball.large-value .face,.cabinet:not(.shopping)>.draw-area .ball.large-value .face{font-size:calc(var(--size)*.36)}
-.hundred-art{display:grid;place-items:center;width:76px;height:76px;font-style:normal;font-size:30px;color:#142d31;background:url('assets/stamp.svg?v=14bdcbab80b1') center/contain no-repeat;image-rendering:pixelated;text-shadow:1px 1px #eff3dc}
+.hundred-art{display:grid;place-items:center;width:76px;height:76px;font-style:normal;font-size:30px;color:#142d31;background:url('assets/stamp.svg?v=ff2fb538bdcb') center/contain no-repeat;image-rendering:pixelated;text-shadow:1px 1px #eff3dc}
 
 /* All purchases share one shelf; a partial next card and arrows reveal scrolling. */
 .cabinet.shopping{width:min(calc(100% - 32px),900px);gap:clamp(16px,3dvh,28px);padding:16px 0}
@@ -514,7 +514,7 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .space-tooltip #tooltip-effect{white-space:pre-line;text-align:left;font-size:16px;line-height:1.15;max-height:55dvh;overflow-y:auto}
 
 .cell .board-ink{white-space:normal;overflow-wrap:anywhere;line-height:1.1}.cell.stamped .board-ink{max-width:95%;font-size:11px}.cell:not(.stamped) .board-ink{font-size:clamp(13px,3.5vw,24px)}
-.ball.question-item{filter:sepia(.3)}.question-art{background:url('assets/stamp.svg?v=14bdcbab80b1') center/contain no-repeat;font-size:30px;color:#233b37}
+.ball.question-item{filter:sepia(.3)}.question-art{background:url('assets/stamp.svg?v=ff2fb538bdcb') center/contain no-repeat;font-size:30px;color:#233b37}
 
 .joker-square{background:#ddd0e6;border-color:#a18eae}.joker-corners{background:#ecd9b3;border-color:#b99a63}
 /* Familiar overlapping pages, consistent at every Copier size. */
@@ -624,7 +624,7 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 #inspect-tooltip.stamps-left #tooltip-stamps{order:-1}
 .tooltip-stamp-effect{display:flex;align-items:flex-start;gap:7px;font:19px/1.12 'VT323',monospace;color:var(--cream)}
 .tooltip-stamp-effect+.tooltip-stamp-effect{border-top:1px solid #657262;margin-top:9px;padding-top:9px}
-.stamp-symbol{display:inline-block;flex:0 0 17px;width:17px;height:20px;background:#eedcb4;mask:url('assets/stamp.svg?v=14bdcbab80b1') center/contain no-repeat}
+.stamp-symbol{display:inline-block;flex:0 0 17px;width:17px;height:20px;background:#eedcb4;mask:url('assets/stamp-icon.svg?v=14bdcbab80b1') center/contain no-repeat}
 #inspect-tooltip .tooltip-heading{gap:9px}
 #inspect-tooltip #tooltip-effect{font:21px/1.15 'VT323',monospace;white-space:normal;text-align:left;max-height:none;overflow:visible}
 #inspect-tooltip.has-stamps .tooltip-heading{flex-wrap:wrap}
