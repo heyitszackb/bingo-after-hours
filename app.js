@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=cb812fef7d2e';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=ec3f989ec464';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {defaultBag,newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=eedc39c39d22';
+import {defaultBag,newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=ae582ed3bc75';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 // One tempo for animation and sequencing keeps effects and input locks aligned.
@@ -42,7 +42,7 @@ function renderJokers(){
     const type=cardType(id),item=cardDetails(id),description=item.text,card=document.createElement('button'),pattern={previewTiles:[3,8,11,12,13,14,15,18,23,1,7,19,25]};
     card.className=`joker-card joker-${type}${item.active?' active-joker':''}${state.activeUses?.[id]?' spent':''}`;card.dataset.joker=id;
     card.setAttribute('aria-label',`${description}. Drag to reorder or trash. Use Left and Right arrows to reorder, or Delete to remove.`);
-    card.innerHTML=`<span class="joker-heading">${type==='bingo'?'BINGO':item.name.toUpperCase()}</span><span class="joker-art ${type!=='bingo'?'digits-art':''}" aria-hidden="true">${type!=='bingo'?`<b>${item.icon}</b>`:Array.from({length:25},(_,i)=>`<i class="${pattern.previewTiles.includes(i+1)?'filled':''}"></i>`).join('')}</span><span class="joker-description">${type==='bingo'?'Lines of 5':type==='face-value'?'Number → pts':state.activeUses?.[id]?'USED':item.short||description}</span>`;
+    card.innerHTML=`<span class="joker-heading">${type==='bingo'?'BINGO':item.name.toUpperCase()}</span><span class="joker-art ${type!=='bingo'?'digits-art':''}" aria-hidden="true">${type!=='bingo'?`<b>${item.icon}</b>`:Array.from({length:25},(_,i)=>`<i class="${pattern.previewTiles.includes(i+1)?'filled':''}"></i>`).join('')}</span><span class="joker-description">${type==='bingo'?'Lines of 5':type==='face-value'?'Number → pts':state.activeUses?.[id]?'USED':item.range?`Play <strong class=card-range>${item.range}</strong>: score ✚`:item.short||description}</span>`;
     card.onpointerdown=e=>{
       if(busy||e.button!==0||jokerDrag||drag)return;
       const selected=tooltipAnchor===card;
@@ -703,15 +703,15 @@ function renderShop(){
   shelf.innerHTML='<section class=reward-row aria-label=Cards><h3>CARDS</h3><div id=shop-cards class=reward-options></div></section><section class=reward-row aria-label=Tokens><h3>TOKENS</h3><div id=shop-tokens class=reward-options></div></section>';
   const full=state.jokers.filter(id=>!isRuleCard(id)).length>=5;
   for(const type of [...state.shopOffer.cards,...state.shopOffer.items].filter(Boolean)){
-    const definition=CARD_TYPES[type]||ITEM_TYPES[type];
-    const isCard=Object.hasOwn(CARD_TYPES,type),item=isCard?cardDetails(type):definition,index=state.shopOffer.cards.indexOf(type),sold=isCard&&index<0;
-    const card=document.createElement('button');card.id=`shop-${type}`;card.className=`shop-product${isCard?' shop-rule-card':''}`;
+    const definition=CARD_TYPES[cardType(type)]||ITEM_TYPES[type];
+    const isCard=Object.hasOwn(CARD_TYPES,cardType(type)),item=isCard?cardDetails(type):definition,index=state.shopOffer.cards.indexOf(type),sold=isCard&&index<0;
+    const card=document.createElement('button');card.id=`shop-${cardType(type)}`;card.className=`shop-product${isCard?' shop-rule-card':''}`;
     if(isCard)card.dataset.shopCard=type;
-    const owned=isCard?state.jokers.filter(id=>cardType(id)===type).length:state.collection.filter(id=>state.items[id]===type).length;
+    const owned=isCard?state.jokers.filter(id=>cardType(id)===cardType(type)).length:state.collection.filter(id=>state.items[id]===type).length;
     const action=sold?'ADDED':isCard&&full?'5 / 5 CARDS':'FREE · CHOOSE';
     card.disabled=busy||sold||(isCard&&full);card.setAttribute('aria-label',`${item.name}. ${item.text} ${action}. ${owned} owned.`);
     const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='king'?'<i class=king-art aria-hidden=true>10</i>':type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='question'?'?':type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'COPY':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;
-    card.innerHTML=`<strong class="product-name">${item.name.toUpperCase()}</strong>${art}<span class="product-description">${shopCopy[type]||item.short||item.text}</span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span><b class="product-action">${action}</b>`;
+    card.innerHTML=`<strong class="product-name">${item.name.toUpperCase()}</strong>${art}<span class="product-description">${item.range?`Play <strong class=card-range>${item.range}</strong>: score it + 4 neighbors`:shopCopy[type]||item.short||item.text}</span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span><b class="product-action">${action}</b>`;
     card.onclick=async()=>{
       if(busy||!claimReward(state,type))return;
       busy=true;saveRun();shelf.querySelectorAll('button').forEach(b=>b.disabled=true);$('shop-menu').disabled=true;

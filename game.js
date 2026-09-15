@@ -41,6 +41,12 @@ export const cardType=id=>id.split(':')[0];
 export function cardDetails(id){
   if(typeof id!=='string')return null;
   const type=cardType(id),base=RULE_CARDS[id]||CARD_TYPES[type];if(!base)return null;
+  if(type==='high-five'){
+    const match=id.match(/:range(\d+)(?::|$)/),start=match?Number(match[1]):1;
+    if(start<1||start>16)return null;
+    const range=`${start}–${start+4}`;
+    return {...base,price:0,start,end:start+4,range,text:`Play a ${range}, including a die roll, to score it and its occupied orthogonal neighbors.`,short:`Play ${range}: score ✚`};
+  }
   return {...base,price:0};
 }
 export const normalizeJokers=jokers=>{
@@ -162,7 +168,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   const scoringGroups=[];
   for(const {joker,retriggers} of events){
     if(joker==='bingo'||['square','corners'].includes(cardType(joker)))scoringGroups.push(...scoredPatterns.filter(p=>joker==='bingo'?['row','column','diagonal'].includes(p.type):p.type===cardType(joker)).map(p=>({trigger:joker,retriggers,type:p.type,tiles:p.type==='corners'?[...state.stamps].sort((a,b)=>a-b):p.tiles})));
-    if(cardType(joker)==='high-five'&&state.stampBalls[tile]===number&&state.stampValues[tile]>=1&&state.stampValues[tile]<=5){
+    if(cardType(joker)==='high-five'&&state.stampBalls[tile]===number&&state.stampValues[tile]>=cardDetails(joker).start&&state.stampValues[tile]<=cardDetails(joker).end){
       const neighbors=[tile,...orthogonalNeighbors(tile)].filter(t=>state.stamps.has(t));
       scoringGroups.push({trigger:joker,retriggers,type:'cross',tiles:neighbors});
     }
@@ -260,7 +266,7 @@ export function openShop(state,random=Math.random){
 export function openRewardShop(state,random=Math.random){
   if(state.status!=='passed'||!state.bonusPaid||state.stage>=10)return false;
   if(state.shopOffer?.rewardVersion===1)return true;
-  state.shopOffer={rewardVersion:1,cards:shuffled(Object.keys(CARD_TYPES),random).slice(0,2),items:shuffled(Object.keys(ITEM_TYPES),random).slice(0,2),balls:[null,null],claimed:false};
+  state.shopOffer={rewardVersion:1,cards:shuffled(Object.keys(CARD_TYPES),random).slice(0,2).map(type=>type==='high-five'?`${type}:range${1+Math.floor(random()*16)}`:type),items:shuffled(Object.keys(ITEM_TYPES),random).slice(0,2),balls:[null,null],claimed:false};
   return true;
 }
 export function claimReward(state,type){
