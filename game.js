@@ -159,7 +159,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   const changedTiles=new Set([tile,...kingMoves.map(move=>move.to)]);
   // All placement effects have resolved. Only the surviving board can score.
   const callsBeforeBonuses=state.calls;
-  const scoredPatterns=[...completedPatterns(state.stamps),...EXTRA_PATTERNS.filter(p=>p.tiles.every(t=>state.stamps.has(t)))].filter(p=>!state.scoredLines.includes(p.id)&&p.tiles.some(t=>changedTiles.has(t))&&(p.type==='square'||p.type==='corners'?state.jokers.some(id=>cardType(id)===p.type):state.jokers.includes('bingo')));
+  const scoredPatterns=[...completedPatterns(state.stamps),...EXTRA_PATTERNS.filter(p=>p.tiles.every(t=>state.stamps.has(t)))].filter(p=>!state.scoredLines.includes(p.id)&&p.tiles.some(t=>changedTiles.has(t))&&(p.type==='square'||p.type==='corners'?!state.plainRules&&state.jokers.some(id=>cardType(id)===p.type):(state.plainRules||state.jokers.includes('bingo'))));
   const patterns=scoredPatterns.map(p=>p.tiles);
   for(const {type} of scoredPatterns)state.patternCounts[type]=(state.patternCounts[type]||0)+1;
   state.scoredLines.push(...scoredPatterns.map(p=>p.id));
@@ -184,6 +184,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   return {tile,movementBoard,kingMoves,scoringBoard,copied,copies,stampApplied,playCost,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
 }
 function cardEvents(state){
+  if(state.plainRules)return [{joker:'bingo',retriggers:[]},{joker:'face-value',retriggers:[]}];
   const events=[];
   function resolveCard(index,retriggers=[]){
     const joker=state.jokers[index];if(!joker)return;
@@ -212,7 +213,7 @@ function scoreGroups(state,scoringGroups,events=cardEvents(state),random=Math.ra
     const number=state.stampValues[tile],bonuses=[];
     const contributions=events.flatMap(e=>cardType(e.joker)==='crowd'?[{...e,points:state.stamps.size}]:e.joker==='face-value'?[{...e,points:number??0}]:cardType(e.joker)==='silver-lining'&&Number.isFinite(number)&&number<0?[{...e,points:30}]:[]);
     const stampBonus=tileStampList(state,tile).reduce((sum,type)=>sum+(type.startsWith('plus')?Number(type.slice(4)):0),0);
-    const basePoints=state.jokers.includes('face-value')?(number??0):0;
+    const basePoints=(state.plainRules||state.jokers.includes('face-value'))?(number??0):0;
     const id=state.stampBalls[tile],copies=copyOnTile(state,id,tile);
     const trashed=tileStampList(state,tile).includes('trash')?id:null;
     if(trashed!==null){
