@@ -267,6 +267,32 @@ async function scoreLink(from,to,color){
   await animate(spark,[{transform:'scale(1.6)',opacity:1},{transform:`translate(${b.left+b.width/2-a.left-a.width/2}px,${b.top+b.height/2-a.bottom+5}px) scale(.6)`,opacity:1}],{duration:125,easing:'cubic-bezier(.5,0,.8,.4)'});
   spark.remove();
 }
+async function showBingoMultiplier(group,onApply){
+  const panel=document.createElement('div'),lane=document.querySelector('.track').getBoundingClientRect();
+  panel.className='bingo-multiplier';panel.setAttribute('role','status');
+  panel.style.top=`${Math.min(innerHeight-120,lane.top+5)}px`;
+  panel.innerHTML=`<small>BINGO TOTAL</small><div><span>${group.subtotal}</span><b class="multiplier-factor">×${group.factor}</b><span>=</span><strong>${group.total}</strong></div>`;
+  document.body.append(panel);
+  const sources=group.sources.map(tile=>$(`cell-${tile}`));
+  try{
+    await animate(panel,[{opacity:0,transform:'translateX(-50%) scale(.9)'},{opacity:1,transform:'translateX(-50%) scale(1)'}],{duration:250,easing:'cubic-bezier(.16,1,.3,1)'});
+    for(const source of sources){
+      source.classList.add('multiplier-source');
+      const rect=source.getBoundingClientRect(),tag=document.createElement('span');tag.className='multiplier-pop';tag.textContent='×2';tag.style.left=`${rect.left+rect.width/2}px`;tag.style.top=`${rect.top}px`;document.body.append(tag);
+      await Promise.all([
+        animate(source,[{transform:'scale(1)'},{transform:'scale(1.2) rotate(-4deg)',offset:.35},{transform:'scale(.97)',offset:.7},{transform:'scale(1)'}],{duration:500,easing:'cubic-bezier(.16,1,.3,1)'}),
+        animate(tag,[{opacity:0,transform:'translate(-50%,0) scale(.6)'},{opacity:1,transform:'translate(-50%,-65%) scale(1.1)',offset:.4},{opacity:0,transform:'translate(-50%,-110%) scale(1)'}],{duration:650}).finally(()=>tag.remove())
+      ]);
+      await scoreLink(source,panel,'#ff7d83');
+    }
+    await animate(panel.querySelector('.multiplier-factor'),[{transform:'scale(.75)'},{transform:'scale(1.3)',offset:.4},{transform:'scale(1)'}],{duration:370});
+    await wait(1400);
+    onApply();pulseBackground();navigator.vibrate?.([18,25,30]);
+    await animate($('score-meter'),[{transform:'scale(.96)'},{transform:'scale(1.12)',offset:.35},{transform:'scale(1)'}],{duration:450});
+    await wait(650);
+    await animate(panel,[{opacity:1},{opacity:0}],{duration:250});
+  }finally{sources.forEach(source=>source.classList.remove('multiplier-source'));panel.remove();}
+}
 async function activateSpaces(result){
   let displayedScore=result.scoreBefore??state.score-result.points,displayedCalls=result.callsBeforeBonuses,total=0,lineIndex=0;
   let activePattern=[],groupSubtotal=0;
@@ -350,10 +376,8 @@ async function activateSpaces(result){
       if(activation.groupEnd){
         const g=activation.groupEnd;
         if(g.factor>1){
-          for(const tile of g.sources)await animate($(`cell-${tile}`),[{transform:'scale(1)'},{transform:'scale(1.16) rotate(-3deg)',offset:.4},{transform:'scale(1)'}],{duration:340});
           $('score-line-label').textContent=`${g.subtotal} ×${g.factor} = ${g.total}`;
-          await wait(500);displayedScore+=activation.groupBonus;total+=activation.groupBonus;renderScore(displayedScore);
-          pulseBackground();await animate(readout,[{transform:'scale(.96)'},{transform:'scale(1.13)',offset:.4},{transform:'scale(1)'}],{duration:400});
+          await showBingoMultiplier(g,()=>{displayedScore+=activation.groupBonus;total+=activation.groupBonus;renderScore(displayedScore);});
         }
         await wait(240);
       }
