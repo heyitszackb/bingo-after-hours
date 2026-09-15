@@ -634,10 +634,12 @@ function renderShop(){
     const badge=item.startingValue===null?'<span class="stamp-tag shop-stamp-tag" title="One-use item. Permanently marks a tile.">STAMP</span>':`<span class="starting-points" aria-label="Starting stars: ${item.startingValue}">${item.startingValue} ${star}</span>`;
     card.innerHTML=`<span class="product-art-well">${art}</span><span class="product-body"><span class="product-top"><strong class="product-name">${pointCopy(item.name.toUpperCase())}</strong>${badge}</span><span class="product-description">${pointCopy(item.text)}</span></span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span>`;
     card.onclick=async()=>{
-      if(busy||!claimReward(state,type))return;
-      busy=true;saveRun();shelf.querySelectorAll('button').forEach(b=>b.disabled=true);$('shop-menu').disabled=true;
+      if(busy)return;
+      const id=state.nextItemId;
+      if(!claimReward(state,type))return;
+      busy=true;saveRun();shelf.querySelectorAll('button').forEach(b=>b.disabled=true);$('shop-menu').disabled=true;$('bag').disabled=true;
       $('announcer').textContent=`${item.name} chosen. Next round.`;
-      await animate(card,[{transform:'scale(.96)'},{transform:'scale(1.06)',offset:.4},{transform:'scale(1)',opacity:.4}],{duration:400});
+      await collectShopItem(card,id);
       await finishShop();
     };
     $('shop-tokens').append(card);
@@ -649,8 +651,23 @@ function showShop(){
   openShop(state);if(state.shopOffer.claimed){finishShop();return;}shopping=true;busy=false;
   $('patterns-button').disabled=false;$('score-patterns').disabled=false;
   hideTooltip();$('game-screen').classList.add('shopping');$('shop-screen').hidden=false;
-  $('bag').disabled=false;$('stages').disabled=false;renderShop();saveRun();
+  $('bag').disabled=false;$('bag-count').textContent=state.collection.length;$('bag').setAttribute('aria-label',`View bag, ${state.collection.length} items`);$('stages').disabled=false;renderShop();saveRun();
   animate($('shop-screen'),[{transform:'translateY(24px)',opacity:0},{transform:'translateY(0)',opacity:1}],{duration:350,easing:'cubic-bezier(.2,.8,.3,1)'});
+}
+async function collectShopItem(card,id){
+  const source=card.querySelector('.product-art-well i'),from=source.getBoundingClientRect(),bag=$('bag'),to=bag.querySelector('svg').getBoundingClientRect();
+  const ghost=ball(id),size=Math.min(80,from.width);
+  ghost.classList.add('drag-ghost','shop-reward-flight');ghost.setAttribute('aria-hidden','true');ghost.style.setProperty('--size',`${size}px`);
+  const x=from.left+(from.width-size)/2,y=from.top+(from.height-size)/2,dx=to.left+to.width/2-size/2,dy=to.top+to.height/2-size/2;
+  ghost.style.transform=`translate(${x}px,${y}px)`;document.body.append(ghost);source.style.opacity='.2';bag.classList.add('receiving');
+  try{
+    await animate(ghost,[{transform:`translate(${x}px,${y}px) scale(.95)`},{transform:`translate(${x}px,${y-15}px) scale(1.25) rotate(-8deg)`}],{duration:350,easing:'ease-out'});
+    await animate(ghost,[{transform:`translate(${x}px,${y-15}px) scale(1.25) rotate(-8deg)`,opacity:1},{transform:`translate(${dx}px,${dy-30}px) scale(.7) rotate(10deg)`,opacity:1,offset:.8},{transform:`translate(${dx}px,${dy}px) scale(.12)`,opacity:0}],{duration:1150,easing:'cubic-bezier(.4,0,.65,1)'});
+    $('bag-count').textContent=state.collection.length;refreshBag();
+    await animate(bag,[{transform:'scale(1)'},{transform:'scale(1.22,.88)',offset:.35},{transform:'scale(.96,1.06)',offset:.7},{transform:'scale(1)'}],{duration:450,easing:'ease-out'});
+    $('announcer').textContent=`${ITEM_TYPES[state.items[id]].name} added to your bag.`;
+    await wait(250);
+  }finally{ghost.remove();bag.classList.remove('receiving');}
 }
 async function finishShop(){
   hideTooltip();shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;
