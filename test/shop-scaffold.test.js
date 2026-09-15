@@ -18,7 +18,7 @@ test('retired ball powers have no placement, movement, destruction, or draw effe
  for(const type of retiredBalls){const s=newStage(10);s.upgrades[5]=type;
   for(let n=1;n<5;n++){s.stamps.add(n);s.stampBalls[n]=n;s.stampValues[n]=n;s.bag.delete(n);}
   s.offer=[5];s.destinations={5:5};assert.equal(choose(s,5,13),null);
-  const r=choose(s,5,5);assert.equal(r.points,15);assert.deepEqual([...s.stamps],[1,2,3,4,5]);assert.deepEqual(s.stampValues,{1:1,2:2,3:3,4:4,5:5});assert.equal(s.calls,19);assert.equal(s.bag.size,20);assert.equal(s.plasmaPending,undefined);
+  const r=choose(s,5,5);assert.equal(r.points,15);assert.deepEqual([...s.stamps],[1,2,3,4,5]);assert.deepEqual(s.stampValues,{1:1,2:2,3:3,4:4,5:5});assert.equal(s.calls,16);assert.equal(s.bag.size,20);assert.equal(s.plasmaPending,undefined);
  }
 });
 test('save migration removes effects but preserves money, resources, board positions and earned progress',()=>{

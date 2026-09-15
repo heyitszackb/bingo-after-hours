@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=ee76b0e858a0';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=ad4c5825d7f3';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {defaultBag,newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=8a867063cf85';
+import {defaultBag,newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=2f168b5a6b76';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 // One tempo for animation and sequencing keeps effects and input locks aligned.
@@ -396,7 +396,7 @@ async function activateSpaces(result){
       for(const contribution of activation.contributions){
         const card=document.querySelector(`[data-joker="${contribution.joker}"]`),calls=contribution.calls;
         const accent=contribution.joker==='face-value'?'#91c6ff':calls!==undefined?'#83e0b5':'#f4c66c';
-        const label=calls!==undefined?(calls?'+1 PLAY':'20 MAX'):signed(contribution.points);
+        const label=calls!==undefined?(calls?'+1 PLAY':'17 MAX'):signed(contribution.points);
         await animateRetriggers(contribution.retriggers,card,accent);
         await cardImpact(card,label,accent);
         await scoreLink(card,cell,accent);
@@ -754,9 +754,10 @@ function loadRun(){
     const old=saved.rulesVersion!==3;
     delete saved.paints;delete saved.goldSeals;
     const oldTurn=saved.turnVersion!==1;
-    if(oldTurn){if(saved.status==='playing')saved.calls=Math.max(0,20-Math.max(0,(saved.callCapacity??12)-saved.calls));saved.passes=10;}
-    if(!oldTurn&&saved.status==='playing'&&saved.callCapacity===15)saved.calls+=5;
-    saved.calls=Math.min(saved.calls,20);saved.callCapacity=20;saved.turnVersion=1;
+    if(oldTurn){if(saved.status==='playing')saved.calls=Math.max(0,17-Math.max(0,(saved.callCapacity??12)-saved.calls));saved.passes=10;}
+    if(!oldTurn&&saved.status==='playing'&&saved.callCapacity!==17)saved.calls=Math.max(0,17-Math.max(0,(saved.callCapacity??15)-saved.calls));
+    saved.calls=Math.min(saved.calls,17);saved.callCapacity=17;saved.turnVersion=1;
+    if(saved.status==='playing'&&saved.calls===0)saved.status='over';
     if(!Number.isInteger(saved.passes)||saved.passes<0||saved.passes>10)throw new Error('Invalid passes');
     migrateShop(saved);
     if(!Number.isInteger(saved.callCapacity)||saved.callCapacity<15||saved.callCapacity>192||saved.calls>saved.callCapacity)throw new Error('Invalid call capacity');

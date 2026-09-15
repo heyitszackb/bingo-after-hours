@@ -5,7 +5,7 @@ const stamp=(s,id,tile,value=ballValue(s,id))=>{s.stamps.add(tile);s.stampBalls[
 const play=(s,id,tile,rng)=>{s.offer=[id];s.destinations={[id]:tile};return choose(s,id,tile,rng);};
 test('Anvil is free, independently drawable and passing never changes values',()=>{
  const {s,id}=fixture();assert.equal(ballValue(s,id),50);assert.equal(s.money,0);s.bag=new Set([1,id]);let hits=0;for(let i=0;i<100;i++)if(draw(s,()=>i/100)[0]===id)hits++;assert.equal(hits,50);
- stamp(s,2,8);s.offer=[id];s.destinations={[id]:13};redraw(s,()=>.5);assert.equal(s.stampValues[8],2);assert.ok(s.bag.has(id));assert.equal(s.calls,20);assert.deepEqual(s.valueModifiers,{});
+ stamp(s,2,8);s.offer=[id];s.destinations={[id]:13};redraw(s,()=>.5);assert.equal(s.stampValues[8],2);assert.ok(s.bag.has(id));assert.equal(s.calls,17);assert.deepEqual(s.valueModifiers,{});
 });
 test('before scoring, only occupied orthogonal numeric neighbors lose one; snapshot keeps old values',()=>{
  const {s,id}=fixture();[[1,8],[2,14],[3,18],[4,12],[5,7]].forEach(([n,t])=>stamp(s,n,t));const r=play(s,id,13);

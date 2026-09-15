@@ -3,7 +3,7 @@ import {baseBagRecipe,bagRecipe,buildDebugBag} from '../debug-bag.js';import {ne
 const make=rows=>newStage(10,12,{}, {},['bingo','face-value','high-five:1'],buildDebugBag(rows));
 const play=(s,id,tile)=>{s.offer=[id];s.destinations={[id]:tile};return choose(s,id,tile,()=>0);};
 test('base preset exactly recreates the original 1–25 collection',()=>{
- const inventory=buildDebugBag(baseBagRecipe()),s=make(baseBagRecipe());assert.deepEqual(inventory.collection,Array.from({length:25},(_,i)=>i+1));assert.equal(inventory.nextItemId,26);assert.deepEqual(inventory.items,{});assert.deepEqual(bagRecipe(s),baseBagRecipe());assert.equal(s.calls,20);assert.equal(s.passes,10);
+ const inventory=buildDebugBag(baseBagRecipe()),s=make(baseBagRecipe());assert.deepEqual(inventory.collection,Array.from({length:25},(_,i)=>i+1));assert.equal(inventory.nextItemId,26);assert.deepEqual(inventory.items,{});assert.deepEqual(bagRecipe(s),baseBagRecipe());assert.equal(s.calls,17);assert.equal(s.passes,10);
 });
 test('duplicates have independent identities, placement and High Five scoring',()=>{
  const s=make([{type:'number',value:5,count:3}]);const [a,b,c]=s.collection;assert.equal(new Set(s.collection).size,3);assert.ok(b>25);assert.equal(ballValue(s,b),5);assert.equal(play(s,a,13).points,5);assert.equal(play(s,b,14).points,10);assert.ok(s.bag.has(c));assert.equal(s.stampValues[13],5);assert.equal(s.stampValues[14],5);
