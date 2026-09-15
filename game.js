@@ -15,8 +15,8 @@ export const EXTRA_PATTERNS=[...Array.from({length:16},(_,i)=>{const t=Math.floo
 export const PATTERNS = PATTERN_DEFINITIONS.map(pattern=>pattern.tiles);
 export const freshPatternCounts=()=>Object.fromEntries(PATTERN_TYPES.map(({id})=>[id,0]));
 export const completedPatterns=stamps=>PATTERN_DEFINITIONS.filter(({tiles})=>tiles.every(tile=>stamps.has(tile)));
-export const STAGE_TARGETS = [5,10,15,20,30,40,55,70,90,120];
-export const targetFor = stage => STAGE_TARGETS[stage-1];
+export const targetFor = stage => 40+(stage-1)*10;
+export const STAGE_TARGETS = Array.from({length:10},(_,i)=>targetFor(i+1));
 export const RULE_CARDS={
   bingo:{name:'Bingo',text:'Score rows, columns, and diagonals of 5.',icon:'▦'},
   'face-value':{name:'Face Value',text:'Scored tiles earn their ball’s number in points.',icon:'#'}
@@ -258,7 +258,7 @@ export function settleStage(state){
 }
 
 export function openShop(state,random=Math.random){
-  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10)return false;
+  if(state.status!=='passed'||!state.bonusPaid)return false;
   state.shopOffer??=Object.fromEntries([['cards',CARD_TYPES],['balls',BALL_UPGRADES]].map(([kind,catalog])=>{const choices=shuffled(Object.keys(catalog),random);return [kind,[choices[0]??null,choices[1]??null]];}));state.shopOffer.items=Object.keys(ITEM_TYPES);
   // Introduce this card once to existing blank shops, without refilling a bought slot.
   if(state.shopOffer.cardCatalogVersion!==1){
@@ -274,7 +274,7 @@ export function openShop(state,random=Math.random){
 // The live shop is a persisted, one-pick reward draft. Inventory helpers below
 // remain usable for fixtures and tools; all player selections go through this gate.
 export function openRewardShop(state,random=Math.random){
-  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10)return false;
+  if(state.status!=='passed'||!state.bonusPaid)return false;
   if(state.shopOffer?.rewardVersion===2)return true;
   const claimed=state.shopOffer?.claimed===true;
   state.shopOffer={rewardVersion:2,cards:[],items:shuffled(Object.keys(ITEM_TYPES),random).slice(0,3),balls:[null,null],claimed};
@@ -288,23 +288,23 @@ export function claimReward(state,type){
   offer.claimed=true;return true;
 }
 export function buyItem(state,type){
-  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!Object.hasOwn(ITEM_TYPES,type)||!state.shopOffer?.items?.includes(type))return false;
+  if(state.status!=='passed'||!state.bonusPaid||!Object.hasOwn(ITEM_TYPES,type)||!state.shopOffer?.items?.includes(type))return false;
   const id=state.nextItemId++;state.items[id]=type;state.collection.push(id);state.bag.add(id);state.played[id]=0;return id;
 }
 export function buyCard(state,index){
   const type=state.shopOffer?.cards[index],item=cardDetails(type);
-  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!item||!CARD_TYPES[cardType(type)]||state.jokers.filter(id=>!isRuleCard(id)).length>=5)return false;
+  if(state.status!=='passed'||!state.bonusPaid||!item||!CARD_TYPES[cardType(type)]||state.jokers.filter(id=>!isRuleCard(id)).length>=5)return false;
   let serial=1;while(state.jokers.includes(`${type}:${serial}`))serial++;
   state.jokers.push(`${type}:${serial}`);state.shopOffer.cards[index]=null;return true;
 }
 export function upgradeBall(state,index,number){
   const type=state.shopOffer?.balls[index];
-  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!BALL_UPGRADES[type]||!Number.isInteger(number)||number<1||number>25||state.upgrades[number]===type)return false;
+  if(state.status!=='passed'||!state.bonusPaid||!BALL_UPGRADES[type]||!Number.isInteger(number)||number<1||number>25||state.upgrades[number]===type)return false;
   state.upgrades[number]=type;state.shopOffer.balls[index]=null;return true;
 }
 export function redrawShop(state,random=Math.random){
   if(!Object.keys(CARD_TYPES).length&&!Object.keys(BALL_UPGRADES).length)return false;
-  if(state.status!=='passed'||!state.bonusPaid||state.stage>=10||!state.shopOffer)return false;
+  if(state.status!=='passed'||!state.bonusPaid||!state.shopOffer)return false;
   state.shopOffer=null;return openShop(state,random);
 }
 
@@ -319,7 +319,7 @@ export function migrateShop(state){
   state.jokers=normalizeJokers(state.jokers);
   state.upgrades={};state.ballValues={};
   state.stampValues=Object.fromEntries(Object.entries(state.stampBalls||{}).map(([tile,number])=>[tile,number]));
-  state.shopOffer=state.status==='passed'&&state.bonusPaid&&state.stage<10?{cards:[null,null],balls:[null,null]}:null;
+  state.shopOffer=state.status==='passed'&&state.bonusPaid?{cards:[null,null],balls:[null,null]}:null;
   state.offer=state.offer.slice(0,1);
   state.destinations=Object.fromEntries(state.offer.map(n=>[n,state.destinations?.[n]]));
   delete state.plasmaPending;delete state.plasmaActive;

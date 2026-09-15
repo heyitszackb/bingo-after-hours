@@ -37,11 +37,11 @@ test('last-call win takes precedence over failure and settles exactly once',()=>
  const win=newStage();win.status='passed';win.calls=7;assert.equal(settleStage(win),7);assert.equal(win.money,12);assert.equal(settleStage(win),0);
 });
 test('stages retain money but reset all placements and replenish balls',()=>{
- const s=newStage(1,12,{25:'doubler'});place(s,25,1);const next=newStage(2,s.money,s.upgrades);assert.equal(next.money,12);assert.deepEqual(next.upgrades,{});assert.equal(next.stamps.size,0);assert.deepEqual(next.stampBalls,{});assert.equal(next.bag.size,25);assert.equal(next.calls,17);assert.deepEqual(STAGE_TARGETS,[5,10,15,20,30,40,55,70,90,120]);
+ const s=newStage(1,12,{25:'doubler'});place(s,25,1);const next=newStage(2,s.money,s.upgrades);assert.equal(next.money,12);assert.deepEqual(next.upgrades,{});assert.equal(next.stamps.size,0);assert.deepEqual(next.stampBalls,{});assert.equal(next.bag.size,25);assert.equal(next.calls,17);assert.deepEqual(STAGE_TARGETS,[40,50,60,70,80,90,100,110,120,130]);
 });
 test('shop cards are free while empty ball-upgrade slots remain unavailable',()=>{
  const s=newStage(1,20);assert.equal(openShop(s),false);s.status='passed';settleStage(s);assert.ok(openShop(s));
  assert.ok(s.shopOffer.cards.length>=2);assert.equal(new Set(s.shopOffer.cards).size,s.shopOffer.cards.length);assert.deepEqual(s.shopOffer.items,['trash','statue','king','question','plus10','plus50','plus100','copier','x2','x3','seed','bomb','d20','hundred','rock']);const cash=s.money;
  assert.equal(buyCard(s,1),true);assert.equal(buyCard(s,1),false);assert.equal(upgradeBall(s,0,1),false);assert.equal(redrawShop(s),true);assert.equal(s.money,cash);
- s.stage=10;assert.equal(openShop(s),false);
+ s.stage=10;assert.equal(openShop(s),true);
 });

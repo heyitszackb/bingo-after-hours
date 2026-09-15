@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=3d1b9ea78f2d';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=591cbc7ae267';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {defaultBag,newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=7ab4ccc1009d';
+import {defaultBag,newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=6b0b25e76bd1';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 // One tempo for animation and sequencing keeps effects and input locks aligned.
@@ -577,7 +577,7 @@ async function play(n,b,ghost,tile=state.destinations[n]){
   await wait(120);render();refreshBag();
   if(state.status!=='playing'){showResult();return;}await nextDraw();
 }
-function showStages(){hideTooltip();$('stage-grid').innerHTML=Array.from({length:10},(_,i)=>{const n=i+1,current=n===state.stage,done=n<state.stage;return `<div class="stage-node ${current?'current':done?'complete':'locked'}" ${current?'aria-current="step"':''} aria-label="Stage ${n}, ${current?'current':done?'completed':'locked'}"><span>${n}<small>${STAGE_TARGETS[i].toLocaleString()} pts</small></span>${current?'<span>◆</span>':done?'<span>✓</span>':'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'}</div>`;}).join('');$('stage-dialog').showModal();}
+function showStages(){hideTooltip();$('stage-grid').innerHTML=Array.from({length:10},(_,i)=>{const n=Math.max(1,state.stage-4)+i,current=n===state.stage,done=n<state.stage;return `<div class="stage-node ${current?'current':done?'complete':'locked'}" ${current?'aria-current="step"':''} aria-label="Stage ${n}, ${current?'current':done?'completed':'locked'}"><span>${n}<small>${targetFor(n).toLocaleString()} pts</small></span>${current?'<span>◆</span>':done?'<span>✓</span>':'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'}</div>`;}).join('');$('stage-dialog').showModal();}
 function showPatterns(){
   if(busy||drag||payingOut)return;
   hideTooltip();
@@ -598,7 +598,7 @@ function resetResultUI(){
 function finishResult(){
   payingOut=false;busy=false;
   $('patterns-button').disabled=false;$('score-patterns').disabled=false;
-  if(state.status==='passed'&&state.stage<10){showShop();return;}
+  if(state.status==='passed'){showShop();return;}
   $('continue').disabled=false;$('result-menu').disabled=false;
   $('result-actions').hidden=false;
   $('bag').disabled=false;$('stages').disabled=false;
@@ -631,12 +631,12 @@ async function cashInCall(dot,index,before,onArrival,payout=true){
 }
 async function showResult(){
   hideTooltip();
-  const passed=state.status==='passed',finished=passed&&state.stage===10;
-  $('result-icon').textContent=finished?'♛':passed?'✦':'↻';
+  const passed=state.status==='passed';
+  $('result-icon').textContent=passed?'✦':'↻';
   $('result-score').textContent=`${state.score}/${state.target} pts`;
-  $('continue').textContent=passed&&!finished?'→':'↻';
-  $('continue').setAttribute('aria-label',passed&&!finished?'Next stage':'New run');
-  $('stage-result').setAttribute('aria-label',finished?'All ten stages complete':passed?'Stage complete':'Run ended');
+  $('continue').textContent=passed?'→':'↻';
+  $('continue').setAttribute('aria-label',passed?'Next stage':'New run');
+  $('stage-result').setAttribute('aria-label',passed?'Stage complete':'Run ended');
   $('payout-earned').hidden=!passed;
   $('result-actions').hidden=true;
   $('continue').disabled=true;$('result-menu').disabled=true;
@@ -668,7 +668,7 @@ async function showResult(){
   await wait(250);
   finishResult();
 }
-$('continue').onclick=async()=>{if(payingOut)return;const next=state.status==='passed'&&state.stage<10?state.stage+1:1;state=newStage(next,next===1?5:state.money,next===1?{}:state.upgrades,next===1?{}:state.patternCounts,next===1?undefined:state.jokers,next===1?defaultBag():state);hasRun=true;saveRun();resetResultUI();await nextDraw();};
+$('continue').onclick=async()=>{if(payingOut)return;const next=state.status==='passed'?state.stage+1:1;state=newStage(next,next===1?5:state.money,next===1?{}:state.upgrades,next===1?{}:state.patternCounts,next===1?undefined:state.jokers,next===1?defaultBag():state);hasRun=true;saveRun();resetResultUI();await nextDraw();};
 function playOfferedBall(){
   if(busy||drag||jokerDrag||state.status!=='playing'||!state.offer.length)return;
   const n=state.offer[0],b=$('balls').querySelector(`[data-number="${n}"]`);if(!b)return;
@@ -764,7 +764,7 @@ function loadRun(){
     const numbers=a=>Array.isArray(a)&&a.every(n=>Number.isInteger(n)&&n>=1&&n<=25)&&new Set(a).size===a.length;
     const ids=a=>Array.isArray(a)&&a.every(n=>Number.isSafeInteger(n)&&n>=1&&n<saved.nextItemId)&&new Set(a).size===a.length;
     if(!Number.isSafeInteger(saved.nextItemId)||saved.nextItemId<26||saved.nextItemId>10000||!ids(saved.collection)||!saved.items||Array.isArray(saved.items)||!Object.entries(saved.items).every(([id,type])=>Number.isInteger(Number(id))&&Number(id)>=26&&Number(id)<saved.nextItemId&&Object.hasOwn(ITEM_TYPES,type))||!saved.collection.every(id=>id<=25||saved.items[id]||Object.hasOwn(saved.ballValues||{},id)))throw new Error('Invalid collection');
-    if(!Number.isInteger(saved.stage)||saved.stage<1||saved.stage>10||!numbers(saved.stamps)||!ids(saved.bag)||!ids(saved.offer)||!saved.bag.every(id=>saved.collection.includes(id))||!saved.offer.every(n=>saved.bag.includes(n))||!Number.isInteger(saved.calls)||saved.calls<0||saved.calls>192||!Number.isInteger(saved.money)||saved.money<0||!Number.isInteger(saved.score)||!['playing','passed','over'].includes(saved.status)||!Array.isArray(saved.played)||saved.played.length<26||saved.played.length>saved.nextItemId)throw new Error('Invalid save');
+    if(!Number.isSafeInteger(saved.stage)||saved.stage<1||!numbers(saved.stamps)||!ids(saved.bag)||!ids(saved.offer)||!saved.bag.every(id=>saved.collection.includes(id))||!saved.offer.every(n=>saved.bag.includes(n))||!Number.isInteger(saved.calls)||saved.calls<0||saved.calls>192||!Number.isInteger(saved.money)||saved.money<0||!Number.isInteger(saved.score)||!['playing','passed','over'].includes(saved.status)||!Array.isArray(saved.played)||saved.played.length<26||saved.played.length>saved.nextItemId)throw new Error('Invalid save');
     const old=saved.rulesVersion!==3;
     delete saved.paints;delete saved.goldSeals;
     const oldTurn=saved.turnVersion!==1;
@@ -815,7 +815,7 @@ function loadRun(){
       if(Object.keys(stampBalls).length!==saved.stamps.length||!ids(Object.values(stampBalls))||!saved.stamps.every(tile=>stampBalls[tile]&&saved.collection.includes(stampBalls[tile])&&!saved.bag.includes(stampBalls[tile])))throw new Error('Invalid stamps');
       if(Object.keys(stampValues).length!==saved.stamps.length||!saved.stamps.every(tile=>stampValues[tile]===null||Number.isSafeInteger(stampValues[tile])))throw new Error('Invalid values');
       if(Object.keys(destinations).length!==saved.offer.length||!numbers(Object.values(destinations))||!saved.offer.every(n=>destinations[n]&&!saved.stamps.includes(destinations[n])))throw new Error('Invalid destinations');
-      state={...newStage(saved.stage,saved.money),...saved,rulesVersion:3,target:STAGE_TARGETS[saved.stage-1],stamps:new Set(saved.stamps),bag:new Set(saved.bag)};
+      state={...newStage(saved.stage,saved.money),...saved,rulesVersion:3,target:targetFor(saved.stage),stamps:new Set(saved.stamps),bag:new Set(saved.bag)};
     }
     if(oldTurn&&state.status==='playing'){state.offer=[];state.destinations={};}
     hasRun=true;
@@ -862,7 +862,7 @@ $('restart-button').onclick=confirmRestart;
 $('confirm-restart').onclick=()=>enterGame(true);
 $('cancel-restart').onclick=()=>$('restart-dialog').close();
 $('main-menu-button').onclick=showMenu;
-$('result-menu').onclick=()=>{if(payingOut)return;if(state.status==='over'||state.stage===10){hasRun=false;try{localStorage.removeItem(SAVE_KEY);}catch{}}showMenu();};
+$('result-menu').onclick=()=>{if(payingOut)return;if(state.status==='over'){hasRun=false;try{localStorage.removeItem(SAVE_KEY);}catch{}}showMenu();};
 $('help-button').onclick=()=>$('help-dialog').showModal();
 $('help-done').onclick=()=>$('help-dialog').close();
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!e.defaultPrevented&&!document.querySelector('dialog[open]')&&!inMenu){e.preventDefault();pauseGame();}});
