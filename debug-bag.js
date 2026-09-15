@@ -1,4 +1,4 @@
-import {ballValue,ITEM_TYPES} from './game.js?v=ae582ed3bc75';
+import {ballValue,ITEM_TYPES} from './game.js?v=f5db3fa576ce';
 
 export const DEBUG_BAG_LIMIT=500;
 export const baseBagRecipe=()=>Array.from({length:25},(_,i)=>({type:'number',value:i+1,count:1}));
@@ -32,7 +32,7 @@ export function buildDebugBag(recipe){
     else{
       items[id]=row.type;
       if(row.type==='d20'&&row.value)valueModifiers[id]=row.value;
-      if((row.type==='hundred'&&row.value!==50)||(row.type==='seed'&&row.value!==1)||(row.type==='king'&&row.value!==10))ballValues[id]=row.value;
+      if((row.type==='hundred'&&row.value!==50)||(row.type==='seed'&&row.value!==1)||(['king','statue'].includes(row.type)&&row.value!==10))ballValues[id]=row.value;
     }
   }
   return {collection,items,ballValues,valueModifiers,nextItemId};

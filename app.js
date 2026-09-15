@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=ec3f989ec464';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=39024025cbf7';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {defaultBag,newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=ae582ed3bc75';
+import {defaultBag,newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=f5db3fa576ce';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 // One tempo for animation and sequencing keeps effects and input locks aligned.
@@ -90,7 +90,7 @@ function renderJokers(){
 function overTrash(x,y){const r=$('joker-trash').getBoundingClientRect();return x>=r.left-12&&x<=r.right+12&&y>=r.top-12&&y<=r.bottom+12;}
 function cancelJokerDrag(removeGhost=true){if(!jokerDrag)return;const d=jokerDrag;jokerDrag=null;if(removeGhost){const rack=$('joker-rack');for(const id of d.originalOrder){const c=rack.querySelector(`[data-joker="${id}"]`);if(c)rack.insertBefore(c,rack.querySelector('.joker-slot'));}}d.card.classList.remove('held');if(removeGhost)d.ghost?.remove();$('joker-trash').hidden=true;$('joker-trash').classList.remove('ready');if(d.card.hasPointerCapture(d.pointer))d.card.releasePointerCapture(d.pointer);}
 
-const itemClass=n=>state.items[n]==='king'?' king-item':state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';
+const itemClass=n=>state.items[n]==='statue'?' statue-item':state.items[n]==='king'?' king-item':state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';
 const pieceLabel=n=>state.items[n]?`${ITEM_TYPES[state.items[n]].name}${ballValue(state,n)!==null?` (${ballValue(state,n)})`:''}`:ballValue(state,n)??'';
 const pieceFace=n=>state.items[n]==='question'?'?':state.items[n]?.startsWith('plus')?`+${state.items[n].slice(4)}`:state.items[n]==='copier'?'COPY':['x2','x3'].includes(state.items[n])?`×${state.items[n].slice(1)}`:isDie(state,n)?'?':ballValue(state,n)??'';
 function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)}`;b.classList.toggle('large-value',String(pieceFace(n)).length>2);b.dataset.number=n;b.innerHTML=`<span class="face">${pieceFace(n)}</span>`;b.setAttribute('aria-label',`Inspect ${pieceLabel(n)}`);return b;}
@@ -191,7 +191,7 @@ function debugRows(){
     const value=document.createElement('input');value.type='number';value.step='1';value.inputMode='text';value.value=row.value??'';value.disabled=['question','bomb','rock','x2','x3','copier','plus10','plus50','plus100'].includes(row.type);value.setAttribute('aria-label',`Piece ${index+1} ${row.type==='d20'?'roll modifier':'value'}`);
     const count=document.createElement('input');count.type='number';count.step='1';count.min='1';count.max='500';count.inputMode='numeric';count.value=row.count;count.setAttribute('aria-label',`Piece ${index+1} copies`);
     const remove=document.createElement('button');remove.textContent='×';remove.setAttribute('aria-label',`Remove piece ${index+1}`);
-    select.onchange=()=>{row.type=select.value;row.value=['question','bomb','rock','x2','x3','copier','plus10','plus50','plus100'].includes(row.type)?null:row.type==='d20'?0:row.type==='hundred'?50:row.type==='king'?10:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
+    select.onchange=()=>{row.type=select.value;row.value=['question','bomb','rock','x2','x3','copier','plus10','plus50','plus100'].includes(row.type)?null:row.type==='d20'?0:row.type==='hundred'?50:['king','statue'].includes(row.type)?10:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
     value.oninput=()=>{row.value=value.value===''?null:value.valueAsNumber;validateDebugDraft();};count.oninput=()=>{row.count=count.value===''?null:count.valueAsNumber;validateDebugDraft();};
     remove.onclick=()=>{debugDraft.splice(index,1);debugRows();const next=$('debug-rows').children[Math.min(index,debugDraft.length-1)];(next?.querySelector('select')||$('debug-add')).focus();};
     line.append(select,value,count,remove);list.append(line);
@@ -454,7 +454,7 @@ async function explodeBomb(result){
       const angle=Math.atan2(rect.top-r.top,rect.left-r.left)+(i-2.5)*.45,d=30+Math.random()*70;
       fragments.push(animate(chip,[{transform:'scale(1.3)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+20}px) rotate(${i*65}deg) scale(.2)`,opacity:0}],{duration:360+i*20,easing:'cubic-bezier(.1,.65,.2,1)'}).then(()=>chip.remove()));
     }}
-    cell.classList.remove('stamped','bomb-item','die-item','hundred-item','rock-item','seed-item','king-item','just-stamped');cell.querySelector('span').textContent='';
+    cell.classList.remove('stamped','bomb-item','die-item','hundred-item','rock-item','seed-item','king-item','statue-item','just-stamped');cell.querySelector('span').textContent='';
   }
   if(!reduced){
     const ring=document.createElement('i');ring.className='bomb-wave';ring.style.left=`${r.left+r.width/2}px`;ring.style.top=`${r.top+r.height/2}px`;ring.style.width=`${r.width*2.6}px`;ring.style.height=`${r.height*2.6}px`;$('effects').append(ring);
@@ -679,6 +679,7 @@ for(const dialog of document.querySelectorAll('#bag-dialog,#stage-dialog,#help-d
 
 
 const shopCopy={
+  statue:'Worth 10 · stays between rounds',
   king:'Worth 10 · wanders after each play',
   square:'Score a filled 2×2 block',corners:'Fill 4 corners → score entire board',
   question:'When scored: swap with bag item',
@@ -700,7 +701,7 @@ const shopCopy={
 function renderShop(){
   hideTooltip();$('money').textContent=state.money;
   const shelf=$('shop-shelf'),focused=document.activeElement?.id;
-  shelf.innerHTML='<section class=reward-row aria-label=Cards><h3>CARDS</h3><div id=shop-cards class=reward-options></div></section><section class=reward-row aria-label=Tokens><h3>TOKENS</h3><div id=shop-tokens class=reward-options></div></section>';
+  shelf.innerHTML='<section class=reward-row aria-label=Tokens><h3>ITEMS · CHOOSE ONE</h3><div id=shop-tokens class=reward-options></div></section>';
   const full=state.jokers.filter(id=>!isRuleCard(id)).length>=5;
   for(const type of [...state.shopOffer.cards,...state.shopOffer.items].filter(Boolean)){
     const definition=CARD_TYPES[cardType(type)]||ITEM_TYPES[type];
@@ -710,7 +711,7 @@ function renderShop(){
     const owned=isCard?state.jokers.filter(id=>cardType(id)===cardType(type)).length:state.collection.filter(id=>state.items[id]===type).length;
     const action=sold?'ADDED':isCard&&full?'5 / 5 CARDS':'FREE · CHOOSE';
     card.disabled=busy||sold||(isCard&&full);card.setAttribute('aria-label',`${item.name}. ${item.text} ${action}. ${owned} owned.`);
-    const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='king'?'<i class=king-art aria-hidden=true>10</i>':type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='question'?'?':type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'COPY':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;
+    const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='statue'?'<i class=statue-art aria-hidden=true>10</i>':type==='king'?'<i class=king-art aria-hidden=true>10</i>':type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='question'?'?':type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'COPY':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;
     card.innerHTML=`<strong class="product-name">${item.name.toUpperCase()}</strong>${art}<span class="product-description">${item.range?`Play <strong class=card-range>${item.range}</strong>: score it + 4 neighbors`:shopCopy[type]||item.short||item.text}</span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span><b class="product-action">${action}</b>`;
     card.onclick=async()=>{
       if(busy||!claimReward(state,type))return;
@@ -784,7 +785,7 @@ function loadRun(){
     for(const [tile,id] of Object.entries(saved.stampBalls||{}))if(saved.items[id]==='hundred')saved.stampValues[tile]=ballValue(saved,Number(id));
     if(typeof saved.ballValues!=='object'||Array.isArray(saved.ballValues)||!Object.entries(saved.ballValues).every(([n,value])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<saved.nextItemId&&saved.collection.includes(Number(n))&&Number.isSafeInteger(value)))throw new Error('Invalid ball values');
     if(typeof saved.upgrades!=='object'||Array.isArray(saved.upgrades)||!Object.entries(saved.upgrades).every(([n,type])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&BALL_UPGRADES[type]))throw new Error('Invalid upgrades');
-    if(saved.shopOffer!=null&&(!['cards','balls'].every(kind=>Array.isArray(saved.shopOffer[kind])&&saved.shopOffer[kind].length===2&&saved.shopOffer[kind].every(type=>type===null||(kind==='cards'?cardDetails(type):BALL_UPGRADES[type])))||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
+    if(saved.shopOffer!=null&&(!['cards','balls'].every(kind=>Array.isArray(saved.shopOffer[kind])&&saved.shopOffer[kind].length===(kind==='cards'&&saved.shopOffer.rewardVersion===2?0:2)&&saved.shopOffer[kind].every(type=>type===null||(kind==='cards'?cardDetails(type):BALL_UPGRADES[type])))||saved.status!=='passed'||!saved.bonusPaid))throw new Error('Invalid shop');
     if(saved.shopOffer?.items&&!saved.shopOffer.items.every(type=>Object.hasOwn(ITEM_TYPES,type)))throw new Error('Invalid shop items');
     saved.scoredLines=Array.isArray(saved.scoredLines)?[...new Set(saved.scoredLines.filter(id=>typeof id==='string'&&/^(row-[1-5]|column-[1-5]|diagonal-[12]|square-(?:[1-9]|1[0-6])|corners-1)$/.test(id)))]:[];
     saved.jokers=normalizeJokers(saved.jokers);
