@@ -1,6 +1,6 @@
 import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=591cbc7ae267';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {defaultBag,newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=6b0b25e76bd1';
+import {defaultBag,newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=6b0b25e76bd1';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 // One tempo for animation and sequencing keeps effects and input locks aligned.
@@ -23,7 +23,7 @@ function render(boardState=state){
   $('redraw').classList.toggle('exhausted',state.passes===0);$('play-ball').disabled=busy||!!drag||state.status!=='playing'||!state.offer.length;$('play-ball').setAttribute('aria-label',`Play ball ${pieceLabel(state.offer[0])} on the highlighted space. ${state.calls} plays remaining.`);
   $('patterns-button').disabled=busy||payingOut;$('score-patterns').disabled=busy||payingOut;
   $('score-patterns').setAttribute('aria-label',`${state.score} of ${state.target} points. View scoring patterns and run counts`);
-  $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);renderScore();for(const k of ['calls','stage'])$(k).textContent=state[k];$('money').textContent=state.money;$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.max(0,Math.min(100,state.score/state.target*100))}%`;$('redraw-cost').textContent=state.passes;$('redraw').disabled=busy||state.passes<1||state.status!=='playing';$('redraw').setAttribute('aria-label',`Pass: ${state.passes} remaining. Return this ball and draw a new ball and space without spending a play.`);renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
+  $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);renderScore();for(const k of ['calls','stage'])$(k).textContent=state[k];$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.max(0,Math.min(100,state.score/state.target*100))}%`;$('redraw-cost').textContent=state.passes;$('redraw').disabled=busy||state.passes<1||state.status!=='playing';$('redraw').setAttribute('aria-label',`Pass: ${state.passes} remaining. Return this ball and draw a new ball and space without spending a play.`);renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
     const c=$(`cell-${tile}`),offered=Object.values(state.destinations).includes(tile),number=boardState.stampBalls[tile];
     c.className=`cell paint-grey upgrade-${state.upgrades[number]||'plain'}${itemClass(number)}${boardState.stamps.has(tile)?' stamped':''}${offered?' offered':''}`;
     c.querySelector('span').textContent=boardState.stamps.has(tile)?(boardState.stampValues[tile]??(state.items[number]==='question'?'?':'')):'';
@@ -603,32 +603,6 @@ function finishResult(){
   $('result-actions').hidden=false;
   $('bag').disabled=false;$('stages').disabled=false;
 }
-async function cashInCall(dot,index,before,onArrival,payout=true){
-  const from=$('play-ball').getBoundingClientRect(),to=document.querySelector('.money-panel').getBoundingClientRect();
-  const token=document.createElement('span');token.className='cash-flight';token.textContent='$';
-  token.style.left=`${from.left+from.width/2}px`;token.style.top=`${from.top+from.height/2}px`;
-  $('effects').append(token);
-  const dx=to.left+to.width/2-from.left-from.width/2,dy=to.top+to.height/2-from.top-from.height/2;
-  if(payout)dot.classList.add('used');
-  await animate(token,[
-    {transform:'translate(-50%,-50%) scale(.45)',opacity:.7,filter:'hue-rotate(65deg)'},
-    {transform:'translate(-50%,calc(-50% - 18px)) scale(1.12)',opacity:1,filter:'hue-rotate(0deg)',offset:.2},
-    {transform:`translate(calc(-50% + ${dx*.5}px),calc(-50% + ${dy-24}px)) scale(1)`,opacity:1,offset:.6},
-    {transform:`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.25)`,opacity:.6}
-  ],{duration:440,easing:'cubic-bezier(.2,.5,.35,1)'});
-  token.remove();
-  const collected=onArrival();
-  $('money').textContent=before+collected;
-  if(payout)$('payout-earned').textContent=`+$${collected}`;
-  navigator.vibrate?.(8);
-  animate(document.querySelector('.money-panel'),[{transform:'scale(1.08)',boxShadow:'0 0 22px #f4c66c99',borderColor:'#fff2bd'},{transform:'scale(1)',boxShadow:'3px 4px #00191e',borderColor:'#a68a58'}],{duration:170});
-  animate($('money'),[{transform:'translateY(-3px) scale(1.2)',color:'#fff4c9'},{transform:'translateY(0) scale(1)',color:'#f4c66c'}],{duration:170});
-  for(let i=0;i<5&&!reduced;i++){
-    const spark=document.createElement('i');spark.className='cash-spark';spark.style.left=`${to.left+to.width/2}px`;spark.style.top=`${to.top+to.height/2}px`;$('effects').append(spark);
-    const angle=i*Math.PI*.4;
-    animate(spark,[{transform:'translate(0,0)',opacity:1},{transform:`translate(${Math.cos(angle)*25}px,${Math.sin(angle)*20}px) scale(0)`,opacity:0}],{duration:250}).then(()=>spark.remove());
-  }
-}
 async function showResult(){
   hideTooltip();
   const passed=state.status==='passed';
@@ -637,35 +611,11 @@ async function showResult(){
   $('continue').textContent=passed?'→':'↻';
   $('continue').setAttribute('aria-label',passed?'Next stage':'New run');
   $('stage-result').setAttribute('aria-label',passed?'Stage complete':'Run ended');
-  $('payout-earned').hidden=!passed;
   $('result-actions').hidden=true;
   $('continue').disabled=true;$('result-menu').disabled=true;
   document.querySelector('.track').hidden=true;$('stage-result').hidden=false;
-  const alreadyPaid=passed&&state.bonusPaid,bonus=passed?state.calls:0;
-  const before=state.money;
-  if(passed)settleStage(state);
+  if(passed)state.bonusPaid=true;
   saveRun();
-  if(!passed){finishResult();return;}
-  payingOut=true;$('bag').disabled=true;$('stages').disabled=true;
-  $('payout-earned').textContent=alreadyPaid?`+$${bonus}`:'+$0';
-  if(alreadyPaid){
-    [...$('call-dots').children].forEach(dot=>dot.classList.add('used'));$('calls').textContent=0;
-    finishResult();return;
-  }
-  await wait(250);
-  let collected=0;
-  const flights=[];
-  for(let i=0;i<bonus;i++){
-    const dot=$('call-dots').children[Math.min(14,Math.floor((bonus-i-1)/state.callCapacity*15))];
-    flights.push(cashInCall(dot,i,before,()=>++collected));
-    renderCalls(bonus-i-1);
-    await wait(110);
-  }
-  await Promise.all(flights);
-  document.querySelector('.call-meter').setAttribute('aria-label',`${bonus} unused plays converted to dollars`);
-
-  $('announcer').textContent=`${bonus} unused plays paid $${bonus}. Balance $${state.money}.`;
-  await wait(250);
   finishResult();
 }
 $('continue').onclick=async()=>{if(payingOut)return;const next=state.status==='passed'?state.stage+1:1;state=newStage(next,next===1?5:state.money,next===1?{}:state.upgrades,next===1?{}:state.patternCounts,next===1?undefined:state.jokers,next===1?defaultBag():state);hasRun=true;saveRun();resetResultUI();await nextDraw();};
@@ -712,7 +662,7 @@ const shopCopy={
   x3:'×3 tile points · permanent'
 };
 function renderShop(){
-  hideTooltip();$('money').textContent=state.money;
+  hideTooltip();
   const shelf=$('shop-shelf'),focused=document.activeElement?.id;
   shelf.innerHTML='<section class=reward-row aria-label=Tokens><h3>ITEMS · CHOOSE ONE</h3><div id=shop-tokens class=reward-options></div></section>';
   const full=state.jokers.filter(id=>!isRuleCard(id)).length>=5;
@@ -722,7 +672,7 @@ function renderShop(){
     const card=document.createElement('button');card.id=`shop-${cardType(type)}`;card.className=`shop-product${isCard?' shop-rule-card':''}`;
     if(isCard)card.dataset.shopCard=type;
     const owned=isCard?state.jokers.filter(id=>cardType(id)===cardType(type)).length:state.collection.filter(id=>state.items[id]===type).length;
-    const action=sold?'ADDED':isCard&&full?'5 / 5 CARDS':'FREE · CHOOSE';
+    const action=sold?'ADDED':isCard&&full?'5 / 5 CARDS':'CHOOSE';
     card.disabled=busy||sold||(isCard&&full);card.setAttribute('aria-label',`${item.name}. ${item.text} ${action}. ${owned} owned.`);
     const art=isCard?`<i class="shelf-joker-art" aria-hidden="true">${item.icon}</i>`:type==='statue'?'<i class=statue-art aria-hidden=true>10</i>':type==='king'?'<i class=king-art aria-hidden=true>10</i>':type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='question'?'?':type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'COPY':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;
     card.innerHTML=`<strong class="product-name">${item.name.toUpperCase()}</strong>${art}<span class="product-description">${item.range?`Play <strong class=card-range>${item.range}</strong>: score it + 4 neighbors`:shopCopy[type]||item.short||item.text}</span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span><b class="product-action">${action}</b>`;
@@ -825,7 +775,7 @@ function updateMenu(){
   $('play-button').innerHTML=hasRun?'RESUME <span>▶</span>':'PLAY <span>▶</span>';
   $('new-run-button').hidden=!hasRun;
   $('saved-stage').hidden=!hasRun;
-  $('saved-stage').textContent=`STAGE ${state.stage} · ${state.score}/${state.target.toLocaleString()} pts · $${state.money}`;
+  $('saved-stage').textContent=`STAGE ${state.stage} · ${state.score}/${state.target.toLocaleString()} pts`;
 }
 function showMenu(){
   hideTooltip();cancelDrag();cancelJokerDrag();saveRun();
