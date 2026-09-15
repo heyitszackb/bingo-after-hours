@@ -31,13 +31,13 @@ export const ITEM_TYPES={
   statue:{name:'Statue',text:'Stays here between rounds',startingValue:10,price:0},
   king:{name:'Wandering King',text:'Each play: move to a random empty adjacent tile',startingValue:10,price:0},
   question:{name:'Question Mark',text:'When played: swap with a random item in the bag',details:'No stamps or other Question Marks. The new item’s play effect does not trigger.',startingValue:'?',price:0},
-  ...Object.fromEntries([10,50,100].map(n=>[`plus${n}`,{name:`+${n}`,text:`+${n} 🏆`,startingValue:null,price:0}])),
+  ...Object.fromEntries([10,50,100].map(n=>[`plus${n}`,{name:`+${n}`,text:`+${n} ★`,startingValue:null,price:0}])),
   copier:{name:'Copier',text:'When scored: copy this item into the bag',startingValue:null,price:0},
   x2:{name:'×2',text:'x2 to this tile’s score',startingValue:null,price:0},
   x3:{name:'×3',text:'x3 to this tile’s score',startingValue:null,price:0},
-  seed:{name:'Seed',text:'Increases by 1 🏆 each turn',startingValue:1,price:0},
+  seed:{name:'Seed',text:'Increases by 1 ★ each turn',startingValue:1,price:0},
   bomb:{name:'Bomb',text:'Permanently destroy all adjacent items',details:'Also destroys itself. Tile stamps stay.',startingValue:0,price:0},
-  d20:{name:'20-Sided Die',text:'When played: random value between 1–20 🏆',startingValue:'?',price:0},
+  d20:{name:'20-Sided Die',text:'When played: random value between 1–20 ★',startingValue:'?',price:0},
   rock:{name:'Rock',text:'Free to play',startingValue:0,price:0}
 };
 // Retire Anvils from serialized runs without losing the rest of the run or tile ink.

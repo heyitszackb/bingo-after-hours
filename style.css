@@ -578,8 +578,8 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 
 .king-blocked{outline:2px solid #b4c6be;outline-offset:-5px;z-index:2}
 .king-blocked-cue{position:fixed;z-index:85;pointer-events:none;padding:5px 8px;background:#123331;color:#e1ebe5;border:2px solid #91aaa0;font:14px monospace;white-space:nowrap;box-shadow:2px 3px 0 #061b1d;transform:translateX(-50%)}
-/* One trophy language across gameplay, inspection, and rewards. */
-.trophy{display:inline-block;width:.85em;height:.95em;vertical-align:-.12em;background:var(--points);mask:url('assets/trophy.svg?v=b8b626232702') center/contain no-repeat;flex-shrink:0}
+/* One star language across gameplay, inspection, and rewards. */
+.star{display:inline-block;width:.85em;height:.95em;vertical-align:-.12em;background:var(--points);mask:url('assets/star.svg?v=40ecb26fe056') center/contain no-repeat;flex-shrink:0}
 #score-meter .score-numbers{align-items:center;gap:7px}
 #score-meter #score,#score-meter #target{display:inline-flex;gap:3px;min-width:0;color:var(--points)}
 .flip-digit{display:inline-grid;place-items:center;position:relative;min-width:.68em;padding:3px 2px 4px;background:linear-gradient(#26312c 49%,#101e1b 50%);border:1px solid #64705a;border-radius:2px;box-shadow:0 3px 0 #021a1b,inset 0 1px #ffffff1a;color:var(--points);transform-origin:50% 50%;font-variant-numeric:tabular-nums}
@@ -598,7 +598,7 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 #inspect-tooltip .point-text{background:none;padding:0;color:var(--points)}
 #inspect-tooltip{background:#102e2c;color:#f5e7c5;border-color:#a69b7d}
 #inspect-tooltip .tooltip-heading strong,#inspect-tooltip p{color:#f5e7c5}
-.activation-point:not(.call-point):after,.value-delta:after{content:'';display:inline-block;width:.75em;height:.8em;margin-left:3px;background:var(--points);mask:url('assets/trophy.svg?v=b8b626232702') center/contain no-repeat}
+.activation-point:not(.call-point):after,.value-delta:after{content:'';display:inline-block;width:.75em;height:.8em;margin-left:3px;background:var(--points);mask:url('assets/star.svg?v=40ecb26fe056') center/contain no-repeat}
 .bingo-multiplier,.bingo-multiplier strong,.bingo-multiplier .multiplier-factor,.multiplier-pop{color:var(--points)}
 .cell.offered{outline:none;background:repeating-conic-gradient(#fff0d000 0% 25%,#b8996310 0% 50%) 0 0/6px 6px,#faebc9;box-shadow:inset 3px 3px #fff6df,inset -3px -3px #d8c39b}
 .cell.offered:after{display:none}
@@ -607,7 +607,7 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .cell:focus-visible,.cell.inspected{outline:2px solid #fff4d8;outline-offset:-4px}
 @media(max-height:550px){#shop-tokens .product-description{font-size:17px}}
 #bag-grid .ball.large-value .face{font-size:21px}
-#score-line-label:after{content:'';display:inline-block;width:.8em;height:.9em;vertical-align:-.1em;margin-left:4px;background:var(--points);mask:url('assets/trophy.svg?v=b8b626232702') center/contain no-repeat}
+#score-line-label:after{content:'';display:inline-block;width:.8em;height:.9em;vertical-align:-.1em;margin-left:4px;background:var(--points);mask:url('assets/star.svg?v=40ecb26fe056') center/contain no-repeat}
 .multiplier-source{outline-color:var(--points)}
 .bingo-multiplier{border-color:var(--points)}
 /* Inspect the item first; persistent tile ink sits in its own attached panel. */
@@ -634,3 +634,39 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 @media(max-width:360px){#inspect-tooltip.has-stamps{gap:6px}#inspect-tooltip.has-stamps .tooltip-main,#tooltip-stamps{padding:8px}#inspect-tooltip.has-stamps #tooltip-effect,.tooltip-stamp-effect{font-size:17px}}
 .stamp-effect-mark{display:flex;flex:0 0 19px;align-items:center;flex-direction:column;gap:2px}
 .stamp-repeat{font:15px/1 'VT323',monospace;color:#eedcb4;white-space:nowrap}
+/* Reward shop: anchored header and three readable horizontal item cards. */
+.cabinet.shopping{width:min(calc(100% - 32px),560px);padding:max(16px,env(safe-area-inset-top)) 0 max(16px,env(safe-area-inset-bottom));display:flex;justify-content:flex-start;align-content:start;gap:18px}
+.cabinet.shopping>.dashboard{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) 44px;grid-template-rows:44px;gap:0;height:44px;flex:0 0 44px}
+.cabinet.shopping>.dashboard>.game-logo{grid-column:2;grid-row:1;justify-self:center;margin:0;font-size:36px;height:auto;line-height:1;letter-spacing:2px}
+.cabinet.shopping>.dashboard>#shop-menu{grid-column:1;grid-row:1;height:44px;width:44px;color:#8dbb9e}
+.cabinet.shopping>.dashboard>#shop-menu svg{width:27px;height:27px}
+.cabinet.shopping #shop-screen{width:100%;display:flex;flex-direction:column;gap:18px;min-height:0}
+.cabinet.shopping .shop-heading{border:0;padding:0;display:flex;align-items:center;justify-content:center;gap:16px}
+.cabinet.shopping .shop-heading:before,.cabinet.shopping .shop-heading:after{content:'';width:54px;height:2px;background:#71a98a}
+.cabinet.shopping .shop-heading h2{font-size:26px;letter-spacing:5px;line-height:1;margin:0}
+.cabinet.shopping #shop-shelf{padding:0;gap:0;overflow:visible;display:block;border:0}
+.cabinet.shopping #shop-tokens{display:grid;grid-template-columns:minmax(0,1fr);gap:13px}
+.cabinet.shopping #shop-tokens .shop-product{position:relative;display:grid;grid-template-columns:29% minmax(0,1fr);grid-template-rows:1fr;gap:0;padding:0;width:100%;height:clamp(130px,37vw,190px);min-height:0;border:3px solid #6da385;border-radius:7px;background:linear-gradient(100deg,#0d352ce8,#0b3029e8);box-shadow:0 0 0 1px #254f40,inset 0 0 0 2px #234d3b,4px 6px #001b1cd9;text-align:left;overflow:hidden}
+.cabinet.shopping #shop-shelf .product-art-well{height:100%;width:100%;display:grid;place-items:center;background:#05251d66;border-right:1px solid #214b37;box-shadow:inset -3px 0 #10372c;grid-column:1;grid-row:1}
+.cabinet.shopping #shop-shelf .product-art-well i{grid-area:auto;margin:0;width:72%;height:auto;aspect-ratio:1;flex:none;font-size:27px;image-rendering:pixelated;filter:drop-shadow(3px 5px #001a1b80)}
+.cabinet.shopping #shop-shelf .product-art-well .copier-art{font-size:0}
+.cabinet.shopping #shop-shelf .product-art-well .statue-art{font-size:22px;padding-top:18px}
+.cabinet.shopping #shop-shelf .product-art-well .king-art{font-size:22px;padding-top:10px}
+.cabinet.shopping #shop-shelf .product-art-well .seed-art{font-size:22px;padding-top:18px}
+.cabinet.shopping #shop-shelf .product-body{grid-column:2;grid-row:1;display:flex;flex-direction:column;justify-content:flex-start;gap:12px;padding:12px 12px 10px;min-width:0}
+.cabinet.shopping #shop-shelf .product-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;min-width:0}
+.cabinet.shopping #shop-shelf .product-name{display:block;min-height:0;min-width:0;font-size:25px;line-height:1;text-align:left;white-space:normal;letter-spacing:.5px}
+.cabinet.shopping #shop-shelf .starting-points,.cabinet.shopping #shop-shelf .shop-stamp-tag{position:static;flex-shrink:0;align-self:flex-start;margin:0;min-height:0;border:1px solid #be9e47;background:#0a2b26;padding:3px 5px;font-size:23px;line-height:1}
+.cabinet.shopping #shop-shelf .shop-stamp-tag{font-size:17px;color:#ddcca1;border-color:#b6a078;letter-spacing:1px}
+.cabinet.shopping #shop-shelf .product-description{display:block;flex:none;max-width:none;font-size:21px;line-height:1.1;text-align:left;white-space:normal}
+.cabinet.shopping #shop-shelf .effect-trigger{display:block;margin-bottom:3px;color:#7dab8c;text-transform:uppercase;font-size:.8em;letter-spacing:1px}
+.cabinet.shopping #shop-shelf .product-owned{display:none}
+.shop-instruction{margin:0;color:#88b196;font-size:20px;text-align:center;letter-spacing:1px}
+@media(max-width:360px){.cabinet.shopping{width:calc(100% - 24px);gap:13px;padding-top:max(12px,env(safe-area-inset-top))}.cabinet.shopping #shop-screen{gap:13px}.cabinet.shopping>.dashboard>.game-logo{font-size:31px}.cabinet.shopping #shop-tokens{gap:10px}.cabinet.shopping #shop-shelf .product-body{padding:9px;gap:8px}.cabinet.shopping #shop-shelf .product-name{font-size:21px}.cabinet.shopping #shop-shelf .product-description{font-size:18px}.cabinet.shopping #shop-shelf .starting-points{font-size:20px}.cabinet.shopping #shop-shelf .shop-stamp-tag{font-size:14px;padding:3px}.cabinet.shopping .shop-heading h2{font-size:23px}.shop-instruction{font-size:18px}}
+@media(max-height:500px) and (orientation:landscape){.cabinet.shopping{width:calc(100% - 28px);gap:10px;padding:10px 0}.cabinet.shopping #shop-screen{gap:10px}.cabinet.shopping #shop-tokens{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.cabinet.shopping #shop-tokens .shop-product{height:calc(100dvh - 150px);grid-template-columns:1fr;grid-template-rows:36% 1fr}.cabinet.shopping #shop-shelf .product-art-well{grid-row:1;border:0}.cabinet.shopping #shop-shelf .product-art-well i{height:90%;width:auto}.cabinet.shopping #shop-shelf .product-body{grid-column:1;grid-row:2;padding:8px;gap:7px}.cabinet.shopping #shop-shelf .product-name{font-size:21px}.cabinet.shopping #shop-shelf .product-description{font-size:18px}.cabinet.shopping #shop-shelf .starting-points{font-size:19px}.cabinet.shopping #shop-shelf .shop-stamp-tag{font-size:14px}}
+/* The offered square breathes warmly; dragging over it locks in a brighter state. */
+.cell.offered{background:#fff0c4;box-shadow:inset 0 0 0 3px #fff9df,0 0 13px #ffe3a14d;animation:offered-breathe 1.8s ease-in-out infinite}
+@keyframes offered-breathe{0%,100%{background-color:#f9e8bb;box-shadow:inset 0 0 0 2px #fff3cc,0 0 5px #ffe3a120}50%{background-color:#fffbe9;box-shadow:inset 0 0 0 3px #fffef4,0 0 18px #ffe3a180}}
+.cell.offered.destination,.cell.offered:hover{animation:none;background:#fffef4;box-shadow:inset 0 0 0 4px #fff,0 0 20px #ffe3a188;filter:brightness(1.05)}
+@media(prefers-reduced-motion:reduce){.cell.offered{animation:none;background:#fff8dc;box-shadow:inset 0 0 0 3px #fffef4}}
+.cabinet.shopping #shop-shelf .product-body{height:100%;align-self:stretch}

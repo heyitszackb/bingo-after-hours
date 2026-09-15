@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=540a4bae077c';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=0a19a278a849';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=25ae7204469d';
+import {removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=3d2bb3809e68';
 function newStage(...args){const round=legacyNewStage(...args);round.plainRules=true;round.jokers=[];return round;}
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
@@ -12,7 +12,7 @@ const signed=n=>n>=0?`+${n}`:String(n);
 const animate=(el,frames,options)=>el.animate(frames,{...options,duration:reduced?1:options.duration*motionScale}).finished.catch(()=>{});
 function burst(rect,scoring=false){if(reduced)return;for(let i=0;i<(scoring?28:12);i++){const p=document.createElement('i');p.className='particle';p.style.left=`${rect.left+rect.width/2}px`;p.style.top=`${rect.top+rect.height/2}px`;p.style.background=scoring?'#f4c66c':i%2?'#a9b7b8':'#e4e9dd';$('effects').append(p);const angle=Math.random()*Math.PI*2,d=25+Math.random()*(scoring?150:65);animate(p,[{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+25}px) scale(0)`,opacity:0}],{duration:450+Math.random()*250,easing:'cubic-bezier(.1,.7,.3,1)'}).then(()=>p.remove());}}
 for(let n=1;n<=25;n++){const c=document.createElement('button');c.type='button';c.id=`cell-${n}`;c.className='cell';c.innerHTML='<i class=board-ink aria-hidden=true></i><span></span>';c.onclick=()=>{if(!busy&&!drag)inspectSpace(n);};$('board').append(c);}
-const trophy='<span class="trophy" role="img" aria-label="trophies"></span>';
+const star='<span class="star" role="img" aria-label="stars"></span>';
 function flipNumber(el,value){
   const text=String(value);if(el.dataset.value===text)return;
   const old=el.dataset.value||'';el.dataset.value=text;
@@ -24,7 +24,7 @@ function flipNumber(el,value){
 }
 function renderScore(value=state.score){
   flipNumber($('score'),value);flipNumber($('target'),state.target);
-  $('score-meter').setAttribute('aria-label',`Goal: ${value} of ${state.target} trophies`);
+  $('score-meter').setAttribute('aria-label',`Goal: ${value} of ${state.target} stars`);
   $('score-meter').classList.toggle('target-met',value>=state.target);
   $('progress').style.width=`${Math.max(0,Math.min(100,value/state.target*100))}%`;
 }
@@ -33,7 +33,7 @@ function render(boardState=state){
   const freePlay=state.items[state.offer[0]]==='rock';$('play-ball').querySelector('span').textContent=freePlay?'↑ PLAY · 0 PLAYS':'↑ PLAY';$('play-ball').classList.toggle('free-play',freePlay);
   $('redraw').classList.toggle('exhausted',state.passes===0);$('play-ball').disabled=busy||!!drag||state.status!=='playing'||!state.offer.length;$('play-ball').setAttribute('aria-label',`Play ball ${pieceLabel(state.offer[0])} on the highlighted space. ${state.calls} plays remaining.`);
   $('patterns-button').disabled=busy||payingOut;$('score-patterns').disabled=busy||payingOut;
-  $('score-patterns').setAttribute('aria-label',`${state.score} of ${state.target} trophies. View scoring patterns and run counts`);
+  $('score-patterns').setAttribute('aria-label',`${state.score} of ${state.target} stars. View scoring patterns and run counts`);
   $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);renderScore();for(const k of ['calls','stage'])$(k).textContent=state[k];$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.max(0,Math.min(100,state.score/state.target*100))}%`;$('redraw-cost').textContent=state.passes;$('redraw').disabled=busy||state.passes<1||state.status!=='playing';$('redraw').setAttribute('aria-label',`Pass: ${state.passes} remaining. Return this ball and draw a new ball and space without spending a play.`);renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
     const c=$(`cell-${tile}`),offered=Object.values(state.destinations).includes(tile),number=boardState.stampBalls[tile];
     c.className=`cell paint-grey upgrade-${state.upgrades[number]||'plain'}${itemClass(number)}${boardState.stamps.has(tile)?' stamped':''}${offered?' offered':''}`;
@@ -83,9 +83,9 @@ function showTooltip(n,anchor,space=false){
   const value=space&&occupied?state.stampValues[tile]:ballValue(state,n);
   $('tooltip-number').textContent=occupied?(item?.name||'Ball'):'Nothing here';
   $('tooltip-value').hidden=!occupied;
-  $('tooltip-value').innerHTML=item?.startingValue===null?'<span class=stamp-tag>STAMP</span>':`${value??(item?.startingValue==='?'?'?':0)} ${trophy}`;
+  $('tooltip-value').innerHTML=item?.startingValue===null?'<span class=stamp-tag>STAMP</span>':`${value??(item?.startingValue==='?'?'?':0)} ${star}`;
   $('tooltip-effect').textContent=item?[item.text,item.details].filter(Boolean).join(' '):upgrade?BALL_UPGRADES[upgrade].text:'';
-  const modifier=state.valueModifiers?.[n]||0;if(modifier)$('tooltip-effect').textContent+=`${$('tooltip-effect').textContent?' ':''}Change: ${signed(modifier)} 🏆.${isDie(state,n)?` Future rolls: ${1+modifier}–${20+modifier}.`:''}`;
+  const modifier=state.valueModifiers?.[n]||0;if(modifier)$('tooltip-effect').textContent+=`${$('tooltip-effect').textContent?' ':''}Change: ${signed(modifier)} ★.${isDie(state,n)?` Future rolls: ${1+modifier}–${20+modifier}.`:''}`;
   const stamps=space?tileStampList(state,tile):[];
   $('tooltip-stamps').replaceChildren(...[...new Set(stamps)].map(type=>{
     const count=stamps.filter(stamp=>stamp===type).length;
@@ -282,7 +282,7 @@ async function showBingoMultiplier(group,onApply){
   const panel=document.createElement('div'),lane=document.querySelector('.track').getBoundingClientRect();
   panel.className='bingo-multiplier';panel.setAttribute('role','status');
   panel.style.top=`${Math.min(innerHeight-120,lane.top+5)}px`;
-  panel.innerHTML=`<small>BINGO ${trophy}</small><div><span>${group.subtotal}</span><b class="multiplier-factor">×${group.factor}</b><span>=</span><strong>${group.total}</strong></div>`;
+  panel.innerHTML=`<small>BINGO ${star}</small><div><span>${group.subtotal}</span><b class="multiplier-factor">×${group.factor}</b><span>=</span><strong>${group.total}</strong></div>`;
   document.body.append(panel);
   const sources=group.sources.map(tile=>$(`cell-${tile}`));
   try{
@@ -399,7 +399,7 @@ async function activateSpaces(result){
     await animate(readout,reduced?[{opacity:.85},{opacity:1}]:[{transform:'scale(1)'},{transform:'scale(1.08) rotate(-1deg)',offset:.25},{transform:'scale(1)',offset:.65},{transform:'scale(1)'}],{duration:360});
     await wait(600);
     const names=result.scoringGroups.map(g=>PATTERN_TYPES.find(type=>type.id===g.type)?.label||'Bingo');
-    $('announcer').textContent=`${names.join(', ')}. ${result.activations.length} spaces activated for ${result.points} trophies.`;
+    $('announcer').textContent=`${names.join(', ')}. ${result.activations.length} spaces activated for ${result.points} stars.`;
   }finally{
     board.classList.remove('scoring-board');area.classList.remove('scoring-draw');readout.classList.remove('scoring-total');$('score-line-label').hidden=true;
     allTiles.forEach(c=>c.classList.remove('score-pending','pattern-active','charged','activating'));
@@ -552,7 +552,7 @@ async function play(n,b,ghost,tile=state.destinations[n]){
   await wait(120);render();refreshBag();
   if(state.status!=='playing'){showResult();return;}await nextDraw();
 }
-function showStages(){hideTooltip();$('stage-grid').innerHTML=Array.from({length:10},(_,i)=>{const n=Math.max(1,state.stage-4)+i,current=n===state.stage,done=n<state.stage;return `<div class="stage-node ${current?'current':done?'complete':'locked'}" ${current?'aria-current="step"':''} aria-label="Stage ${n}, ${current?'current':done?'completed':'locked'}"><span>${n}<small>${targetFor(n).toLocaleString()} ${trophy}</small></span>${current?'<span>◆</span>':done?'<span>✓</span>':'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'}</div>`;}).join('');$('stage-dialog').showModal();}
+function showStages(){hideTooltip();$('stage-grid').innerHTML=Array.from({length:10},(_,i)=>{const n=Math.max(1,state.stage-4)+i,current=n===state.stage,done=n<state.stage;return `<div class="stage-node ${current?'current':done?'complete':'locked'}" ${current?'aria-current="step"':''} aria-label="Stage ${n}, ${current?'current':done?'completed':'locked'}"><span>${n}<small>${targetFor(n).toLocaleString()} ${star}</small></span>${current?'<span>◆</span>':done?'<span>✓</span>':'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'}</div>`;}).join('');$('stage-dialog').showModal();}
 function showPatterns(){
   if(busy||drag||payingOut)return;
   hideTooltip();
@@ -582,7 +582,7 @@ async function showResult(){
   hideTooltip();
   const passed=state.status==='passed';
   $('result-icon').textContent=passed?'✦':'↻';
-  $('result-score').innerHTML=`${state.score}/${state.target} ${trophy}`;
+  $('result-score').innerHTML=`${state.score}/${state.target} ${star}`;
   $('continue').textContent=passed?'→':'↻';
   $('continue').setAttribute('aria-label',passed?'Next stage':'New run');
   $('stage-result').setAttribute('aria-label',passed?'Stage complete':'Run ended');
@@ -617,21 +617,22 @@ for(const dialog of document.querySelectorAll('#bag-dialog,#stage-dialog,#patter
 
 function pointCopy(text){
   return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/([+×−]\d+|x[23]|1–20|\d+(?= 🏆))/g,'<em class="point-text">$1</em>')
+    .replace(/([+×−]\d+|x[23]|1–20|\d+(?= ★))/g,'<em class="point-text">$1</em>')
     .replace(/destroy(?:s)?/gi,'<em class="destroy-text">$&</em>')
     .replace(/(When played:|When scored:|Each play:)/g,'<b class="effect-trigger">$1</b>')
-    .replace(/🏆/g,trophy);
+    .replace(/★/g,star);
 }
 function renderShop(){
   hideTooltip();
   const shelf=$('shop-shelf'),focused=document.activeElement?.id;
-  shelf.innerHTML='<section class=reward-row aria-label=Tokens><h3>ITEMS · CHOOSE ONE</h3><div id=shop-tokens class=reward-options></div></section>';
+  shelf.innerHTML='<section class=reward-row aria-label=Tokens><div id=shop-tokens class=reward-options></div></section>';
   for(const type of state.shopOffer.items.filter(Boolean)){
     const item=ITEM_TYPES[type],card=document.createElement('button');card.id=`shop-${type}`;card.className='shop-product';
     const owned=state.collection.filter(id=>state.items[id]===type).length;
-    const action='CHOOSE';card.disabled=busy;card.setAttribute('aria-label',`${item.name}. ${item.startingValue===null?'Stamp.':`Starting trophies: ${item.startingValue}.`} ${item.text} ${owned} owned.`);
+    const action='CHOOSE';card.disabled=busy;card.setAttribute('aria-label',`${item.name}. ${item.startingValue===null?'Stamp.':`Starting stars: ${item.startingValue}.`} ${item.text} ${owned} owned.`);
     const art=type==='statue'?'<i class=statue-art aria-hidden=true>10</i>':type==='king'?'<i class=king-art aria-hidden=true>10</i>':type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='doubleball'?'×2':type==='question'?'?':type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'COPY':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;
-    card.innerHTML=`${item.startingValue===null?'<span class="stamp-tag shop-stamp-tag" title="One-use item. Permanently marks a tile.">STAMP</span>':`<span class="starting-points" aria-label="Starting trophies: ${item.startingValue}">${item.startingValue} ${trophy}</span>`}<strong class="product-name">${pointCopy(item.name.toUpperCase())}</strong>${art}<span class="product-description">${pointCopy(item.text)}</span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span>`;
+    const badge=item.startingValue===null?'<span class="stamp-tag shop-stamp-tag" title="One-use item. Permanently marks a tile.">STAMP</span>':`<span class="starting-points" aria-label="Starting stars: ${item.startingValue}">${item.startingValue} ${star}</span>`;
+    card.innerHTML=`<span class="product-art-well">${art}</span><span class="product-body"><span class="product-top"><strong class="product-name">${pointCopy(item.name.toUpperCase())}</strong>${badge}</span><span class="product-description">${pointCopy(item.text)}</span></span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span>`;
     card.onclick=async()=>{
       if(busy||!claimReward(state,type))return;
       busy=true;saveRun();shelf.querySelectorAll('button').forEach(b=>b.disabled=true);$('shop-menu').disabled=true;
@@ -730,7 +731,7 @@ function updateMenu(){
   $('play-button').innerHTML=hasRun?'RESUME <span>▶</span>':'PLAY <span>▶</span>';
   $('new-run-button').hidden=!hasRun;
   $('saved-stage').hidden=!hasRun;
-  $('saved-stage').innerHTML=`STAGE ${state.stage} · ${state.score}/${state.target.toLocaleString()} ${trophy}`;
+  $('saved-stage').innerHTML=`STAGE ${state.stage} · ${state.score}/${state.target.toLocaleString()} ${star}`;
 }
 function showMenu(){
   hideTooltip();cancelDrag();saveRun();
@@ -753,7 +754,7 @@ function pauseGame(){
   if(shopping&&!busy){showMenu();return;}
   if(inMenu||busy||payingOut||document.querySelector('dialog[open]'))return;
   cancelDrag();hideTooltip();saveRun();
-  $('pause-summary').innerHTML=`STAGE ${state.stage} · ${state.score}/${state.target.toLocaleString()} ${trophy}`;
+  $('pause-summary').innerHTML=`STAGE ${state.stage} · ${state.score}/${state.target.toLocaleString()} ${star}`;
   $('pause-dialog').showModal();
 }
 function resumeGame(){$('pause-dialog').close();$('pause-button').focus();}

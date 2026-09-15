@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#06282c"><title>Binglatro</title><link rel="stylesheet" href="style.css?v=38018c5cb878"></head><body>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#06282c"><title>Binglatro</title><link rel="stylesheet" href="style.css?v=fc842ee3cafb"></head><body>
 <canvas id="felt-background" aria-hidden="true"></canvas>
 <section id="title-screen" class="title-screen" aria-label="Binglatro main menu">
 <div class="title-emblem" aria-hidden="true">✦</div><h1>BINGLATRO</h1><div class="title-balls" aria-hidden="true"><span class="ball"><span class="face">5</span></span><span class="ball"><span class="face">10</span></span><span class="ball"><span class="face">25</span></span></div>
 <button id="play-button" class="menu-button primary-menu">PLAY <span>▶</span></button><button id="new-run-button" class="menu-button" hidden>NEW RUN <span>↻</span></button><p id="saved-stage" class="saved-stage" hidden></p>
 </section>
 <main id="game-screen" class="cabinet" hidden>
-<header class="dashboard"><button id="shop-menu" aria-label="Main menu"><svg viewBox="0 0 24 24"><path d="M3 5h18M3 12h18M3 19h18"/></svg></button><button id="pause-button" aria-label="Open menu"><svg viewBox="0 0 24 24"><path d="M3 5h18M3 12h18M3 19h18"/></svg></button><div class="game-logo" aria-label="Binglatro">BINGLATRO</div><div id="score-meter" class="score-panel" role="group" aria-label="Goal: 0 of 30 trophies"><div class="score-numbers"><span class="trophy" role="img" aria-label="trophies"></span><span id="score">0</span><span class="dim">/</span><span id="target">30</span></div><i id="progress"></i><span id="score-line-label" hidden aria-hidden="true"></span></div></header>
+<header class="dashboard"><button id="shop-menu" aria-label="Main menu"><svg viewBox="0 0 24 24"><path d="M3 5h18M3 12h18M3 19h18"/></svg></button><button id="pause-button" aria-label="Open menu"><svg viewBox="0 0 24 24"><path d="M3 5h18M3 12h18M3 19h18"/></svg></button><div class="game-logo" aria-label="Binglatro">BINGLATRO</div><div id="score-meter" class="score-panel" role="group" aria-label="Goal: 0 of 30 stars"><div class="score-numbers"><span class="star" role="img" aria-label="stars"></span><span id="score">0</span><span class="dim">/</span><span id="target">30</span></div><i id="progress"></i><span id="score-line-label" hidden aria-hidden="true"></span></div></header>
 
 <div hidden id="legacy-hud"><button id="score-patterns" aria-label="View scoring patterns" aria-haspopup="dialog"></button><button id="stages" aria-label="View stages"><svg viewBox="0 0 24 24"><path d="M3 20h6v-6h6V8h6V3M17 3h4v4"/></svg><span id="stage">1</span></button><div class="call-meter" aria-label="Plays remaining"><small class="resource-label">PLAYS</small><svg viewBox="0 0 24 24"><path d="M12 3v9l5 3"/><circle cx="12" cy="12" r="9"/></svg><div id="call-dots"></div><span id="calls">17</span></div><button id="patterns-button" aria-label="View scoring patterns and run counts" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/><path d="M5 5h2v2H5zM11 11h2v2h-2zM17 17h2v2h-2z" fill="currentColor" stroke="none"/></svg></button></div>
 <section class="board-frame" aria-label="Drop a ball anywhere on the card"><div id="board" class="board" aria-label="Bingo card"></div><div id="celebration" class="celebration" aria-hidden="true"></div><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i></section>
@@ -14,7 +14,7 @@
 <button id="bag" class="bag-inspect" aria-label="View bag"><svg viewBox="0 0 40 44" aria-hidden="true"><path fill="#8b603c" stroke="#3a3025" stroke-width="2" d="M10 2h20l-5 10 3 4 6 10 2 11-4 5H8l-4-5 2-11 6-10 3-4z"/><path fill="#d4b27b" stroke="none" d="M12 3h16l-5 9h-6zM16 15h8l7 13 1 10H8l1-10z"/><path d="M12 12h16M12 15h16M13 13 6 20M27 13l7 7" stroke="#e9cb87" stroke-width="2"/><path d="M17 24h5l2 2v3l-2 1 2 1v3l-2 2h-5zM17 30h5" stroke="#5d462f" stroke-width="2" fill="none"/></svg><span>VIEW BAG <small id="bag-count">25</small></span></button>
 <section id="shop-screen" hidden aria-label="Upgrade shop">
 <div class="shop-heading"><h2>CHOOSE 1</h2></div>
-<div id="shop-shelf" role="region" tabindex="0" aria-label="Choose one item."></div>
+<div id="shop-shelf" role="region" tabindex="0" aria-label="Choose one item."></div><p class="shop-instruction">Tap an item to choose</p>
 
 
 </section>
@@ -38,9 +38,9 @@
 <button id="debug-apply" class="menu-button primary-menu">APPLY &amp; RESTART ROUND</button>
 </section></dialog>
 <dialog id="stage-dialog" aria-label="Ten stages"><button class="close" aria-label="Close stages">×</button><div id="stage-grid"></div></dialog>
-<dialog id="patterns-dialog" aria-labelledby="patterns-title" aria-describedby="patterns-note"><button class="close" aria-label="Close scoring patterns">×</button><div class="patterns-heading"><div><small>THIS RUN</small><h2 id="patterns-title">BINGOS</h2></div><div class="patterns-total"><strong id="patterns-total">0</strong><small>SCORED</small></div></div><div class="patterns-columns" aria-hidden="true"><span>PATTERN</span><span>TILES</span><span>SCORED</span></div><div id="patterns-list" role="list"></div><p id="patterns-note">5 tiles per line · <span class="trophy" role="img" aria-label="trophies"></span> equal item values, with tile stamps applied</p></dialog>
+<dialog id="patterns-dialog" aria-labelledby="patterns-title" aria-describedby="patterns-note"><button class="close" aria-label="Close scoring patterns">×</button><div class="patterns-heading"><div><small>THIS RUN</small><h2 id="patterns-title">BINGOS</h2></div><div class="patterns-total"><strong id="patterns-total">0</strong><small>SCORED</small></div></div><div class="patterns-columns" aria-hidden="true"><span>PATTERN</span><span>TILES</span><span>SCORED</span></div><div id="patterns-list" role="list"></div><p id="patterns-note">5 tiles per line · <span class="star" role="img" aria-label="stars"></span> equal item values, with tile stamps applied</p></dialog>
 
 
 <div id="announcer" class="sr-only" role="status" aria-live="polite"></div><div id="effects" aria-hidden="true"></div>
 <div id="inspect-tooltip" role="tooltip" popover="manual" hidden><div class="tooltip-main"><div class="tooltip-heading"><strong id="tooltip-number"></strong><span id="tooltip-value" hidden></span></div><p id="tooltip-effect" hidden></p></div><aside id="tooltip-stamps" aria-label="Tile stamps" hidden></aside></div>
-<script type="module" src="app.js?v=8416fc379f18"></script></body></html>
+<script type="module" src="app.js?v=13d17790b573"></script></body></html>
