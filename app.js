@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=ad4c5825d7f3';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=cb812fef7d2e';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {defaultBag,newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=2f168b5a6b76';
+import {defaultBag,newStage,deal,choose,tileStampList,activateCard,migrateShop,migrateInventory,isRuleCard,isBomb,isDie,ITEM_TYPES,CARD_TYPES,removeJoker,normalizeJokers,redraw,settleStage,openRewardShop as openShop,claimReward,BALL_UPGRADES,cardType,cardDetails,ballValue,STAGE_TARGETS,PATTERN_TYPES} from './game.js?v=eedc39c39d22';
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
 // One tempo for animation and sequencing keeps effects and input locks aligned.
@@ -680,7 +680,7 @@ for(const dialog of document.querySelectorAll('#bag-dialog,#stage-dialog,#help-d
 
 const shopCopy={
   king:'Worth 10 · wanders after each play',
-  square:'Score a filled 2×2 block',corners:'Score all four board corners',
+  square:'Score a filled 2×2 block',corners:'Fill 4 corners → score entire board',
   question:'When scored: swap with bag item',
   plus10:'+10 tile points · permanent',plus50:'+50 tile points · permanent',plus100:'+100 tile points · permanent',
   crowd:'Scored tiles: +1 per board item',
