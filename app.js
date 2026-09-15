@@ -173,7 +173,12 @@ document.addEventListener('scroll',()=>hideTooltip(),true);
 function refreshBag(){
   if(tooltipAnchor?.closest('#bag-grid'))hideTooltip();
   $('bag-grid').replaceChildren();$('bag-dialog').setAttribute('aria-label',`${state.collection.length} items in your collection; played items are greyed out`);
-  for(const n of state.collection){
+  const typeOrder=['number',...Object.keys(ITEM_TYPES)];
+  const ordered=[...state.collection].sort((a,b)=>{
+    const typeA=state.items[a]||'number',typeB=state.items[b]||'number';
+    return typeOrder.indexOf(typeA)-typeOrder.indexOf(typeB)||(ballValue(state,a)??0)-(ballValue(state,b)??0)||a-b;
+  });
+  for(const n of ordered){
     const b=ball(n),played=!state.bag.has(n);
     if(played)b.classList.add('played-ball');
     if(state.offer.includes(n))b.classList.add('on-track');
