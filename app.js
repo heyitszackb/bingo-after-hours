@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=938fd61d3478';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=8af84a852bd0';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=0fe057d12da2';
+import {defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=c38fd30d39b5';
 function newStage(...args){const round=legacyNewStage(...args);round.plainRules=true;round.jokers=[];return round;}
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
@@ -268,7 +268,7 @@ async function scoreLink(from,to,color){
   spark.remove();
 }
 async function activateSpaces(result){
-  let displayedScore=state.score-result.points,displayedCalls=result.callsBeforeBonuses,total=0,lineIndex=0;
+  let displayedScore=result.scoreBefore??state.score-result.points,displayedCalls=result.callsBeforeBonuses,total=0,lineIndex=0;
   let activePattern=[],groupSubtotal=0;
   const board=$('board'),area=document.querySelector('.draw-area'),readout=$('score-meter');
   const colors={square:'#d5b1f0',corners:'#f3c980',row:'#83e0b5',column:'#91c6ff',diagonal:'#ffb18b',cross:'#eab6f3',all:'#ffe094'};
@@ -458,12 +458,12 @@ async function dropAnvil(id,cell){
 }
 async function animateKings(result){
   for(const move of result.kingMoves){
-    render(move.before);renderScore(state.score-result.points);
+    render(move.before);renderScore(result.scoreBefore??state.score-result.points);
     const from=$(`cell-${move.from}`),to=$(`cell-${move.to}`),a=from.getBoundingClientRect(),b=to.getBoundingClientRect();
     const ghost=ball(move.id),size=a.width*.9;ghost.classList.add('drag-ghost','king-moving');ghost.style.setProperty('--size',`${size}px`);ghost.setAttribute('aria-hidden','true');document.body.append(ghost);
     from.classList.remove('stamped','king-item');from.querySelector('span').textContent='';to.classList.add('king-destination');
     await animate(ghost,[{transform:`translate(${a.left}px,${a.top}px)`},{transform:`translate(${(a.left+b.left)/2}px,${Math.min(a.top,b.top)-18}px) rotate(-5deg)`,offset:.5},{transform:`translate(${b.left}px,${b.top}px)`}],{duration:620,easing:'ease-in-out'});
-    ghost.remove();to.classList.remove('king-destination');render(move.after);renderScore(state.score-result.points);navigator.vibrate?.(10);
+    ghost.remove();to.classList.remove('king-destination');render(move.after);renderScore(result.scoreBefore??state.score-result.points);navigator.vibrate?.(10);
     await animate(to.querySelector('span'),[{transform:'scale(1.1,.85)'},{transform:'scale(1)'}],{duration:150});
     for(const copy of move.copies)await animateCopy(copy);
   }
@@ -494,9 +494,11 @@ async function play(n,b,ghost,tile=state.destinations[n]){
   if(result.stampApplied){const ink=cell.querySelector('.board-ink');await animate(ink,[{transform:'scale(2) rotate(-12deg)',opacity:0},{transform:'scale(.9)',opacity:1,offset:.6},{transform:'scale(1)',opacity:.65}],{duration:400});}
   if(result.valueChanges.length)await animateValueChanges(result);
   $('announcer').textContent=`${pieceLabel(n)} played.${result.roll!==null?` Rolled ${result.roll}.`:''} ${result.playCost===0?'No play used.':'One play used.'}`;
-  if(result.destroyed.length){await explodeBomb(result);render(result.movementBoard||result.scoringBoard||state);renderScore(state.score-result.points);}
-  if(result.kingMoves?.length)await animateKings(result);
-  if(result.activations.length)await activateSpaces(result);
+  if(result.destroyed.length){await explodeBomb(result);render(result.scoringBoard||state);renderScore(state.score-result.points);}
+  for(const phase of result.timeline){
+    if(phase.kind==='move')await animateKings({kingMoves:[phase.move],scoreBefore:phase.scoreBefore});
+    else{render(phase.scoringBoard);renderScore(phase.scoreBefore);await activateSpaces(phase);}
+  }
   await wait(120);render();refreshBag();
   if(state.status!=='playing'){showResult();return;}await nextDraw();
 }

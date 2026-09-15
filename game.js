@@ -28,7 +28,7 @@ export const BALL_UPGRADES={};
 export const ITEM_TYPES={doubleball:{name:'×2 Ball',text:'When scored: double the total points of this bingo.',details:'Scores 0 itself. Tile stamps affect only its tile; this ball multiplies the whole bingo. Multiple ×2 balls multiply together.',startingValue:0,price:0},
   trash:{name:'Trash Stamp',text:'When played: permanently stamp this space. When scored: destroy its item. One use.',details:'Points and Copier effects resolve before destruction. The stamp stays.',startingValue:null,price:0},
   statue:{name:'Statue',text:'When played: stays on this space between rounds.',details:'Bombs and Trash stamps can destroy it.',startingValue:10,price:0},
-  king:{name:'Wandering King',text:'On the board, after another item is played: move to a random empty adjacent space.',details:'Moves one space horizontally, vertically, or diagonally. Stays still if blocked. Passing does not move it.',startingValue:10,price:0},
+  king:{name:'Wandering King',text:'On the board, after another item is played: move to a random empty adjacent space.',details:'Moves one space horizontally, vertically, or diagonally. Bingos score before and after it moves. Stays still if blocked. Passing does not move it.',startingValue:10,price:0},
   question:{name:'Question Mark',text:'When played: swap places with a random item in the bag.',details:'Excludes stamps and other Question Marks. The replacement’s when-played effect does not activate.',startingValue:'?',price:0},
   ...Object.fromEntries([10,50,100].map(n=>[`plus${n}`,{name:`+${n} Stamp`,text:`When played: permanently stamp a +${n} point modifier onto this tile. One use.`,details:'Adds points when this space scores, before multipliers. Leaves the space empty.',startingValue:null,price:0}])),
   copier:{name:'Copier Stamp',text:'When played: permanently stamp this space. When scored: copy its item into the bag. One use.',details:'Each Copier makes one copy. The original stays on the board unless destroyed.',startingValue:null,price:0},
@@ -170,20 +170,10 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
     }
   }
 
-  const movementBoard=boardSnapshot(state),kingMoves=[];
-  // Snapshot order by starting square. Each surviving existing King acts once.
-  const kings=[...state.stamps].sort((a,b)=>a-b).filter(t=>state.items[state.stampBalls[t]]==='king'&&state.stampBalls[t]!==(swap?.to??number));
-  for(const from of kings){
-    const available=kingNeighbors(from).filter(t=>!state.stamps.has(t));if(!available.length)continue;
-    const to=available[Math.floor(random()*available.length)],id=state.stampBalls[from],value=state.stampValues[from],before=boardSnapshot(state);
-    state.stamps.delete(from);delete state.stampBalls[from];delete state.stampValues[from];
-    state.stamps.add(to);state.stampBalls[to]=id;state.stampValues[to]=value;
-    const copies=[];
-    kingMoves.push({id,from,to,value,before,after:boardSnapshot(state),copies});
-  }
-  const changedTiles=new Set([tile,...kingMoves.map(move=>move.to)]);
-  // All placement effects have resolved. Only the surviving board can score.
-  const callsBeforeBonuses=state.calls;
+  const callsBeforeBonuses=state.calls,kingMoves=[],timeline=[];
+  const kings=[...state.stamps].sort((a,b)=>a-b).filter(t=>state.items[state.stampBalls[t]]==='king'&&state.stampBalls[t]!==(swap?.to??number)).map(from=>({from,id:state.stampBalls[from]}));
+  function evaluateAt(changedTiles,placement=false){
+    const scoreBefore=state.score;
   const scoredPatterns=[...completedPatterns(state.stamps),...EXTRA_PATTERNS.filter(p=>p.tiles.every(t=>state.stamps.has(t)))].filter(p=>!state.scoredLines.includes(p.id)&&p.tiles.some(t=>changedTiles.has(t))&&(p.type==='square'||p.type==='corners'?!state.plainRules&&state.jokers.some(id=>cardType(id)===p.type):(state.plainRules||state.jokers.includes('bingo'))));
   const patterns=scoredPatterns.map(p=>p.tiles);
   for(const {type} of scoredPatterns)state.patternCounts[type]=(state.patternCounts[type]||0)+1;
@@ -196,17 +186,37 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   const scoringGroups=[];
   for(const {joker,retriggers} of events){
     if(joker==='bingo'||['square','corners'].includes(cardType(joker)))scoringGroups.push(...scoredPatterns.filter(p=>joker==='bingo'?['row','column','diagonal'].includes(p.type):p.type===cardType(joker)).map(p=>({trigger:joker,retriggers,type:p.type,tiles:p.type==='corners'?[...state.stamps].sort((a,b)=>a-b):p.tiles})));
-    if(cardType(joker)==='high-five'&&state.stampBalls[tile]===number&&state.stampValues[tile]>=cardDetails(joker).start&&state.stampValues[tile]<=cardDetails(joker).end){
+    if(cardType(joker)==='high-five'&&placement&&state.stampBalls[tile]===number&&state.stampValues[tile]>=cardDetails(joker).start&&state.stampValues[tile]<=cardDetails(joker).end){
       const neighbors=[tile,...orthogonalNeighbors(tile)].filter(t=>state.stamps.has(t));
       scoringGroups.push({trigger:joker,retriggers,type:'cross',tiles:neighbors});
     }
   }
-  const {activations,points,scoringBoard}=scoreGroups(state,scoringGroups,events,random);
+    const scored=scoreGroups(state,scoringGroups,events,random);
+    const phase={kind:'score',...scored,scoreBefore,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups};
+    if(scored.activations.length)timeline.push(phase);
+    return phase;
+  }
+  // Score placement first, then each King's destination before the next King moves.
+  const initial=evaluateAt(new Set([tile]),true);
+  const movementBoard=boardSnapshot(state);
+  for(const {from,id} of kings){
+    if(state.stampBalls[from]!==id)continue; // A scoring Trash stamp may have destroyed it.
+    const available=kingNeighbors(from).filter(t=>!state.stamps.has(t));if(!available.length)continue;
+    const to=available[Math.floor(random()*available.length)],value=state.stampValues[from],before=boardSnapshot(state),scoreBefore=state.score;
+    state.stamps.delete(from);delete state.stampBalls[from];delete state.stampValues[from];
+    state.stamps.add(to);state.stampBalls[to]=id;state.stampValues[to]=value;
+    const move={id,from,to,value,before,after:boardSnapshot(state),copies:[]};
+    kingMoves.push(move);timeline.push({kind:'move',move,scoreBefore});
+    evaluateAt(new Set([to]));
+  }
+  const phases=timeline.filter(phase=>phase.kind==='score');
+  const patterns=phases.flatMap(p=>p.patterns),scoredPatterns=phases.flatMap(p=>p.scoredPatterns),scoringGroups=phases.flatMap(p=>p.scoringGroups),activations=phases.flatMap(p=>p.activations);
+  const points=phases.reduce((sum,p)=>sum+p.points,0),scoringBoard=initial.scoringBoard;
 
   state.offer=[];state.destinations={};
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
-  return {tile,swap,playedNumber:swap?.to??number,movementBoard,kingMoves,scoringBoard,copied,copies,stampApplied,playCost,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
+  return {timeline,tile,swap,playedNumber:swap?.to??number,movementBoard,kingMoves,scoringBoard,copied,copies,stampApplied,playCost,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
 }
 function cardEvents(state){
   if(state.plainRules)return [{joker:'bingo',retriggers:[]},{joker:'face-value',retriggers:[]}];
