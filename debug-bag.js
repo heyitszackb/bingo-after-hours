@@ -1,4 +1,4 @@
-import {ballValue,ITEM_TYPES} from './game.js?v=85df7089c0e0';
+import {ballValue,ITEM_TYPES} from './game.js?v=d8ee4c36cd05';
 
 export const DEBUG_BAG_LIMIT=500;
 export const baseBagRecipe=()=>Array.from({length:25},(_,i)=>({type:'number',value:i+1,count:1}));

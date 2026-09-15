@@ -15,7 +15,7 @@ export const EXTRA_PATTERNS=[...Array.from({length:16},(_,i)=>{const t=Math.floo
 export const PATTERNS = PATTERN_DEFINITIONS.map(pattern=>pattern.tiles);
 export const freshPatternCounts=()=>Object.fromEntries(PATTERN_TYPES.map(({id})=>[id,0]));
 export const completedPatterns=stamps=>PATTERN_DEFINITIONS.filter(({tiles})=>tiles.every(tile=>stamps.has(tile)));
-export const targetFor = stage => 40+(stage-1)*10;
+export const targetFor = stage => 30+(stage-1)*10;
 export const STAGE_TARGETS = Array.from({length:10},(_,i)=>targetFor(i+1));
 export const RULE_CARDS={
   bingo:{name:'Bingo',text:'Score rows, columns, and diagonals of 5.',icon:'▦'},
