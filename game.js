@@ -47,7 +47,8 @@ export const ITEM_TYPES={
   potionMelt:{name:'Melt Potion',text:'When played: permanently destroy an item',kind:'potion',startingValue:null,price:0},
   doubleball:{name:'×2 Ball',text:'x2 to total bingo score',startingValue:0,price:0},
   trash:{name:'Destroy Item',text:'When scored: destroy item on this tile',startingValue:null,price:0},
-  statue:{name:'Statue',text:'Stays here between rounds',startingValue:10,price:0},
+  potionSticky:{name:'Sticky Potion',text:'When played: permanently stick this item to the board. −1 play',details:'One fewer play each future round per stuck item.',kind:'potion',startingValue:null,price:0},
+  glass:{name:'Glass Ball',text:'When scored: doubles its ★ and has a 20% chance of breaking',startingValue:1,price:0},
   king:{name:'Wandering King',text:'Each turn: move to a random empty adjacent tile',startingValue:0,price:0},
   question:{name:'Question Mark',text:'When played: become your last played item for this turn',details:'Reverts after the turn. No effect before your first item.',startingValue:'?',price:0},
   ...Object.fromEntries([10,50,100].map(n=>[`plus${n}`,{name:`+${n}`,text:`+${n} ★`,startingValue:null,price:0}])),
@@ -60,20 +61,20 @@ export const ITEM_TYPES={
   moon:{name:'Moon',text:'While on board: score identical adjacent bingo tokens, +100 ★',details:'Each pair once per round.',startingValue:0,price:0},
   mars:{name:'Mars',text:'While on board: score 3 single-digit bingo tokens in a line, +100 ★',details:'Overlaps count; each trio once per round.',startingValue:0,price:0},
   earth:{name:'Earth',text:'When played: all items respond to gravity',details:'Stamps stay put. Score before and after the fall.',startingValue:0,price:0},
-  jupiter:{name:'Jupiter',text:'While on board: score 3 non-bingo tokens in a line',details:'Each trio once per round.',startingValue:0,price:0}
+  jupiter:{name:'Jupiter',text:'While on board: score 3 non-bingo tokens in a line, +100 ★',details:'Each trio once per round.',startingValue:0,price:0}
 };
 export const isPotion=(state,id)=>ITEM_TYPES[state.items?.[id]]?.kind==='potion';
 export const shopItemTypes=()=>Object.keys(ITEM_TYPES).filter(type=>!isStamp({items:{1:type}},1));
 // Retire Anvils from serialized runs without losing the rest of the run or tile ink.
 export function removeRetiredItems(saved){
-  const retired=new Set(Object.keys(saved.items||{}).filter(id=>['hundred','rock'].includes(saved.items[id])).map(Number));
+  const retired=new Set(Object.keys(saved.items||{}).filter(id=>['hundred','rock','statue'].includes(saved.items[id])).map(Number));
   for(const key of ['collection','bag','offer'])if(Array.isArray(saved[key]))saved[key]=saved[key].filter(id=>!retired.has(id));
   for(const [tile,id] of Object.entries(saved.stampBalls||{}))if(retired.has(id)){
     saved.stamps=saved.stamps.filter(t=>t!==Number(tile));delete saved.stampBalls[tile];delete saved.stampValues[tile];
   }
   for(const id of retired)for(const key of ['items','ballValues','valueModifiers','destinations','upgrades','itemEffects'])if(saved[key])delete saved[key][id];
-  if(saved.shopOffer?.items?.some(type=>['hundred','rock'].includes(type))){saved.shopOffer.items=saved.shopOffer.items.filter(type=>!['hundred','rock'].includes(type));for(const type of shopItemTypes())if(saved.shopOffer.items.length<3&&!saved.shopOffer.items.includes(type))saved.shopOffer.items.push(type);}
-  if(saved.lastPlayed&&['hundred','rock'].includes(saved.lastPlayed.type))saved.lastPlayed=null;
+  if(saved.shopOffer?.items?.some(type=>['hundred','rock','statue'].includes(type))){saved.shopOffer.items=saved.shopOffer.items.filter(type=>!['hundred','rock','statue'].includes(type));for(const type of shopItemTypes())if(saved.shopOffer.items.length<3&&!saved.shopOffer.items.includes(type))saved.shopOffer.items.push(type);}
+  if(saved.lastPlayed&&['hundred','rock','statue'].includes(saved.lastPlayed.type))saved.lastPlayed=null;
   if(saved.kingVersion!==1){for(const [id,type] of Object.entries(saved.items||{}))if(type==='king'){if(saved.ballValues?.[id]===10)delete saved.ballValues[id];for(const [tile,occupant] of Object.entries(saved.stampBalls||{}))if(occupant===Number(id))saved.stampValues[tile]=(saved.ballValues?.[id]??0)+(saved.valueModifiers?.[id]||0);}saved.kingVersion=1;}
   if(retired.size)saved.handVersion=0;
   if(retired.size&&saved.status==='playing'&&saved.bag?.length===0)saved.status='over';
@@ -110,7 +111,7 @@ export const normalizeJokers=jokers=>{
     return CARD_TYPES[cardType(id)]&&cardDetails(id)&&purchased++<5;
   });
 };
-export const ballValue=(state,number)=>number==null||isPotion(state,number)||state.items?.[number]==='doubleball'||state.items?.[number]==='question'||isBomb(state,number)||isDie(state,number)||isStamp(state,number)?null:((state.ballValues?.[number]??(state.items?.[number]==='statue'?10:state.items?.[number]==='hundred'?50:state.items?.[number]==='seed'?1:['earth','mars','moon','jupiter','king'].includes(state.items?.[number])?0:number))+(state.valueModifiers?.[number]||0));
+export const ballValue=(state,number)=>number==null||isPotion(state,number)||state.items?.[number]==='doubleball'||state.items?.[number]==='question'||isBomb(state,number)||isDie(state,number)||isStamp(state,number)?null:((state.ballValues?.[number]??(state.items?.[number]==='hundred'?50:['seed','glass'].includes(state.items?.[number])?1:['earth','mars','moon','jupiter','king'].includes(state.items?.[number])?0:number))+(state.valueModifiers?.[number]||0));
 const boardSnapshot=state=>({stamps:new Set(state.stamps),stampBalls:{...state.stampBalls},stampValues:{...state.stampValues}});
 export const orthogonalNeighbors=tile=>[tile-5,tile+1,tile+5,tile-1].filter(t=>t>=1&&t<=25&&Math.abs(Math.floor((t-1)/5)-Math.floor((tile-1)/5))+Math.abs((t-1)%5-(tile-1)%5)===1);
 // Effects produce a common before/after event for the UI, independent of scoring.
@@ -128,12 +129,13 @@ export function defaultBag(){
   }
   return {collection,items,nextItemId};
 }
+export const isSticky=(state,id)=>(state.itemEffects?.[id]||[]).includes('potionSticky');
 export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['bingo','face-value'],inventory=null) {
   const collection=inventory?[...inventory.collection]:Array.from({length:25},(_,i)=>i+1),items={...inventory?.items},nextItemId=inventory?.nextItemId??26;
-  const fixed=Object.entries(inventory?.stampBalls||{}).filter(([,id])=>items[id]==='statue'&&collection.includes(id));
+  const fixed=Object.entries(inventory?.stampBalls||{}).filter(([,id])=>isSticky(inventory,id)&&collection.includes(id));
   const stampBalls=Object.fromEntries(fixed),stampValues=Object.fromEntries(fixed.map(([tile,id])=>[tile,inventory.stampValues?.[tile]??ballValue(inventory,id)]));
-  const fixedIds=new Set(fixed.map(([,id])=>id));
-  return {kingVersion:1,lastPlayed:structuredClone(inventory?.lastPlayed||null),itemEffects:structuredClone(inventory?.itemEffects||{}),tileStamps:Object.fromEntries(Array.from({length:25},(_,i)=>[i+1,[...tileStampList(inventory||{},i+1)]]).filter(([,list])=>list.length)),tileCopiers:{...inventory?.tileCopiers},tileMultipliers:{...inventory?.tileMultipliers},activeUses:{},handVersion:1,inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{...inventory?.ballValues},valueModifiers:{...inventory?.valueModifiers},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls,stampValues,destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:17,shopOffer:null,stage,target:targetFor(stage),score:0,calls:17,money,bonusPaid:false,stamps:new Set(fixed.map(([tile])=>Number(tile))),bag:new Set(collection.filter(id=>!fixedIds.has(id))),played:Array(nextItemId).fill(0),status:collection.length?'playing':'over',offer:[]};
+  const fixedIds=new Set(fixed.map(([,id])=>id)),capacity=Math.max(0,17-fixed.length);
+  return {stickyVersion:1,kingVersion:1,lastPlayed:structuredClone(inventory?.lastPlayed||null),itemEffects:structuredClone(inventory?.itemEffects||{}),tileStamps:Object.fromEntries(Array.from({length:25},(_,i)=>[i+1,[...tileStampList(inventory||{},i+1)]]).filter(([,list])=>list.length)),tileCopiers:{...inventory?.tileCopiers},tileMultipliers:{...inventory?.tileMultipliers},activeUses:{},handVersion:1,inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{...inventory?.ballValues},valueModifiers:{...inventory?.valueModifiers},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls,stampValues,destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:capacity,shopOffer:null,stage,target:targetFor(stage),score:0,calls:capacity,money,bonusPaid:false,stamps:new Set(fixed.map(([tile])=>Number(tile))),bag:new Set(collection.filter(id=>!fixedIds.has(id))),played:Array(nextItemId).fill(0),status:collection.length&&capacity>0?'playing':'over',offer:[]};
 }
 const shuffled=(values,random)=>{
   const result=[...values];for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;
@@ -189,7 +191,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   const mimic=state.items[number]==='question'&&state.lastPlayed&&state.lastPlayed.type!=='question'?{id:number,original:itemBlueprint(state,number),applied:structuredClone(state.lastPlayed)}:null;
   const validation=mimic?{items:{[number]:mimic.applied.type}}:state;
   if(isStamp(validation,number)&&tileStampList(state,tile).length>=4)return null;
-  if(mimic)applyBlueprint(state,number,mimic.applied);
+  if(mimic){if(mimic.original.effects.includes('potionSticky')&&!mimic.applied.effects.includes('potionSticky'))mimic.applied.effects.push('potionSticky');applyBlueprint(state,number,mimic.applied);}
   state.lastPlayed=itemBlueprint(state,number);
   const refillSlot=state.offer.indexOf(number);
   const copies=[],copied=null;
@@ -200,7 +202,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
     const target=state.stampBalls[tile],type=state.items[number];
     potionApplied={type,target,tile,before:boardSnapshot(state)};
     state.itemEffects??={};
-    if(type==='potion20'||type==='potion2')(state.itemEffects[target]??=[]).push(type);
+    if(type==='potion20'||type==='potion2'||type==='potionSticky')(state.itemEffects[target]??=[]).push(type);
     if(type==='potionCopy')copies.push({...cloneItem(state,target,tile),potion:true});
     if(type==='potionMelt')destroyItem(state,target,tile);
     destroyItem(state,number);
@@ -264,7 +266,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
       if(state.scoredLines.includes(pattern.id)||!pattern.tiles.every(t=>state.stamps.has(t)))continue;
       const eligible=pattern.type==='mars'?pattern.tiles.every(t=>isBingoToken(state,state.stampBalls[t])&&Number.isFinite(state.stampValues[t])&&state.stampValues[t]>=0&&state.stampValues[t]<=9):pattern.type==='moon'?planetPairMatches(state,pattern.tiles):pattern.tiles.every(t=>!isBingoToken(state,state.stampBalls[t]));
       if(!eligible)continue;
-      const group={trigger:pattern.type,retriggers:[],type:pattern.type,tiles:pattern.tiles,flatBonus:pattern.type==='jupiter'?0:100,source};
+      const group={trigger:pattern.type,retriggers:[],type:pattern.type,tiles:pattern.tiles,flatBonus:100,source};
       const before=state.score,mars=scoreGroups(state,[group],events,random);
       state.scoredLines.push(pattern.id);
       timeline.push({kind:'score',...mars,scoreBefore:before,callsBeforeBonuses,patterns:[pattern.tiles],scoredPatterns:[pattern],scoringGroups:[group]});
@@ -280,6 +282,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
       let to=col+20;
       for(let from=col+20;from>=col;from-=5)if(before.stamps.has(from)){
         const id=before.stampBalls[from],value=before.stampValues[from];
+        if(isSticky(state,id))to=from;
         state.stamps.add(to);state.stampBalls[to]=id;state.stampValues[to]=value;
         if(from!==to)moves.push({id,from,to,value});to-=5;
       }
@@ -291,8 +294,8 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   const movementBoard=boardSnapshot(state);
   for(const {from,id} of kings){
     if(state.stampBalls[from]!==id)continue; // A scoring Trash stamp may have destroyed it.
-    const available=kingNeighbors(from).filter(t=>!state.stamps.has(t));
-    if(!available.length){timeline.push({kind:'blocked',tile:from,id,board:boardSnapshot(state),scoreBefore:state.score});continue;}
+    const available=isSticky(state,id)?[]:kingNeighbors(from).filter(t=>!state.stamps.has(t));
+    if(!available.length){timeline.push({kind:'blocked',reason:isSticky(state,id)?'sticky':'occupied',tile:from,id,board:boardSnapshot(state),scoreBefore:state.score});continue;}
     const to=available[Math.floor(random()*available.length)],value=state.stampValues[from],before=boardSnapshot(state),scoreBefore=state.score;
     state.stamps.delete(from);delete state.stampBalls[from];delete state.stampValues[from];
     state.stamps.add(to);state.stampBalls[to]=id;state.stampValues[to]=value;
@@ -349,7 +352,13 @@ function scoreGroups(state,scoringGroups,events=cardEvents(state),random=Math.ra
       state.collection=state.collection.filter(n=>n!==id);state.bag.delete(id);
       delete state.valueModifiers[id];delete state.ballValues[id];if(state.itemEffects)delete state.itemEffects[id];
     }
-    return {tile,reveal,copies,trashed,number,basePoints,bonuses,contributions,stampBonus,multiplier:state.tileMultipliers?.[tile]||1,points:(contributions.reduce((sum,c)=>sum+c.points,0)+stampBonus)*(state.tileMultipliers?.[tile]||1),trigger:group.trigger,retriggers:group.retriggers,type:group.type,source:group.source,pattern:j===0?tiles:null};
+    let glassGrowth=null;
+    if(trashed===null&&state.items[id]==='glass'){
+      const change=changeTileValue(state,tile,number,tile);
+      const broken=random()<.2;glassGrowth={...change,broken};
+      if(broken)destroyItem(state,id,tile);
+    }
+    return {glassGrowth,tile,reveal,copies,trashed,number,basePoints,bonuses,contributions,stampBonus,multiplier:state.tileMultipliers?.[tile]||1,points:(contributions.reduce((sum,c)=>sum+c.points,0)+stampBonus)*(state.tileMultipliers?.[tile]||1),trigger:group.trigger,retriggers:group.retriggers,type:group.type,source:group.source,pattern:j===0?tiles:null};
     });
     if(entries.length){const flatBonus=group.flatBonus||0,subtotal=entries.reduce((sum,a)=>sum+a.points,0)+flatBonus;entries.at(-1).groupEnd={subtotal,factor,total:subtotal*factor,sources,...(flatBonus?{flatBonus,source:group.source}:{})};entries.at(-1).groupBonus=flatBonus+subtotal*(factor-1);}
     return entries;

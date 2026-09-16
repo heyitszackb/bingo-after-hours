@@ -522,8 +522,6 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .cell.stamped.king-item:before{background:transparent url('assets/king.svg?v=20b889a12b7a') center/contain no-repeat!important;width:96%;border:0;box-shadow:none;border-radius:0;transform:none}.cell.stamped.king-item>span{font-size:.6em;transform:translateY(10%);color:#423b2d}.king-destination{outline:3px solid #e7ca7b;outline-offset:-4px}.king-art{background:url('assets/king.svg?v=20b889a12b7a') center/contain no-repeat;color:#423b2d;font-size:16px;padding-top:7px}
 
 .card-range{font-weight:900;color:#ffe6a3;white-space:nowrap}.joker-description .card-range{color:#372815}
-.ball.statue-item{background:transparent url('assets/statue.svg?v=212467426791') center/contain no-repeat!important;border:0;box-shadow:none;border-radius:0}.ball.statue-item:before,.ball.statue-item:after{display:none}.ball.statue-item .face,.cabinet:not(.shopping)>.draw-area .ball.statue-item .face{font-size:calc(var(--size)*.23);background:transparent;border:0;box-shadow:none;color:#263d38;transform:translateY(22%)}
-.cell.stamped.statue-item:before{background:transparent url('assets/statue.svg?v=212467426791') center/contain no-repeat!important;width:96%;border:0;box-shadow:none;border-radius:0;transform:none}.cell.stamped.statue-item>span{font-size:.6em;transform:translateY(22%);color:#263d38}.statue-art{background:url('assets/statue.svg?v=212467426791') center/contain no-repeat;color:#263d38;font-size:16px;padding-top:13px}
 #shop-tokens{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}#shop-tokens .shop-product{height:190px}#shop-tokens .product-name{font-size:15px}#shop-tokens .product-description{font-size:13px}
 .trash-mark{display:inline-block;width:1em;height:1em;min-width:14px;min-height:14px;background:url('assets/trash.svg?v=9204b145f0cc') center/contain no-repeat}.ball.trash-item .face,.cabinet:not(.shopping)>.draw-area .ball.trash-item .face{background:#d7c59d url('assets/trash.svg?v=9204b145f0cc') center/70% no-repeat}#shop-shelf .trash-art{background:#d7c59d url('assets/trash.svg?v=9204b145f0cc') center/80% no-repeat}
 /* Item-only table: no space reserved for the retired card rack. */
@@ -646,7 +644,6 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .cabinet.shopping #shop-shelf .product-art-well{height:100%;width:100%;display:grid;place-items:center;background:#05251d66;border-right:1px solid #214b37;box-shadow:inset -3px 0 #10372c;grid-column:1;grid-row:1}
 .cabinet.shopping #shop-shelf .product-art-well i{grid-area:auto;margin:0;width:72%;height:auto;aspect-ratio:1;flex:none;font-size:27px;image-rendering:pixelated;filter:drop-shadow(3px 5px #001a1b80)}
 .cabinet.shopping #shop-shelf .product-art-well .copier-art{font-size:0}
-.cabinet.shopping #shop-shelf .product-art-well .statue-art{font-size:22px;padding-top:18px}
 .cabinet.shopping #shop-shelf .product-art-well .king-art{font-size:22px;padding-top:10px}
 .cabinet.shopping #shop-shelf .product-art-well .seed-art{font-size:22px;padding-top:18px}
 .cabinet.shopping #shop-shelf .product-body{grid-column:2;grid-row:1;display:flex;flex-direction:column;justify-content:flex-start;gap:12px;padding:12px 12px 10px;min-width:0}
@@ -736,7 +733,6 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .cell:not(.stamped)>.potion-sheen{display:none}
 .earth-item>.potion-sheen{inset:4%;border-radius:0;mask:url("assets/earth.svg") center/contain no-repeat;-webkit-mask:url("assets/earth.svg") center/contain no-repeat}
 .king-item>.potion-sheen{inset:4%;border-radius:0;mask:url("assets/king.svg") center/contain no-repeat;-webkit-mask:url("assets/king.svg") center/contain no-repeat}
-.statue-item>.potion-sheen{inset:4%;border-radius:0;mask:url("assets/statue.svg") center/contain no-repeat;-webkit-mask:url("assets/statue.svg") center/contain no-repeat}
 .seed-item>.potion-sheen{inset:4%;border-radius:0;mask:url("assets/seed.svg") center/contain no-repeat;-webkit-mask:url("assets/seed.svg") center/contain no-repeat}
 .die-item>.potion-sheen{inset:4%;border-radius:0;mask:url("assets/d20.svg") center/contain no-repeat;-webkit-mask:url("assets/d20.svg") center/contain no-repeat}
 .bomb-item>.potion-sheen{inset:4%;border-radius:0;mask:url("assets/bomb.svg") center/contain no-repeat;-webkit-mask:url("assets/bomb.svg") center/contain no-repeat}
@@ -770,3 +766,13 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .cell.stamped.jupiter-item:before{background:transparent url('assets/jupiter.svg?v=0df6697b8f41') center/contain no-repeat!important;border:0;box-shadow:none;border-radius:50%;width:88%;transform:none}
 .jupiter-art{background:url('assets/jupiter.svg?v=0df6697b8f41') center/contain no-repeat}
 .jupiter-item>.potion-sheen{inset:4%;mask:url('assets/jupiter.svg?v=0df6697b8f41') center/contain no-repeat;-webkit-mask:url('assets/jupiter.svg?v=0df6697b8f41') center/contain no-repeat}
+
+.potionSticky-item,.potionSticky-art{--potion-art:url('assets/potionSticky.svg?v=62ee102589b7')}
+.potion-badge.sticky{color:#d9e4d0;border-color:#abcda7;background:#426352}
+.ball.glass-item{background:transparent url('assets/glass.svg?v=ad86f6f86998') center/contain no-repeat!important;border:0;box-shadow:none;border-radius:50%}
+.ball.glass-item:before,.ball.glass-item:after{display:none}
+.ball.glass-item .face{background:transparent;border:0;box-shadow:none;color:#183a42}
+.cell.stamped.glass-item:before{background:transparent url('assets/glass.svg?v=ad86f6f86998') center/contain no-repeat!important;border:0;box-shadow:none;border-radius:50%;width:88%;transform:none}
+.cell.stamped.glass-item>span{color:#183a42}
+.glass-art{background:url('assets/glass.svg?v=ad86f6f86998') center/contain no-repeat;color:#183a42;font-style:normal}
+.glass-shard{position:fixed;width:9px;height:13px;background:#dbf9f0;clip-path:polygon(0 0,100% 30%,25% 100%);pointer-events:none;z-index:105}

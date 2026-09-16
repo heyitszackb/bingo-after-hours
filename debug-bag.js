@@ -1,11 +1,11 @@
-import {ballValue,ITEM_TYPES} from './game.js?v=48c65f95136d';
+import {ballValue,ITEM_TYPES} from './game.js?v=1146b15cc0cf';
 
 export const DEBUG_BAG_LIMIT=500;
 export const baseBagRecipe=()=>Array.from({length:25},(_,i)=>({type:'number',value:i+1,count:1}));
 export function bagRecipe(state){
   const groups=new Map();
   for(const id of state.collection){
-    const type=state.items[id]||'number',value=['potion20','potion2','potionCopy','potionMelt','doubleball','question','bomb','x2','x3','copier','trash','plus10','plus50','plus100'].includes(type)?null:type==='d20'?(state.valueModifiers[id]||0):ballValue(state,id),key=`${type}:${value}`;
+    const type=state.items[id]||'number',value=['potion20','potion2','potionCopy','potionMelt','potionSticky','doubleball','question','bomb','x2','x3','copier','trash','plus10','plus50','plus100'].includes(type)?null:type==='d20'?(state.valueModifiers[id]||0):ballValue(state,id),key=`${type}:${value}`;
     if(groups.has(key))groups.get(key).count++;
     else groups.set(key,{type,value,count:1});
   }
@@ -19,7 +19,7 @@ export function buildDebugBag(recipe){
   for(const row of recipe){
     if(!row||!(row.type==='number'||Object.hasOwn(ITEM_TYPES,row.type)))throw new Error('Choose a valid piece type.');
     if(!Number.isInteger(row.count)||row.count<1)throw new Error('Copies must be whole numbers of 1 or more.');
-    if(!['potion20','potion2','potionCopy','potionMelt','doubleball','question','bomb','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type)&&!Number.isSafeInteger(row.value))throw new Error('Values must be whole numbers.');
+    if(!['potion20','potion2','potionCopy','potionMelt','potionSticky','doubleball','question','bomb','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type)&&!Number.isSafeInteger(row.value))throw new Error('Values must be whole numbers.');
     total+=row.count;
     if(total>DEBUG_BAG_LIMIT)throw new Error(`Use at most ${DEBUG_BAG_LIMIT} pieces in a test bag.`);
   }
@@ -32,7 +32,7 @@ export function buildDebugBag(recipe){
     else{
       items[id]=row.type;
       if(row.type==='d20'&&row.value)valueModifiers[id]=row.value;
-      if((row.type==='hundred'&&row.value!==50)||(row.type==='seed'&&row.value!==1)||(['earth','mars','moon','jupiter','king'].includes(row.type)&&row.value!==0)||(row.type==='statue'&&row.value!==10))ballValues[id]=row.value;
+      if((row.type==='hundred'&&row.value!==50)||(['seed','glass'].includes(row.type)&&row.value!==1)||(['earth','mars','moon','jupiter','king'].includes(row.type)&&row.value!==0))ballValues[id]=row.value;
     }
   }
   return {collection,items,ballValues,valueModifiers,nextItemId};

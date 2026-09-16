@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=486b81cf668f';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=269acdf78050';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {MARS_PATTERNS,MOON_PATTERNS,JUPITER_PATTERNS,isTargetedPotion,BINGO_TOKEN,isPotion,shopItemTypes,removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=48c65f95136d';
+import {MARS_PATTERNS,MOON_PATTERNS,JUPITER_PATTERNS,isTargetedPotion,BINGO_TOKEN,isPotion,shopItemTypes,removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=1146b15cc0cf';
 function newStage(...args){const round=legacyNewStage(...args);round.plainRules=true;round.jokers=[];return round;}
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
@@ -47,15 +47,15 @@ function render(boardState=state){
 
 let mimicAppearance=null;
 function appearanceState(){if(!mimicAppearance)return state;const {id,applied}=mimicAppearance;return {...state,items:{...state.items,[id]:applied.type==='bingo'?undefined:applied.type},ballValues:{...state.ballValues,[id]:applied.base??undefined},valueModifiers:{...state.valueModifiers,[id]:applied.modifier},itemEffects:{...state.itemEffects,[id]:applied.effects}};}
-const baseItemClass=n=>{const state=appearanceState();return state.items[n]==='jupiter'?' jupiter-item':state.items[n]==='moon'?' moon-item':state.items[n]==='mars'?' mars-item':state.items[n]==='earth'?' earth-item':state.items[n]==='doubleball'?' doubleball-item':state.items[n]==='trash'?' stamp-item trash-item':state.items[n]==='statue'?' statue-item':state.items[n]==='king'?' king-item':state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','trash','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';};
+const baseItemClass=n=>{const state=appearanceState();return state.items[n]==='jupiter'?' jupiter-item':state.items[n]==='moon'?' moon-item':state.items[n]==='mars'?' mars-item':state.items[n]==='earth'?' earth-item':state.items[n]==='doubleball'?' doubleball-item':state.items[n]==='trash'?' stamp-item trash-item':state.items[n]==='glass'?' glass-item':state.items[n]==='king'?' king-item':state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','trash','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';};
 const itemClass=n=>{const state=appearanceState();return (isPotion(state,n)?` potion-item ${state.items[n]}-item`:baseItemClass(n))+((state.itemEffects?.[n]||[]).includes('potion20')?' potion-gold':'')+((state.itemEffects?.[n]||[]).includes('potion2')?' potion-striped':'');};
-const potionFace=type=>({potion20:'+20',potion2:'×2',potionCopy:'COPY',potionMelt:'×'})[type];
+const potionFace=type=>({potion20:'+20',potion2:'×2',potionCopy:'COPY',potionMelt:'×',potionSticky:'◆'})[type];
 const pieceLabel=n=>{const state=appearanceState();return state.items[n]?`${ITEM_TYPES[state.items[n]].name}${ballValue(state,n)!==null?` (${ballValue(state,n)})`:''}`:`${BINGO_TOKEN.name} (${ballValue(state,n)??0})`;};
 const pieceFace=n=>{const state=appearanceState();return isPotion(state,n)?potionFace(state.items[n]):state.items[n]==='doubleball'?'×2':state.items[n]==='trash'?'':state.items[n]==='question'?'?':state.items[n]?.startsWith('plus')?`+${state.items[n].slice(4)}`:state.items[n]==='copier'?'COPY':['x2','x3'].includes(state.items[n])?`×${state.items[n].slice(1)}`:isDie(state,n)?'?':ballValue(state,n)??'';};
 function potionBadges(n){
   const state=appearanceState();
   const effects=state.itemEffects?.[n]||[],double=effects.filter(e=>e==='potion2').length,gold=effects.filter(e=>e==='potion20').length;
-  return `${gold?`<b class="potion-badge gold" aria-label="${gold} plus-20 potions">+${gold*20}<small>${gold>1?`${gold}`:''}</small></b>`:''}${double?`<b class="potion-badge red" aria-label="${double} doubling potions, times ${2**double}">×${2**double}<small>${double>1?`${double}`:''}</small></b>`:''}`;
+  return `${effects.includes('potionSticky')?'<b class="potion-badge sticky" aria-label="Stuck to the board">◆</b>':''}${gold?`<b class="potion-badge gold" aria-label="${gold} plus-20 potions">+${gold*20}<small>${gold>1?`${gold}`:''}</small></b>`:''}${double?`<b class="potion-badge red" aria-label="${double} doubling potions, times ${2**double}">×${2**double}<small>${double>1?`${double}`:''}</small></b>`:''}`;
 }
 function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)}`;b.classList.toggle('large-value',String(pieceFace(n)).length>2);b.dataset.number=n;b.dataset.kind=state.items[n]||'number';b.innerHTML=`<span class="face">${pieceFace(n)}</span><i class="potion-sheen" aria-hidden="true"></i><div class="potion-badges">${potionBadges(n)}</div>`;b.setAttribute('aria-label',`Inspect ${pieceLabel(n)}`);return b;}
 function hideTooltip(){
@@ -110,7 +110,7 @@ function showTooltip(n,anchor,space=false,catalogType=null){
   $('tooltip-effect').hidden=!$('tooltip-effect').textContent.trim();
   let effects=$('tooltip-potions');if(!effects){effects=document.createElement('div');effects.id='tooltip-potions';$('tooltip-effect').after(effects);}
   const applied=!catalogType&&occupied?(state.itemEffects?.[n]||[]):[];
-  effects.innerHTML=[...new Set(applied)].map(type=>{const count=applied.filter(e=>e===type).length;return `<div class="potion-effect ${type}">${type==='potion20'?pointCopy(`+${count*20} ★`):pointCopy(`×${2**count} to total bingo score`)}<small class="potion-count">${count} ${count===1?'potion':'potions'}${count>1?type==='potion20'?` · ${count} × +20`:` · ${Array(count).fill('×2').join(' ')}`:''}</small></div>`;}).join('');effects.hidden=!applied.length;
+  effects.innerHTML=[...new Set(applied)].map(type=>{const count=applied.filter(e=>e===type).length;return `<div class="potion-effect ${type}">${type==='potionSticky'?'Stuck to the board · −1 play each round':type==='potion20'?pointCopy(`+${count*20} ★`):pointCopy(`×${2**count} to total bingo score`)}<small class="potion-count">${count} ${count===1?'potion':'potions'}${count>1&&type!=='potionSticky'?type==='potion20'?` · ${count} × +20`:` · ${Array(count).fill('×2').join(' ')}`:''}</small></div>`;}).join('');effects.hidden=!applied.length;
 
   tip.classList.toggle('space-tooltip',space);
   tooltipAnchor=anchor;
@@ -151,10 +151,10 @@ function debugRows(){
     const line=document.createElement('div');line.className='debug-row';
     const select=document.createElement('select');select.setAttribute('aria-label',`Piece ${index+1} type`);
     for(const [type,name] of [['number','Bingo Token'],...Object.entries(ITEM_TYPES).map(([type,item])=>[type,item.name])]){const option=document.createElement('option');option.value=type;option.textContent=name;select.append(option);}select.value=row.type;
-    const value=document.createElement('input');value.type='number';value.step='1';value.inputMode='text';value.value=row.value??'';value.disabled=['potion20','potion2','potionCopy','potionMelt','doubleball','question','bomb','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type);value.setAttribute('aria-label',`Piece ${index+1} ${row.type==='d20'?'roll modifier':'value'}`);
+    const value=document.createElement('input');value.type='number';value.step='1';value.inputMode='text';value.value=row.value??'';value.disabled=['potion20','potion2','potionCopy','potionMelt','potionSticky','doubleball','question','bomb','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type);value.setAttribute('aria-label',`Piece ${index+1} ${row.type==='d20'?'roll modifier':'value'}`);
     const count=document.createElement('input');count.type='number';count.step='1';count.min='1';count.max='500';count.inputMode='numeric';count.value=row.count;count.setAttribute('aria-label',`Piece ${index+1} copies`);
     const remove=document.createElement('button');remove.textContent='×';remove.setAttribute('aria-label',`Remove piece ${index+1}`);
-    select.onchange=()=>{row.type=select.value;row.value=['potion20','potion2','potionCopy','potionMelt','doubleball','question','bomb','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type)?null:['d20','earth','mars','moon','jupiter','king'].includes(row.type)?0:row.type==='hundred'?50:row.type==='statue'?10:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
+    select.onchange=()=>{row.type=select.value;row.value=['potion20','potion2','potionCopy','potionMelt','potionSticky','doubleball','question','bomb','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type)?null:['d20','earth','mars','moon','jupiter','king'].includes(row.type)?0:row.type==='hundred'?50:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
     value.oninput=()=>{row.value=value.value===''?null:value.valueAsNumber;validateDebugDraft();};count.oninput=()=>{row.count=count.value===''?null:count.valueAsNumber;validateDebugDraft();};
     remove.onclick=()=>{debugDraft.splice(index,1);debugRows();const next=$('debug-rows').children[Math.min(index,debugDraft.length-1)];(next?.querySelector('select')||$('debug-add')).focus();};
     line.append(select,value,count,remove);list.append(line);
@@ -320,6 +320,16 @@ async function showBingoMultiplier(group,onApply){
     await animate(panel,[{opacity:1},{opacity:0}],{duration:250});
   }finally{sources.forEach(source=>source.classList.remove('multiplier-source'));panel.remove();}
 }
+async function animateGlass(cell,growth){
+  const face=cell.querySelector('span');face.textContent=growth.after;
+  await animate(cell,[{filter:'brightness(1)',transform:'scale(1)'},{filter:'brightness(1.7)',transform:'scale(1.12)',offset:.35},{filter:'brightness(1)',transform:'scale(1)'}],{duration:350});
+  if(!growth.broken)return;
+  const r=cell.getBoundingClientRect(),shards=Array.from({length:10},(_,i)=>{
+    const shard=document.createElement('i');shard.className='glass-shard';shard.style.left=`${r.left+r.width/2}px`;shard.style.top=`${r.top+r.height/2}px`;$('effects').append(shard);
+    return animate(shard,[{opacity:1,transform:'translate(0,0) rotate(0)'},{opacity:0,transform:`translate(${Math.cos(i*2.4)*r.width*.8}px,${Math.sin(i*2.4)*r.height*.8+15}px) rotate(${i*80}deg)`}],{duration:450}).finally(()=>shard.remove());
+  });
+  cell.classList.remove('stamped');face.textContent='';cell.querySelector('.potion-badges')?.replaceChildren();await Promise.all(shards);
+}
 async function activateSpaces(result){
   let displayedScore=result.scoreBefore??state.score-result.points,displayedCalls=result.callsBeforeBonuses,total=0,lineIndex=0;
   let activePattern=[],groupSubtotal=0;
@@ -405,6 +415,7 @@ async function activateSpaces(result){
         await animate(cell,[{opacity:1},{opacity:.25,transform:'scale(.8)'},{opacity:1,transform:'scale(1)'}],{duration:280});
         cell.className='cell paint-grey inked';face.textContent='';
       }
+      if(activation.glassGrowth)await animateGlass(cell,activation.glassGrowth);
       if(activation.groupEnd){
         const g=activation.groupEnd;
         if(g.flatBonus){
@@ -447,7 +458,7 @@ async function explodeBomb(result){
       const angle=Math.atan2(rect.top-r.top,rect.left-r.left)+(i-2.5)*.45,d=30+Math.random()*70;
       fragments.push(animate(chip,[{transform:'scale(1.3)',opacity:1},{transform:`translate(${Math.cos(angle)*d}px,${Math.sin(angle)*d+20}px) rotate(${i*65}deg) scale(.2)`,opacity:0}],{duration:360+i*20,easing:'cubic-bezier(.1,.65,.2,1)'}).then(()=>chip.remove()));
     }}
-    cell.classList.remove('stamped','bomb-item','die-item','hundred-item','seed-item','king-item','statue-item','just-stamped');cell.querySelector('span').textContent='';
+    cell.classList.remove('stamped','bomb-item','die-item','hundred-item','seed-item','king-item','just-stamped');cell.querySelector('span').textContent='';
   }
   if(!reduced){
     const ring=document.createElement('i');ring.className='bomb-wave';ring.style.left=`${r.left+r.width/2}px`;ring.style.top=`${r.top+r.height/2}px`;ring.style.width=`${r.width*2.6}px`;ring.style.height=`${r.height*2.6}px`;$('effects').append(ring);
@@ -550,10 +561,10 @@ async function animateGravity(phase){
 async function animateBlockedKing(phase){
   render(phase.board);renderScore(phase.scoreBefore);
   const cell=$(`cell-${phase.tile}`),r=cell.getBoundingClientRect(),cue=document.createElement('div');
-  cue.className='king-blocked-cue';cue.textContent='No move';
+  cue.className='king-blocked-cue';cue.textContent=phase.reason==='sticky'?'Stuck':'No move';
   cue.style.left=`${r.left+r.width/2}px`;cue.style.top=`${r.top+4}px`;
   document.body.append(cue);cell.classList.add('king-blocked');
-  $('announcer').textContent='King cannot move: no empty adjacent space.';
+  $('announcer').textContent=phase.reason==='sticky'?'King is stuck to the board.':'King cannot move: no empty adjacent space.';
   try{
     await Promise.all([
       animate(cell,[{transform:'translateX(0)'},{transform:'translateX(-3px)',offset:.2},{transform:'translateX(3px)',offset:.4},{transform:'translateX(-2px)',offset:.6},{transform:'translateX(0)'}],{duration:650,easing:'ease-in-out'}),
@@ -691,7 +702,7 @@ function pointCopy(text){
     .replace(/(When played:|When scored:|Each play:|Each turn:|While on board:)/g,'<b class="effect-trigger">$1</b>')
     .replace(/★/g,star);
 }
-function itemArt(type){if(ITEM_TYPES[type]?.kind==='potion')return `<i class="potion-art ${type}-art" aria-hidden="true">${potionFace(type)}</i>`;return type==='statue'?'<i class=statue-art aria-hidden=true>10</i>':type==='king'?'<i class=king-art aria-hidden=true>0</i>':type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='doubleball'?'×2':type==='question'?'?':type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'COPY':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;}
+function itemArt(type){if(ITEM_TYPES[type]?.kind==='potion')return `<i class="potion-art ${type}-art" aria-hidden="true">${potionFace(type)}</i>`;return type==='king'?'<i class=king-art aria-hidden=true>0</i>':type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='doubleball'?'×2':type==='question'?'?':type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'COPY':type==='d20'?'?':['seed','glass'].includes(type)?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;}
 function showCatalog(){
   if(busy)return;hideTooltip();
   $('catalog-grid').replaceChildren(...shopItemTypes().map(type=>{const item=ITEM_TYPES[type];
@@ -793,12 +804,12 @@ function loadRun(){
     delete saved.paints;delete saved.goldSeals;
     const oldTurn=saved.turnVersion!==1;
     if(oldTurn){if(saved.status==='playing')saved.calls=Math.max(0,17-Math.max(0,(saved.callCapacity??12)-saved.calls));saved.passes=10;}
-    if(!oldTurn&&saved.status==='playing'&&saved.callCapacity!==17)saved.calls=Math.max(0,17-Math.max(0,(saved.callCapacity??15)-saved.calls));
-    saved.calls=Math.min(saved.calls,17);saved.callCapacity=17;saved.turnVersion=1;
+    if(saved.stickyVersion!==1&&!oldTurn&&saved.status==='playing'&&saved.callCapacity!==17)saved.calls=Math.max(0,17-Math.max(0,(saved.callCapacity??15)-saved.calls));
+    if(saved.stickyVersion!==1){saved.calls=Math.min(saved.calls,17);saved.callCapacity=17;saved.stickyVersion=1;}saved.turnVersion=1;
     if(saved.status==='playing'&&saved.calls===0)saved.status='over';
     if(!Number.isInteger(saved.passes)||saved.passes<0||saved.passes>10)throw new Error('Invalid passes');
     migrateShop(saved);
-    if(!Number.isInteger(saved.callCapacity)||saved.callCapacity<15||saved.callCapacity>192||saved.calls>saved.callCapacity)throw new Error('Invalid call capacity');
+    if(!Number.isInteger(saved.callCapacity)||saved.callCapacity<0||saved.callCapacity>17||saved.calls>saved.callCapacity)throw new Error('Invalid call capacity');
     if(old){
       saved.upgrades={};saved.shopOffer=null;
       saved.jokers=[];
@@ -816,9 +827,9 @@ function loadRun(){
     if(typeof saved.tileCopiers!=='object'||Array.isArray(saved.tileCopiers)||!Object.entries(saved.tileCopiers).every(([tile,value])=>Number.isInteger(Number(tile))&&Number(tile)>=1&&Number(tile)<=25&&value===true))throw new Error('Invalid copier tiles');
     saved.tileMultipliers??={};
     if(typeof saved.tileMultipliers!=='object'||Array.isArray(saved.tileMultipliers)||!Object.entries(saved.tileMultipliers).every(([tile,value])=>Number.isInteger(Number(tile))&&Number(tile)>=1&&Number(tile)<=25&&Number.isSafeInteger(value)&&value>=1))throw new Error('Invalid tile multipliers');
-    if(saved.lastPlayed){const p=saved.lastPlayed;if(!(p.type==='bingo'||Object.hasOwn(ITEM_TYPES,p.type))||!(p.base===null||Number.isSafeInteger(p.base))||!Number.isSafeInteger(p.modifier)||!Array.isArray(p.effects)||!p.effects.every(e=>['potion20','potion2'].includes(e)))saved.lastPlayed=null;}
+    if(saved.lastPlayed){const p=saved.lastPlayed;if(!(p.type==='bingo'||Object.hasOwn(ITEM_TYPES,p.type))||!(p.base===null||Number.isSafeInteger(p.base))||!Number.isSafeInteger(p.modifier)||!Array.isArray(p.effects)||!p.effects.every(e=>['potion20','potion2','potionSticky'].includes(e)))saved.lastPlayed=null;}
     saved.itemEffects??={};
-    if(typeof saved.itemEffects!=='object'||Array.isArray(saved.itemEffects)||!Object.entries(saved.itemEffects).every(([id,effects])=>saved.collection.includes(Number(id))&&Array.isArray(effects)&&effects.every(e=>['potion20','potion2'].includes(e))))throw new Error('Invalid item effects');
+    if(typeof saved.itemEffects!=='object'||Array.isArray(saved.itemEffects)||!Object.entries(saved.itemEffects).every(([id,effects])=>saved.collection.includes(Number(id))&&Array.isArray(effects)&&effects.every(e=>['potion20','potion2','potionSticky'].includes(e))))throw new Error('Invalid item effects');
     saved.valueModifiers??={};
     if(typeof saved.valueModifiers!=='object'||Array.isArray(saved.valueModifiers)||!Object.entries(saved.valueModifiers).every(([id,value])=>saved.collection.includes(Number(id))&&Number.isSafeInteger(value)))throw new Error('Invalid value modifiers');
     saved.ballValues??={};
