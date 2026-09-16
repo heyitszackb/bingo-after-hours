@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=dc21c587f5c9';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=a77c3282af1e';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {isPotion,shopItemTypes,removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=133c91377f84';
+import {isPotion,shopItemTypes,removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=8270c6be41ed';
 function newStage(...args){const round=legacyNewStage(...args);round.plainRules=true;round.jokers=[];return round;}
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
@@ -44,7 +44,7 @@ function render(boardState=state){
     c.setAttribute('aria-label',`Row ${Math.floor((tile-1)/5)+1}, column ${(tile-1)%5+1}${boardState.stamps.has(tile)?`, stamped ${boardState.stampValues[tile]??pieceLabel(number)}`:offered?', available for any drawn ball':', empty'}. ${multiplier>1?`Tile multiplier ×${multiplier}. `:''}Complete a row, column, or diagonal to score item values and tile stamps.`);
   }}
 
-const baseItemClass=n=>state.items[n]==='earth'?' earth-item':state.items[n]==='doubleball'?' doubleball-item':state.items[n]==='trash'?' stamp-item trash-item':state.items[n]==='statue'?' statue-item':state.items[n]==='king'?' king-item':state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','trash','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';
+const baseItemClass=n=>state.items[n]==='mars'?' mars-item':state.items[n]==='earth'?' earth-item':state.items[n]==='doubleball'?' doubleball-item':state.items[n]==='trash'?' stamp-item trash-item':state.items[n]==='statue'?' statue-item':state.items[n]==='king'?' king-item':state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','trash','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';
 const itemClass=n=>(isPotion(state,n)?` potion-item ${state.items[n]}-item`:baseItemClass(n))+((state.itemEffects?.[n]||[]).includes('potion20')?' potion-gold':'')+((state.itemEffects?.[n]||[]).includes('potion2')?' potion-striped':'');
 const potionFace=type=>({potion20:'+20',potion2:'×2',potionCopy:'COPY',potionMelt:'×'})[type];
 const pieceLabel=n=>state.items[n]?`${ITEM_TYPES[state.items[n]].name}${ballValue(state,n)!==null?` (${ballValue(state,n)})`:''}`:ballValue(state,n)??'';
@@ -146,7 +146,7 @@ function debugRows(){
     const value=document.createElement('input');value.type='number';value.step='1';value.inputMode='text';value.value=row.value??'';value.disabled=['potion20','potion2','potionCopy','potionMelt','doubleball','question','bomb','rock','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type);value.setAttribute('aria-label',`Piece ${index+1} ${row.type==='d20'?'roll modifier':'value'}`);
     const count=document.createElement('input');count.type='number';count.step='1';count.min='1';count.max='500';count.inputMode='numeric';count.value=row.count;count.setAttribute('aria-label',`Piece ${index+1} copies`);
     const remove=document.createElement('button');remove.textContent='×';remove.setAttribute('aria-label',`Remove piece ${index+1}`);
-    select.onchange=()=>{row.type=select.value;row.value=['potion20','potion2','potionCopy','potionMelt','doubleball','question','bomb','rock','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type)?null:['d20','earth'].includes(row.type)?0:row.type==='hundred'?50:['king','statue'].includes(row.type)?10:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
+    select.onchange=()=>{row.type=select.value;row.value=['potion20','potion2','potionCopy','potionMelt','doubleball','question','bomb','rock','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type)?null:['d20','earth','mars'].includes(row.type)?0:row.type==='hundred'?50:['king','statue'].includes(row.type)?10:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
     value.oninput=()=>{row.value=value.value===''?null:value.valueAsNumber;validateDebugDraft();};count.oninput=()=>{row.count=count.value===''?null:count.valueAsNumber;validateDebugDraft();};
     remove.onclick=()=>{debugDraft.splice(index,1);debugRows();const next=$('debug-rows').children[Math.min(index,debugDraft.length-1)];(next?.querySelector('select')||$('debug-add')).focus();};
     line.append(select,value,count,remove);list.append(line);
@@ -316,7 +316,7 @@ async function activateSpaces(result){
   let displayedScore=result.scoreBefore??state.score-result.points,displayedCalls=result.callsBeforeBonuses,total=0,lineIndex=0;
   let activePattern=[],groupSubtotal=0;
   const board=$('board'),area=document.querySelector('.draw-area'),readout=$('score-meter');
-  const colors=Object.fromEntries(['square','corners','row','column','diagonal','cross','all'].map(type=>[type,'#f6d36b']));
+  const colors=Object.fromEntries(['square','corners','row','column','diagonal','cross','all','mars'].map(type=>[type,'#f6d36b']));
   const allTiles=[...new Set(result.activations.map(a=>a.tile))].map(n=>$(`cell-${n}`));
   board.classList.add('scoring-board');area.classList.add('scoring-draw');
   readout.classList.add('scoring-total');$('score-line-label').hidden=false;renderScore(displayedScore);
@@ -330,6 +330,11 @@ async function activateSpaces(result){
         activePattern=activation.pattern.map(n=>$(`cell-${n}`));
         activePattern.forEach(c=>{c.style.setProperty('--scoring-color',color);c.classList.add('pattern-active','score-pending');});
         $('score-line-label').textContent=`${activation.type.toUpperCase()}${result.scoringGroups.length>1?` ${lineIndex}/${result.scoringGroups.length}`:''}`;
+        if(activation.type==='mars'){
+          const source=$(`cell-${activation.source}`);source.classList.add('mars-awake');
+          await animate(source,[{transform:'scale(1)'},{transform:'scale(1.18) rotate(-7deg)',offset:.4},{transform:'scale(1)'}],{duration:360});
+          source.classList.remove('mars-awake');
+        }
         pulseBackground();
         await animate(readout,[{transform:'scale(1)'},{transform:'scale(1.08)',offset:.4},{transform:'scale(1)'}],{duration:220});
         await Promise.all(activePattern.map(target=>animate(target,[{filter:'brightness(1)'},{filter:'brightness(1.5)',offset:.4},{filter:'brightness(1)'}],{duration:220})));
@@ -382,7 +387,7 @@ async function activateSpaces(result){
       await animate(point,[{transform:'translate(-50%,-85%) scale(1)',opacity:1},{transform:'translate(-50%,-105%) scale(1.12)',opacity:1,offset:.25},{transform:`translate(calc(-50% + ${to.left+to.width/2-r.left-r.width/2}px),calc(-50% + ${to.top+to.height/2-r.top-r.height/2}px)) scale(.5)`,opacity:0}],{duration:Math.max(180,270-index%5*18),easing:'cubic-bezier(.4,0,.7,.4)'});
       point.remove();
       displayedScore+=activation.points;total+=activation.points;groupSubtotal+=activation.points;
-      $('score-line-label').textContent=`BINGO +${groupSubtotal}`;
+      $('score-line-label').textContent=`${activation.type==='mars'?'MARS':'BINGO'} +${groupSubtotal}`;
       renderScore(displayedScore);
       await animate($('score'),reduced?[{opacity:.75},{opacity:1}]:[{transform:'scale(1.22,1.08) rotate(-2deg)'},{transform:'scale(.97,1.03)',offset:.55},{transform:'scale(1)'}],{duration:130});
       for(const copy of activation.copies||[])await animateCopy(copy);
@@ -394,9 +399,16 @@ async function activateSpaces(result){
       }
       if(activation.groupEnd){
         const g=activation.groupEnd;
+        if(g.flatBonus){
+          const source=$(`cell-${g.source}`),r=source.getBoundingClientRect(),bonus=document.createElement('span');
+          bonus.className='activation-point mars-bonus';bonus.innerHTML=`+${g.flatBonus} ${star}`;bonus.style.left=`${r.left+r.width/2}px`;bonus.style.top=`${r.top}px`;$('effects').append(bonus);
+          $('score-line-label').textContent=`MARS ${g.subtotal-g.flatBonus} +${g.flatBonus}`;
+          await animate(bonus,[{opacity:0,transform:'translate(-50%,0) scale(.6)'},{opacity:1,transform:'translate(-50%,-60%) scale(1.1)',offset:.35},{opacity:1,transform:'translate(-50%,-75%) scale(1)'}],{duration:450});
+          await scoreLink(source,readout,'#f6d36b');bonus.remove();displayedScore+=g.flatBonus;total+=g.flatBonus;renderScore(displayedScore);pulseBackground();
+        }
         if(g.factor>1){
           $('score-line-label').textContent=`${g.subtotal} ×${g.factor} = ${g.total}`;
-          await showBingoMultiplier(g,()=>{displayedScore+=activation.groupBonus;total+=activation.groupBonus;renderScore(displayedScore);});
+          await showBingoMultiplier(g,()=>{displayedScore+=activation.groupBonus-(g.flatBonus||0);total+=activation.groupBonus-(g.flatBonus||0);renderScore(displayedScore);});
         }
         await wait(240);
       }
@@ -406,7 +418,7 @@ async function activateSpaces(result){
     if(total>0){pulseBackground();navigator.vibrate?.([15,25,25]);burst($('score').getBoundingClientRect(),true);}
     await animate(readout,reduced?[{opacity:.85},{opacity:1}]:[{transform:'scale(1)'},{transform:'scale(1.08) rotate(-1deg)',offset:.25},{transform:'scale(1)',offset:.65},{transform:'scale(1)'}],{duration:360});
     await wait(600);
-    const names=result.scoringGroups.map(g=>PATTERN_TYPES.find(type=>type.id===g.type)?.label||'Bingo');
+    const names=result.scoringGroups.map(g=>PATTERN_TYPES.find(type=>type.id===g.type)?.label||(g.type==='mars'?'Mars trio':'Bingo'));
     $('announcer').textContent=`${names.join(', ')}. ${result.activations.length} spaces activated for ${result.points} stars.`;
   }finally{
     board.classList.remove('scoring-board');area.classList.remove('scoring-draw');readout.classList.remove('scoring-total');$('score-line-label').hidden=true;
@@ -800,7 +812,7 @@ function loadRun(){
     if(typeof saved.upgrades!=='object'||Array.isArray(saved.upgrades)||!Object.entries(saved.upgrades).every(([n,type])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&BALL_UPGRADES[type]))throw new Error('Invalid upgrades');
     if(saved.shopOffer!=null&&(saved.status!=='passed'||!saved.bonusPaid||!Array.isArray(saved.shopOffer.items)))throw new Error('Invalid shop');
     if(saved.shopOffer?.items&&!saved.shopOffer.items.every(type=>Object.hasOwn(ITEM_TYPES,type)))throw new Error('Invalid shop items');
-    saved.scoredLines=Array.isArray(saved.scoredLines)?[...new Set(saved.scoredLines.filter(id=>typeof id==='string'&&/^(row-[1-5]|column-[1-5]|diagonal-[12]|square-(?:[1-9]|1[0-6])|corners-1)$/.test(id)))]:[];
+    saved.scoredLines=Array.isArray(saved.scoredLines)?[...new Set(saved.scoredLines.filter(id=>typeof id==='string'&&/^(row-[1-5]|column-[1-5]|diagonal-[12]|square-(?:[1-9]|1[0-6])|corners-1|mars-(?:[1-3]|[6-8]|1[1-3]|1[6-8]|2[1-3]))$/.test(id)))]:[];
     saved.jokers=[];
     saved.jokerVersion=4;saved.plainRules=true;
     saved.patternCounts=Object.fromEntries(PATTERN_TYPES.map(({id})=>[id,Number.isSafeInteger(saved.patternCounts?.[id])&&saved.patternCounts[id]>=0?saved.patternCounts[id]:0]));

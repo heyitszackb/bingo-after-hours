@@ -12,6 +12,7 @@ export const PATTERN_DEFINITIONS = [
   {id:'diagonal-2',type:'diagonal',tiles:[5,9,13,17,21]},
 ];
 export const EXTRA_PATTERNS=[...Array.from({length:16},(_,i)=>{const t=Math.floor(i/4)*5+i%4+1;return {id:`square-${i+1}`,type:'square',tiles:[t,t+1,t+5,t+6]};}),{id:'corners-1',type:'corners',tiles:[1,5,21,25]}];
+export const MARS_PATTERNS=Array.from({length:15},(_,i)=>{const start=Math.floor(i/3)*5+i%3+1;return {id:`mars-${start}`,type:'mars',tiles:[start,start+1,start+2]};});
 export const PATTERNS = PATTERN_DEFINITIONS.map(pattern=>pattern.tiles);
 export const freshPatternCounts=()=>Object.fromEntries(PATTERN_TYPES.map(({id})=>[id,0]));
 export const completedPatterns=stamps=>PATTERN_DEFINITIONS.filter(({tiles})=>tiles.every(tile=>stamps.has(tile)));
@@ -42,6 +43,7 @@ export const ITEM_TYPES={
   seed:{name:'Seed',text:'When played: increases by 1 ★ each turn',startingValue:1,price:0},
   bomb:{name:'Bomb',text:'Permanently destroy all adjacent items',details:'Also destroys itself. Tile stamps stay.',startingValue:0,price:0},
   d20:{name:'20-Sided Die',text:'When played: random value between 1–20 ★',startingValue:'?',price:0},
+  mars:{name:'Mars',text:'While on board: score 3 in a row, each ≤9, +100 ★',details:'Horizontal. Overlaps count; each trio once per round.',startingValue:0,price:0},
   earth:{name:'Earth',text:'When played: all items respond to gravity',details:'Stamps stay put. Score before and after the fall.',startingValue:0,price:0},
   rock:{name:'Rock',text:'Free to play',startingValue:0,price:0}
 };
@@ -91,7 +93,7 @@ export const normalizeJokers=jokers=>{
     return CARD_TYPES[cardType(id)]&&cardDetails(id)&&purchased++<5;
   });
 };
-export const ballValue=(state,number)=>number==null||isPotion(state,number)||state.items?.[number]==='doubleball'||state.items?.[number]==='question'||isBomb(state,number)||isDie(state,number)||isRock(state,number)||isStamp(state,number)?null:((state.ballValues?.[number]??(['king','statue'].includes(state.items?.[number])?10:state.items?.[number]==='hundred'?50:state.items?.[number]==='seed'?1:state.items?.[number]==='earth'?0:number))+(state.valueModifiers?.[number]||0));
+export const ballValue=(state,number)=>number==null||isPotion(state,number)||state.items?.[number]==='doubleball'||state.items?.[number]==='question'||isBomb(state,number)||isDie(state,number)||isRock(state,number)||isStamp(state,number)?null:((state.ballValues?.[number]??(['king','statue'].includes(state.items?.[number])?10:state.items?.[number]==='hundred'?50:state.items?.[number]==='seed'?1:['earth','mars'].includes(state.items?.[number])?0:number))+(state.valueModifiers?.[number]||0));
 const boardSnapshot=state=>({stamps:new Set(state.stamps),stampBalls:{...state.stampBalls},stampValues:{...state.stampValues}});
 export const orthogonalNeighbors=tile=>[tile-5,tile+1,tile+5,tile-1].filter(t=>t>=1&&t<=25&&Math.abs(Math.floor((t-1)/5)-Math.floor((tile-1)/5))+Math.abs((t-1)%5-(tile-1)%5)===1);
 // Effects produce a common before/after event for the UI, independent of scoring.
@@ -237,6 +239,17 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
     const scored=scoreGroups(state,scoringGroups,events,random);
     const phase={kind:'score',...scored,scoreBefore,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups};
     if(scored.activations.length)timeline.push(phase);
+    // Mars enables a board-wide condition: placing it can activate trios already
+    // present. Recheck its presence and each trio after destructive scoring ink.
+    for(const pattern of MARS_PATTERNS){
+      const source=[...state.stamps].find(t=>state.items[state.stampBalls[t]]==='mars');
+      if(source===undefined)break;
+      if(state.scoredLines.includes(pattern.id)||!pattern.tiles.every(t=>state.stamps.has(t)&&Number.isFinite(state.stampValues[t])&&state.stampValues[t]<=9))continue;
+      const group={trigger:'mars',retriggers:[],type:'mars',tiles:pattern.tiles,flatBonus:100,source};
+      const before=state.score,mars=scoreGroups(state,[group],events,random);
+      state.scoredLines.push(pattern.id);
+      timeline.push({kind:'score',...mars,scoreBefore:before,callsBeforeBonuses,patterns:[pattern.tiles],scoredPatterns:[pattern],scoringGroups:[group]});
+    }
     return phase;
   }
   // Score placement first, then each King's destination before the next King moves.
@@ -312,9 +325,9 @@ function scoreGroups(state,scoringGroups,events=cardEvents(state),random=Math.ra
       state.collection=state.collection.filter(n=>n!==id);state.bag.delete(id);
       delete state.valueModifiers[id];delete state.ballValues[id];if(state.itemEffects)delete state.itemEffects[id];
     }
-    return {tile,reveal,copies,trashed,number,basePoints,bonuses,contributions,stampBonus,multiplier:state.tileMultipliers?.[tile]||1,points:(contributions.reduce((sum,c)=>sum+c.points,0)+stampBonus)*(state.tileMultipliers?.[tile]||1),trigger:group.trigger,retriggers:group.retriggers,type:group.type,pattern:j===0?tiles:null};
+    return {tile,reveal,copies,trashed,number,basePoints,bonuses,contributions,stampBonus,multiplier:state.tileMultipliers?.[tile]||1,points:(contributions.reduce((sum,c)=>sum+c.points,0)+stampBonus)*(state.tileMultipliers?.[tile]||1),trigger:group.trigger,retriggers:group.retriggers,type:group.type,source:group.source,pattern:j===0?tiles:null};
     });
-    if(entries.length){const subtotal=entries.reduce((sum,a)=>sum+a.points,0);entries.at(-1).groupEnd={subtotal,factor,total:subtotal*factor,sources};entries.at(-1).groupBonus=subtotal*(factor-1);}
+    if(entries.length){const flatBonus=group.flatBonus||0,subtotal=entries.reduce((sum,a)=>sum+a.points,0)+flatBonus;entries.at(-1).groupEnd={subtotal,factor,total:subtotal*factor,sources,...(flatBonus?{flatBonus,source:group.source}:{})};entries.at(-1).groupBonus=flatBonus+subtotal*(factor-1);}
     return entries;
   });
   const points=activations.reduce((sum,a)=>sum+a.points+(a.groupBonus||0),0);state.score+=points;
