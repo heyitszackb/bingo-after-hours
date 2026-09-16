@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=269acdf78050';
+import {baseBagRecipe,buildDebugBag} from './debug-bag.js?v=087d47766daa';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {MARS_PATTERNS,MOON_PATTERNS,JUPITER_PATTERNS,isTargetedPotion,BINGO_TOKEN,isPotion,shopItemTypes,removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=1146b15cc0cf';
+import {MARS_PATTERNS,MOON_PATTERNS,JUPITER_PATTERNS,isTargetedPotion,BINGO_TOKEN,isPotion,shopItemTypes,removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=b193b7fcaeac';
 function newStage(...args){const round=legacyNewStage(...args);round.plainRules=true;round.jokers=[];return round;}
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
@@ -110,7 +110,7 @@ function showTooltip(n,anchor,space=false,catalogType=null){
   $('tooltip-effect').hidden=!$('tooltip-effect').textContent.trim();
   let effects=$('tooltip-potions');if(!effects){effects=document.createElement('div');effects.id='tooltip-potions';$('tooltip-effect').after(effects);}
   const applied=!catalogType&&occupied?(state.itemEffects?.[n]||[]):[];
-  effects.innerHTML=[...new Set(applied)].map(type=>{const count=applied.filter(e=>e===type).length;return `<div class="potion-effect ${type}">${type==='potionSticky'?'Stuck to the board · −1 play each round':type==='potion20'?pointCopy(`+${count*20} ★`):pointCopy(`×${2**count} to total bingo score`)}<small class="potion-count">${count} ${count===1?'potion':'potions'}${count>1&&type!=='potionSticky'?type==='potion20'?` · ${count} × +20`:` · ${Array(count).fill('×2').join(' ')}`:''}</small></div>`;}).join('');effects.hidden=!applied.length;
+  effects.innerHTML=[...new Set(applied)].map(type=>{const count=applied.filter(e=>e===type).length;return `<div class="potion-effect ${type}">${type==='potionSticky'?'Stuck to the board · −1 play each round':type==='potion20'?pointCopy(`+${count*20} ★`):pointCopy(`×${2**count} to total when scoring`)}<small class="potion-count">${count} ${count===1?'potion':'potions'}${count>1&&type!=='potionSticky'?type==='potion20'?` · ${count} × +20`:` · ${Array(count).fill('×2').join(' ')}`:''}</small></div>`;}).join('');effects.hidden=!applied.length;
 
   tip.classList.toggle('space-tooltip',space);
   tooltipAnchor=anchor;
@@ -144,43 +144,24 @@ function refreshBag(){
     b.onclick=()=>inspect(n,b);$('bag-grid').append(b);
   }
 }
-let debugDraft=null;
-function debugRows(){
-  const list=$('debug-rows');list.replaceChildren();
-  debugDraft.forEach((row,index)=>{
-    const line=document.createElement('div');line.className='debug-row';
-    const select=document.createElement('select');select.setAttribute('aria-label',`Piece ${index+1} type`);
-    for(const [type,name] of [['number','Bingo Token'],...Object.entries(ITEM_TYPES).map(([type,item])=>[type,item.name])]){const option=document.createElement('option');option.value=type;option.textContent=name;select.append(option);}select.value=row.type;
-    const value=document.createElement('input');value.type='number';value.step='1';value.inputMode='text';value.value=row.value??'';value.disabled=['potion20','potion2','potionCopy','potionMelt','potionSticky','doubleball','question','bomb','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type);value.setAttribute('aria-label',`Piece ${index+1} ${row.type==='d20'?'roll modifier':'value'}`);
-    const count=document.createElement('input');count.type='number';count.step='1';count.min='1';count.max='500';count.inputMode='numeric';count.value=row.count;count.setAttribute('aria-label',`Piece ${index+1} copies`);
-    const remove=document.createElement('button');remove.textContent='×';remove.setAttribute('aria-label',`Remove piece ${index+1}`);
-    select.onchange=()=>{row.type=select.value;row.value=['potion20','potion2','potionCopy','potionMelt','potionSticky','doubleball','question','bomb','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type)?null:['d20','earth','mars','moon','jupiter','king'].includes(row.type)?0:row.type==='hundred'?50:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
-    value.oninput=()=>{row.value=value.value===''?null:value.valueAsNumber;validateDebugDraft();};count.oninput=()=>{row.count=count.value===''?null:count.valueAsNumber;validateDebugDraft();};
-    remove.onclick=()=>{debugDraft.splice(index,1);debugRows();const next=$('debug-rows').children[Math.min(index,debugDraft.length-1)];(next?.querySelector('select')||$('debug-add')).focus();};
-    line.append(select,value,count,remove);list.append(line);
-  });validateDebugDraft();
+let bagDraft=[];
+function openBagBuilder(){
+  bagDraft=[...baseBagRecipe(),...Object.entries(ITEM_TYPES).map(([type,item])=>({type,value:Number.isInteger(item.startingValue)?item.startingValue:['d20'].includes(type)?0:null,count:0}))];
+  const grid=$('builder-grid');grid.replaceChildren();
+  bagDraft.forEach((row,index)=>{
+    const name=row.type==='number'?`Bingo Token ${row.value}`:ITEM_TYPES[row.type].name;
+    const entry=document.createElement('div');entry.className='builder-item';
+    entry.innerHTML=`<button class="builder-add" aria-label="Add ${name}">${row.type==='number'?`<i class="builder-token">${row.value}</i>`:itemArt(row.type)}<span>${row.type==='number'?row.value:name}</span></button><div class="builder-controls"><button aria-label="Remove ${name}">−</button><output>${row.count}</output></div>`;
+    const update=()=>{entry.querySelector('output').textContent=row.count;entry.classList.toggle('in-bag',row.count>0);entry.querySelector('.builder-controls button').disabled=!row.count;const total=bagDraft.reduce((n,r)=>n+r.count,0);$('builder-total').textContent=`${total} items`;$('builder-start').disabled=!total;};
+    entry.querySelector('.builder-add').onclick=()=>{if(bagDraft.reduce((n,r)=>n+r.count,0)<500)row.count++;update();};
+    entry.querySelector('.builder-controls button').onclick=()=>{row.count=Math.max(0,row.count-1);update();};
+    grid.append(entry);update();
+  });
+  $('bag-builder').showModal();
 }
-function validateDebugDraft(){
-  const count=debugDraft.reduce((n,row)=>n+(Number.isInteger(row.count)&&row.count>0?row.count:0),0);$('debug-count').textContent=`${count} pieces`;
-  try{buildDebugBag(debugDraft);$('debug-error').hidden=true;$('debug-error').textContent='';$('debug-apply').disabled=false;}
-  catch(error){$('debug-error').textContent=error.message;$('debug-error').hidden=false;$('debug-apply').disabled=true;}
-}
-function closeDebugBag(){debugDraft=null;$('bag-dialog').classList.remove('debug-editing');$('bag-debug').hidden=true;$('bag-grid').hidden=false;$('bag-heading').textContent='BAG';$('bag-debug-toggle').textContent='DEBUG';$('bag-debug-toggle').setAttribute('aria-expanded','false');}
-$('bag-debug-toggle').onclick=()=>{
-  if(busy)return;hideTooltip();
-  if(debugDraft){closeDebugBag();refreshBag();return;}
-  debugDraft=bagRecipe(state);$('bag-dialog').setAttribute('aria-label','Developer bag editor');$('bag-dialog').classList.add('debug-editing');$('bag-grid').hidden=true;$('bag-debug').hidden=false;$('bag-heading').textContent='DEBUG BAG';$('bag-debug-toggle').textContent='BACK';$('bag-debug-toggle').setAttribute('aria-expanded','true');debugRows();
-};
-$('bag-dialog').addEventListener('close',closeDebugBag);
-for(const [id,recipe] of [['debug-current',()=>bagRecipe(state)],['debug-clear',()=>[]]])$(id).onclick=()=>{debugDraft=recipe();debugRows();};
-$('debug-base').onclick=()=>{if(busy)return;debugDraft=baseBagRecipe();debugRows();$('debug-apply').click();};
-$('debug-add').onclick=()=>{debugDraft.push({type:'number',value:1,count:1});debugRows();const last=$('debug-rows').lastElementChild;last.scrollIntoView({block:'nearest'});last.querySelector('select').focus();};
-$('debug-apply').onclick=async()=>{
-  if(busy||!debugDraft)return;
-  let inventory;try{inventory=buildDebugBag(debugDraft);}catch{validateDebugDraft();return;}
-  hideTooltip();state=newStage(state.stage,state.money,state.upgrades,state.patternCounts,state.jokers,inventory);hasRun=true;
-  shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;$('bag-dialog').close();closeDebugBag();saveRun();
-  $('announcer').textContent=`Test bag applied: ${state.collection.length} pieces. Round restarted.`;await nextDraw();
+$('builder-start').onclick=()=>{
+  state=newStage(1,5,{}, {},undefined,buildDebugBag(bagDraft.filter(r=>r.count)));hasRun=true;inMenu=true;
+  $('bag-builder').close();enterGame();
 };
 function lock(){hideTooltip();busy=true;render();document.querySelectorAll('#balls .ball').forEach(b=>b.disabled=true);}
 function unlock(){busy=false;saveRun();render();document.querySelectorAll('#balls .ball').forEach(b=>{b.disabled=false;b.classList.remove('enter');});}
@@ -400,6 +381,10 @@ async function activateSpaces(result){
         tilePoints*=activation.multiplier;
       }
       point.hidden=false;point.textContent=signed(tilePoints);
+      if(!reduced){
+        const spark=document.createElement('i');spark.className='score-spark';spark.textContent='✦';spark.style.left=`${r.right-12}px`;spark.style.top=`${r.top+8}px`;$('effects').append(spark);
+        animate(spark,[{transform:'scale(.2) rotate(-30deg)',opacity:0},{transform:'scale(1.3) rotate(15deg)',opacity:1,offset:.3},{transform:'translateY(-18px) scale(.4) rotate(65deg)',opacity:0}],{duration:450,easing:'ease-out'}).then(()=>spark.remove());
+      }
       if(tilePoints>0)burst(r);
       const to=$('score').getBoundingClientRect();
       await animate(point,[{transform:'translate(-50%,-85%) scale(1)',opacity:1},{transform:'translate(-50%,-105%) scale(1.12)',opacity:1,offset:.25},{transform:`translate(calc(-50% + ${to.left+to.width/2-r.left-r.width/2}px),calc(-50% + ${to.top+to.height/2-r.top-r.height/2}px)) scale(.5)`,opacity:0}],{duration:Math.max(180,270-index%5*18),easing:'cubic-bezier(.4,0,.7,.4)'});
@@ -673,7 +658,7 @@ async function showResult(){
   saveRun();
   finishResult();
 }
-$('continue').onclick=async()=>{if(payingOut)return;const next=state.status==='passed'?state.stage+1:1;state=newStage(next,next===1?5:state.money,next===1?{}:state.upgrades,next===1?{}:state.patternCounts,next===1?undefined:state.jokers,next===1?defaultBag():state);hasRun=true;saveRun();resetResultUI();await nextDraw();};
+$('continue').onclick=async()=>{if(payingOut)return;if(state.status==='over'){openBagBuilder();return;}const next=state.status==='passed'?state.stage+1:1;state=newStage(next,next===1?5:state.money,next===1?{}:state.upgrades,next===1?{}:state.patternCounts,next===1?undefined:state.jokers,next===1?defaultBag():state);hasRun=true;saveRun();resetResultUI();await nextDraw();};
 function playOfferedBall(){
   if(busy||drag||state.status!=='playing'||!state.offer.length)return;
   const n=Number(document.activeElement?.closest('#balls .ball')?.dataset.number)||state.offer[0],b=$('balls').querySelector(`[data-number="${n}"]`);if(!b)return;
@@ -723,7 +708,7 @@ function renderShop(){
   for(const type of state.shopOffer.items.filter(Boolean)){
     const item=ITEM_TYPES[type],card=document.createElement('button');card.id=`shop-${type}`;card.className='shop-product';
     const owned=state.collection.filter(id=>state.items[id]===type).length;
-    const action='CHOOSE';card.disabled=busy;card.setAttribute('aria-label',`${item.name}. ${item.startingValue===null?(item.kind==='potion'?'Potion.':'Stamp.'):`Starting stars: ${item.startingValue}.`} ${item.text} ${owned} owned.`);
+    const action='ADD';card.disabled=busy;card.setAttribute('aria-label',`${item.name}. ${item.startingValue===null?(item.kind==='potion'?'Potion.':'Stamp.'):`Starting stars: ${item.startingValue}.`} ${item.text} ${owned} owned.`);
     const art=itemArt(type);
     const badge=item.startingValue===null?`<span class="stamp-tag shop-stamp-tag">${item.kind==='potion'?'POTION':'STAMP'}</span>`:`<span class="starting-points" aria-label="Starting stars: ${item.startingValue}">${item.startingValue} ${star}</span>`;
     card.innerHTML=`<span class="product-art-well">${art}</span><span class="product-body"><span class="product-top"><strong class="product-name">${pointCopy(item.name.toUpperCase())}</strong>${badge}</span><span class="product-description">${pointCopy(item.text)}</span></span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span>`;
@@ -732,7 +717,7 @@ function renderShop(){
       const id=state.nextItemId;
       if(!claimReward(state,type))return;
       busy=true;saveRun();shelf.querySelectorAll('button').forEach(b=>b.disabled=true);$('shop-menu').disabled=true;$('see-all').disabled=true;$('bag').disabled=true;
-      $('announcer').textContent=`${item.name} chosen. Next round.`;
+      $('announcer').textContent=`${item.name} added. Next round.`;
       await collectShopItem(card,id);
       await finishShop();
     };
@@ -873,7 +858,7 @@ function showMenu(){
 async function enterGame(fresh=false){
   if(!inMenu&&!fresh)return;
   document.querySelectorAll('dialog[open]').forEach(d=>d.close());
-  if(fresh||!hasRun){state=newStage(1,5,{}, {},undefined,defaultBag());hasRun=true;}
+  if(fresh||!hasRun){openBagBuilder();return;}
   shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;
   inMenu=false;resetResultUI();$('title-screen').hidden=true;$('game-screen').hidden=false;
   render();

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#06282c"><title>Binglatro</title><link rel="stylesheet" href="style.css?v=e46151f2c444"></head><body>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#06282c"><title>Binglatro</title><link rel="stylesheet" href="style.css?v=e432b1d8cfbb"></head><body>
 <canvas id="felt-background" aria-hidden="true"></canvas>
 <section id="title-screen" class="title-screen" aria-label="Binglatro main menu">
 <div class="title-emblem" aria-hidden="true">✦</div><h1>BINGLATRO</h1><div class="title-balls" aria-hidden="true"><span class="ball"><span class="face">5</span></span><span class="ball"><span class="face">10</span></span><span class="ball"><span class="face">25</span></span></div>
@@ -13,35 +13,26 @@
 <section class="draw-area" aria-label="Drag a ball to the board, or tap to inspect"><div id="play-ball" class="swipe-label play-cue"><span>↑ PLAY</span><small><strong id="play-count">17</strong> plays left</small></div><div class="track"><div id="balls" class="balls"></div><span id="gesture-hint" aria-hidden="true"></span><div class="rail"></div></div><div id="redraw" class="swipe-label pass-cue"><span>PASS ↓</span><small><strong id="redraw-cost">10</strong> passes left</small></div><section id="stage-result" hidden aria-label="Stage result"><div class="result-summary"><span id="result-icon" aria-hidden="true"></span><span id="result-score" class="sr-only"></span></div><div id="result-actions" hidden><button id="continue" aria-label="Continue">→</button><button id="result-menu" aria-label="Main menu"><svg viewBox="0 0 24 24"><path d="M3 11 12 3l9 8M6 9v12h12V9M10 21v-7h4v7"/></svg></button></div></section></section>
 <button id="bag" class="bag-inspect" aria-label="View bag"><svg viewBox="0 0 40 44" aria-hidden="true"><path fill="#8b603c" stroke="#3a3025" stroke-width="2" d="M10 2h20l-5 10 3 4 6 10 2 11-4 5H8l-4-5 2-11 6-10 3-4z"/><path fill="#d4b27b" stroke="none" d="M12 3h16l-5 9h-6zM16 15h8l7 13 1 10H8l1-10z"/><path d="M12 12h16M12 15h16M13 13 6 20M27 13l7 7" stroke="#e9cb87" stroke-width="2"/><path d="M17 24h5l2 2v3l-2 1 2 1v3l-2 2h-5zM17 30h5" stroke="#5d462f" stroke-width="2" fill="none"/></svg><span>VIEW BAG <small id="bag-count">25</small></span></button>
 <section id="shop-screen" hidden aria-label="Upgrade shop">
-<div class="shop-heading"><h2>CHOOSE 1</h2><button id="see-all" type="button">See all</button></div>
-<div id="shop-shelf" role="region" tabindex="0" aria-label="Choose one item."></div><p class="shop-instruction">Tap an item to choose</p>
+<div class="shop-heading"><h2>ADD 1</h2><button id="see-all" type="button">See all</button></div>
+<div id="shop-shelf" role="region" tabindex="0" aria-label="Add one item."></div><p class="shop-instruction">Tap an item to add</p>
 
 
 </section>
 </main>
+<dialog id="bag-builder" aria-labelledby="builder-title"><button class="close" aria-label="Close bag builder">×</button><h2 id="builder-title">BUILD YOUR BAG</h2><p>Tap to add · − to remove</p><div id="builder-grid"></div><footer><output id="builder-total">25 items</output><button id="builder-start" class="menu-button primary-menu">START RUN →</button></footer></dialog>
 <dialog id="catalog-dialog" aria-labelledby="catalog-title"><button class="close" aria-label="Close all items">×</button><h2 id="catalog-title">ALL ITEMS</h2><div id="catalog-grid"></div></dialog>
 <dialog id="pause-dialog" class="navigation-dialog" aria-labelledby="pause-title"><h2 id="pause-title">PAUSED</h2><p id="pause-summary"></p><button id="resume-button" class="menu-button primary-menu">RESUME <span>▶</span></button><button id="restart-button" class="menu-button">RESTART RUN <span>↻</span></button><button id="main-menu-button" class="menu-button">MAIN MENU <span>⌂</span></button></dialog>
 <dialog id="restart-dialog" class="navigation-dialog" aria-labelledby="restart-title"><h2 id="restart-title">NEW RUN?</h2><p>Your current run will be replaced.</p><button id="confirm-restart" class="menu-button primary-menu">NEW RUN <span>↻</span></button><button id="cancel-restart" class="menu-button">CANCEL</button></dialog>
 
 <dialog id="bag-dialog" aria-label="Your collection; played items are greyed out">
 <button class="close" aria-label="Close bag">×</button>
-<div class="bag-heading"><strong id="bag-heading">BAG</strong><button id="bag-debug-toggle" aria-expanded="false" aria-controls="bag-debug">DEBUG</button></div>
+<div class="bag-heading"><strong id="bag-heading">BAG</strong></div>
 <div id="bag-grid"></div>
-<section id="bag-debug" hidden aria-label="Developer bag editor">
-<button id="debug-base" class="menu-button">RESET BAG TO 1–25</button>
-<p class="debug-intro">Build a test bag. Applying restarts this round with a clear board, 17 plays and 10 passes. Your stage stays.</p>
-<div class="debug-presets"><button id="debug-current">CURRENT BAG</button><button id="debug-clear">CLEAR</button></div>
-<div class="debug-columns" aria-hidden="true"><span>PIECE</span><span>VALUE</span><span>COPIES</span><span></span></div>
-<div id="debug-rows" aria-label="Pieces in your test bag"></div>
-<div class="debug-add"><button id="debug-add">+ ADD PIECE</button><output id="debug-count" aria-live="polite"></output></div>
-<p class="debug-note">For dice, Value is a permanent roll modifier (0 = normal). A numbered 100 is a normal ball; choose “100 Ball” for its power.</p>
-<p id="debug-error" role="alert" hidden></p>
-<button id="debug-apply" class="menu-button primary-menu">APPLY &amp; RESTART ROUND</button>
-</section></dialog>
+</dialog>
 <dialog id="stage-dialog" aria-label="Ten stages"><button class="close" aria-label="Close stages">×</button><div id="stage-grid"></div></dialog>
 <dialog id="patterns-dialog" aria-labelledby="patterns-title" aria-describedby="patterns-note"><button class="close" aria-label="Close scoring patterns">×</button><div class="patterns-heading"><div><small>THIS RUN</small><h2 id="patterns-title">BINGOS</h2></div><div class="patterns-total"><strong id="patterns-total">0</strong><small>SCORED</small></div></div><div class="patterns-columns" aria-hidden="true"><span>PATTERN</span><span>TILES</span><span>SCORED</span></div><div id="patterns-list" role="list"></div><p id="patterns-note">5 tiles per line · <span class="star" role="img" aria-label="stars"></span> equal item values, with tile stamps applied</p></dialog>
 
 
 <div id="announcer" class="sr-only" role="status" aria-live="polite"></div><div id="effects" aria-hidden="true"></div>
 <div id="inspect-tooltip" role="tooltip" popover="manual" hidden><div class="tooltip-main"><div class="tooltip-heading"><strong id="tooltip-number"></strong><span id="tooltip-value" hidden></span></div><p id="tooltip-effect" hidden></p></div><aside id="tooltip-stamps" aria-label="Tile stamps" hidden></aside></div>
-<script type="module" src="app.js?v=86cae962e9b9"></script></body></html>
+<script type="module" src="app.js?v=3d1bf61e5d6f"></script></body></html>

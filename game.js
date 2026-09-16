@@ -42,10 +42,10 @@ export const CARD_TYPES={square:{name:'Square',text:'Score each completed 2×2 b
 export const BALL_UPGRADES={};
 export const ITEM_TYPES={
   potion20:{name:'+20 Potion',text:'When played: give an item +20 ★ permanently',kind:'potion',startingValue:null,price:0},
-  potion2:{name:'×2 Potion',text:'When played: give an item x2 to total bingo score',kind:'potion',startingValue:null,price:0},
+  potion2:{name:'×2 Potion',text:'When played: x2 to total when scoring',kind:'potion',startingValue:null,price:0},
   potionCopy:{name:'Copy Potion',text:'When played: copy an item and all its effects into the bag',kind:'potion',startingValue:null,price:0},
   potionMelt:{name:'Melt Potion',text:'When played: permanently destroy an item',kind:'potion',startingValue:null,price:0},
-  doubleball:{name:'×2 Ball',text:'x2 to total bingo score',startingValue:0,price:0},
+  doubleball:{name:'×2 Ball',text:'x2 to total when scoring',startingValue:0,price:0},
   trash:{name:'Destroy Item',text:'When scored: destroy item on this tile',startingValue:null,price:0},
   potionSticky:{name:'Sticky Potion',text:'When played: permanently stick this item to the board. −1 play',details:'One fewer play each future round per stuck item.',kind:'potion',startingValue:null,price:0},
   glass:{name:'Glass Ball',text:'When scored: doubles its ★ and has a 20% chance of breaking',startingValue:1,price:0},
@@ -135,7 +135,7 @@ export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['b
   const fixed=Object.entries(inventory?.stampBalls||{}).filter(([,id])=>isSticky(inventory,id)&&collection.includes(id));
   const stampBalls=Object.fromEntries(fixed),stampValues=Object.fromEntries(fixed.map(([tile,id])=>[tile,inventory.stampValues?.[tile]??ballValue(inventory,id)]));
   const fixedIds=new Set(fixed.map(([,id])=>id)),capacity=Math.max(0,17-fixed.length);
-  return {stickyVersion:1,kingVersion:1,lastPlayed:structuredClone(inventory?.lastPlayed||null),itemEffects:structuredClone(inventory?.itemEffects||{}),tileStamps:Object.fromEntries(Array.from({length:25},(_,i)=>[i+1,[...tileStampList(inventory||{},i+1)]]).filter(([,list])=>list.length)),tileCopiers:{...inventory?.tileCopiers},tileMultipliers:{...inventory?.tileMultipliers},activeUses:{},handVersion:1,inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{...inventory?.ballValues},valueModifiers:{...inventory?.valueModifiers},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls,stampValues,destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:capacity,shopOffer:null,stage,target:targetFor(stage),score:0,calls:capacity,money,bonusPaid:false,stamps:new Set(fixed.map(([tile])=>Number(tile))),bag:new Set(collection.filter(id=>!fixedIds.has(id))),played:Array(nextItemId).fill(0),status:collection.length&&capacity>0?'playing':'over',offer:[]};
+  return {stickyVersion:1,kingVersion:1,lastPlayed:structuredClone(inventory?.lastPlayed||null),itemEffects:structuredClone(inventory?.itemEffects||{}),tileStamps:Object.fromEntries(Array.from({length:25},(_,i)=>[i+1,[...tileStampList(inventory||{},i+1)]]).filter(([,list])=>list.length)),tileCopiers:{...inventory?.tileCopiers},tileMultipliers:{...inventory?.tileMultipliers},activeUses:{},handVersion:1,inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{...inventory?.ballValues},valueModifiers:{...inventory?.valueModifiers},jokerVersion:4,scoredGroups:[],scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls,stampValues,destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:capacity,shopOffer:null,stage,target:targetFor(stage),score:0,calls:capacity,money,bonusPaid:false,stamps:new Set(fixed.map(([tile])=>Number(tile))),bag:new Set(collection.filter(id=>!fixedIds.has(id))),played:Array(nextItemId).fill(0),status:collection.length&&capacity>0?'playing':'over',offer:[]};
 }
 const shuffled=(values,random)=>{
   const result=[...values];for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;
@@ -185,7 +185,13 @@ function applyBlueprint(state,id,blueprint){
   state.valueModifiers[id]=blueprint.modifier;state.itemEffects??={};state.itemEffects[id]=structuredClone(blueprint.effects);
 }
 export const isTargetedPotion=(state,id)=>isPotion(state,id)||(state.items[id]==='question'&&ITEM_TYPES[state.lastPlayed?.type]?.kind==='potion');
+const allScoringPatterns=[...PATTERN_DEFINITIONS,...EXTRA_PATTERNS,...MARS_PATTERNS,...MOON_PATTERNS,...JUPITER_PATTERNS];
+const groupKey=(state,p)=>`${p.id}:${p.tiles.map(t=>state.stampBalls[t]).sort((a,b)=>a-b).join(',')}`;
+const planetEligible=(state,p)=>p.tiles.every(t=>state.stamps.has(t))&&(p.type==='mars'?p.tiles.every(t=>isBingoToken(state,state.stampBalls[t])&&Number.isFinite(state.stampValues[t])&&state.stampValues[t]>=0&&state.stampValues[t]<=9):p.type==='moon'?planetPairMatches(state,p.tiles):p.tiles.every(t=>!isBingoToken(state,state.stampBalls[t])));
 export function choose(state,number,tile=state.destinations[number],random=Math.random) {
+  // Migrate location-only history before placement changes its occupants.
+  state.scoredGroups??=allScoringPatterns.filter(p=>state.scoredLines.includes(p.id)).map(p=>groupKey(state,p));
+  const activePlanets=new Set([...state.stamps].map(t=>state.items[state.stampBalls[t]]));
   const potion=isTargetedPotion(state,number);
   if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||tile<1||tile>25||(potion?!state.stamps.has(tile):(!Object.values(state.destinations).includes(tile)||state.stamps.has(tile))))return null;
   const mimic=state.items[number]==='question'&&state.lastPlayed&&state.lastPlayed.type!=='question'?{id:number,original:itemBlueprint(state,number),applied:structuredClone(state.lastPlayed)}:null;
@@ -236,11 +242,17 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
 
   const callsBeforeBonuses=state.calls,kingMoves=[],timeline=[];
 
+  // A newly enabled condition starts from the current board, without retroactive rewards.
+  const newPlanet=state.items[number];
+  if(['mars','moon','jupiter'].includes(newPlanet)&&!activePlanets.has(newPlanet)){
+    for(const p of allScoringPatterns.filter(p=>p.type===newPlanet&&planetEligible(state,p)))state.scoredGroups.push(groupKey(state,p));
+  }
   function evaluateAt(changedTiles,placement=false){
     const scoreBefore=state.score;
-  const scoredPatterns=[...completedPatterns(state.stamps),...EXTRA_PATTERNS.filter(p=>p.tiles.every(t=>state.stamps.has(t)))].filter(p=>!state.scoredLines.includes(p.id)&&p.tiles.some(t=>changedTiles.has(t))&&(p.type==='square'||p.type==='corners'?!state.plainRules&&state.jokers.some(id=>cardType(id)===p.type):(state.plainRules||state.jokers.includes('bingo'))));
+  const scoredPatterns=[...completedPatterns(state.stamps),...EXTRA_PATTERNS.filter(p=>p.tiles.every(t=>state.stamps.has(t)))].filter(p=>!state.scoredGroups.includes(groupKey(state,p))&&p.tiles.some(t=>changedTiles.has(t))&&(p.type==='square'||p.type==='corners'?!state.plainRules&&state.jokers.some(id=>cardType(id)===p.type):(state.plainRules||state.jokers.includes('bingo'))));
   const patterns=scoredPatterns.map(p=>p.tiles);
   for(const {type} of scoredPatterns)state.patternCounts[type]=(state.patternCounts[type]||0)+1;
+  state.scoredGroups.push(...scoredPatterns.map(p=>groupKey(state,p)));
   state.scoredLines.push(...scoredPatterns.map(p=>p.id));
   // Trigger cards build independent groups in rack order. Scoring a tile never
   // counts as playing it, so neighboring low numbers cannot trigger a cascade.
@@ -258,14 +270,13 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
     const scored=scoreGroups(state,scoringGroups,events,random);
     const phase={kind:'score',...scored,scoreBefore,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups};
     if(scored.activations.length)timeline.push(phase);
-    // Planets enable board-wide conditions: placing it can activate trios already
-    // present. Recheck its presence and each trio after destructive scoring ink.
+    // Recheck source presence and occupants after destructive scoring effects.
     for(const pattern of [...MARS_PATTERNS,...MOON_PATTERNS,...JUPITER_PATTERNS]){
       const source=[...state.stamps].find(t=>state.items[state.stampBalls[t]]===pattern.type);
       if(source===undefined)continue;
-      if(state.scoredLines.includes(pattern.id)||!pattern.tiles.every(t=>state.stamps.has(t)))continue;
-      const eligible=pattern.type==='mars'?pattern.tiles.every(t=>isBingoToken(state,state.stampBalls[t])&&Number.isFinite(state.stampValues[t])&&state.stampValues[t]>=0&&state.stampValues[t]<=9):pattern.type==='moon'?planetPairMatches(state,pattern.tiles):pattern.tiles.every(t=>!isBingoToken(state,state.stampBalls[t]));
-      if(!eligible)continue;
+      if(state.scoredGroups.includes(groupKey(state,pattern))||!pattern.tiles.every(t=>state.stamps.has(t)))continue;
+      if(!planetEligible(state,pattern))continue;
+      state.scoredGroups.push(groupKey(state,pattern));
       const group={trigger:pattern.type,retriggers:[],type:pattern.type,tiles:pattern.tiles,flatBonus:100,source};
       const before=state.score,mars=scoreGroups(state,[group],events,random);
       state.scoredLines.push(pattern.id);

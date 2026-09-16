@@ -776,3 +776,28 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .cell.stamped.glass-item>span{color:#183a42}
 .glass-art{background:url('assets/glass.svg?v=ad86f6f86998') center/contain no-repeat;color:#183a42;font-style:normal}
 .glass-shard{position:fixed;width:9px;height:13px;background:#dbf9f0;clip-path:polygon(0 0,100% 30%,25% 100%);pointer-events:none;z-index:105}
+
+/* Question Mark is an object of its own, never a numbered token. */
+.ball.question-item,.tile.question-item .stamp,.question-art{background:none!important;box-shadow:none!important;border:0!important;filter:none!important}
+.ball.question-item::before,.ball.question-item::after{display:none!important}
+.ball.question-item .face,.question-art{color:#080e10!important;text-shadow:1px 1px 0 #b4c5a2;font-size:48px}
+#bag-builder{width:min(620px,94vw);max-height:88dvh;padding:20px;overflow:hidden}
+#bag-builder[open]{display:flex;flex-direction:column;gap:12px}
+#bag-builder h2,#bag-builder p{margin:0}
+#bag-builder p{color:#91b5a1;font-size:14px}
+#builder-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;overflow-y:auto;min-height:0;padding:4px}
+.builder-item{border:1px solid #446b61;background:#092f30;padding:4px;opacity:.65}
+.builder-item.in-bag{border-color:#d8b961;opacity:1}
+.builder-add{display:flex;align-items:center;flex-direction:column;width:100%;padding:4px;background:none;border:0;color:#efe3bb;min-height:94px;font:inherit;font-size:12px}
+.builder-add i{display:grid;place-items:center;position:relative;width:48px;height:48px;margin:4px auto;font-style:normal}
+.builder-token{background:#9aa9a4;border:3px double #eee2b6;border-radius:50%;color:#152d2e;font-size:24px}
+.builder-controls{display:flex;align-items:center;justify-content:space-between;padding:0 5px}
+.builder-controls button{width:36px;height:32px;background:#16413e;border:1px solid #759c82;color:#eee2b6;font:inherit}
+.builder-controls output{color:#e8c866}
+#bag-builder footer{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#bag-builder footer button{width:auto;margin:0;padding:12px;font-size:16px}
+
+.cell.question-item.stamped>span{background:none!important;color:#080e10!important;text-shadow:1px 1px #b4c5a2;font-size:clamp(30px,8vw,50px)}
+
+.cell.stamped.question-item:before{display:none!important}
+.score-spark{position:fixed;pointer-events:none;color:var(--gold);font-size:20px;text-shadow:0 0 8px #f4c66c80}
