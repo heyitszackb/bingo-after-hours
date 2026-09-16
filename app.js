@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=fde7a9b04be5';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=486b81cf668f';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {MARS_PATTERNS,MOON_PATTERNS,JUPITER_PATTERNS,isTargetedPotion,BINGO_TOKEN,isPotion,shopItemTypes,removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=d349313b8f1b';
+import {MARS_PATTERNS,MOON_PATTERNS,JUPITER_PATTERNS,isTargetedPotion,BINGO_TOKEN,isPotion,shopItemTypes,removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=48c65f95136d';
 function newStage(...args){const round=legacyNewStage(...args);round.plainRules=true;round.jokers=[];return round;}
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
@@ -140,7 +140,7 @@ function refreshBag(){
     const b=ball(n),played=!state.bag.has(n);
     if(played)b.classList.add('played-ball');
     if(state.offer.includes(n))b.classList.add('on-track');
-    b.setAttribute('aria-label',`Ball ${pieceLabel(n)}${played?', already played, unavailable this stage':''}${state.offer.includes(n)?', on track':''}; played ${state.played[n]} times`);
+    b.setAttribute('aria-label',`${pieceLabel(n)}${played?', already played, unavailable this stage':''}${state.offer.includes(n)?', on track':''}; played ${state.played[n]} times`);
     b.onclick=()=>inspect(n,b);$('bag-grid').append(b);
   }
 }
@@ -184,7 +184,7 @@ $('debug-apply').onclick=async()=>{
 };
 function lock(){hideTooltip();busy=true;render();document.querySelectorAll('#balls .ball').forEach(b=>b.disabled=true);}
 function unlock(){busy=false;saveRun();render();document.querySelectorAll('#balls .ball').forEach(b=>{b.disabled=false;b.classList.remove('enter');});}
-function showBalls(){const held=new Map([...$('balls').children].map(b=>[Number(b.dataset.number),b]));const nodes=[];state.offer.forEach((n,i)=>{if(held.has(n)&&held.get(n).style.visibility!=='hidden'&&held.get(n).dataset.kind===(state.items[n]||'number')&&held.get(n).querySelector('.face').textContent===String(pieceFace(n))){const b=held.get(n);b.style.order='';b.disabled=true;nodes.push(b);return;}const b=ball(n);b.classList.add('enter');b.style.setProperty('--i',i);b.disabled=true;b.setAttribute('aria-label',`Ball ${pieceLabel(n)}. Tap to inspect. Swipe up to play, down to pass, or drag sideways to reorder. Keyboard: Enter to inspect, Space to play.`);b.addEventListener('pointerdown',e=>startDrag(e,n,b));b.addEventListener('pointermove',moveDrag);b.addEventListener('pointerup',endDrag);b.addEventListener('pointercancel',cancelDrag);b.addEventListener('lostpointercapture',()=>{if(drag)cancelDrag();});b.onclick=e=>{if(e.detail===0&&!busy)inspect(n,b);};b.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();if(!busy&&!drag)play(n,b);} };nodes.push(b);});$('balls').replaceChildren(...nodes);refreshBag();}
+function showBalls(){const held=new Map([...$('balls').children].map(b=>[Number(b.dataset.number),b]));const nodes=[];state.offer.forEach((n,i)=>{if(held.has(n)&&held.get(n).style.visibility!=='hidden'&&held.get(n).dataset.kind===(state.items[n]||'number')&&held.get(n).querySelector('.face').textContent===String(pieceFace(n))){const b=held.get(n);b.style.order='';b.disabled=true;nodes.push(b);return;}const b=ball(n);b.classList.add('enter');b.style.setProperty('--i',i);b.disabled=true;b.setAttribute('aria-label',`${pieceLabel(n)}. Tap to inspect. Swipe up to play, down to pass, or drag sideways to reorder. Keyboard: Enter to inspect, Space to play.`);b.addEventListener('pointerdown',e=>startDrag(e,n,b));b.addEventListener('pointermove',moveDrag);b.addEventListener('pointerup',endDrag);b.addEventListener('pointercancel',cancelDrag);b.addEventListener('lostpointercapture',()=>{if(drag)cancelDrag();});b.onclick=e=>{if(e.detail===0&&!busy)inspect(n,b);};b.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();if(!busy&&!drag)play(n,b);} };nodes.push(b);});$('balls').replaceChildren(...nodes);refreshBag();}
 async function nextDraw(){resetResultUI();lock();if(!state.offer.length)deal(state);render();showBalls();await wait(770);unlock();}
 function startDrag(e,n,b){
   if(busy||drag||e.button!==0)return;

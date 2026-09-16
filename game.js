@@ -75,6 +75,7 @@ export function removeRetiredItems(saved){
   if(saved.shopOffer?.items?.some(type=>['hundred','rock'].includes(type))){saved.shopOffer.items=saved.shopOffer.items.filter(type=>!['hundred','rock'].includes(type));for(const type of shopItemTypes())if(saved.shopOffer.items.length<3&&!saved.shopOffer.items.includes(type))saved.shopOffer.items.push(type);}
   if(saved.lastPlayed&&['hundred','rock'].includes(saved.lastPlayed.type))saved.lastPlayed=null;
   if(saved.kingVersion!==1){for(const [id,type] of Object.entries(saved.items||{}))if(type==='king'){if(saved.ballValues?.[id]===10)delete saved.ballValues[id];for(const [tile,occupant] of Object.entries(saved.stampBalls||{}))if(occupant===Number(id))saved.stampValues[tile]=(saved.ballValues?.[id]??0)+(saved.valueModifiers?.[id]||0);}saved.kingVersion=1;}
+  if(retired.size)saved.handVersion=0;
   if(retired.size&&saved.status==='playing'&&saved.bag?.length===0)saved.status='over';
 }
 
