@@ -1,6 +1,6 @@
-import {baseBagRecipe,buildDebugBag} from './debug-bag.js?v=087d47766daa';
+import {baseBagRecipe,buildDebugBag} from './debug-bag.js?v=3f65c6e68b26';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {MARS_PATTERNS,MOON_PATTERNS,JUPITER_PATTERNS,isTargetedPotion,BINGO_TOKEN,isPotion,shopItemTypes,removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=b193b7fcaeac';
+import {MARS_PATTERNS,MOON_PATTERNS,JUPITER_PATTERNS,isTargetedPotion,BINGO_TOKEN,isPotion,shopItemTypes,removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=fdaf9df0ff68';
 function newStage(...args){const round=legacyNewStage(...args);round.plainRules=true;round.jokers=[];return round;}
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
@@ -47,7 +47,7 @@ function render(boardState=state){
 
 let mimicAppearance=null;
 function appearanceState(){if(!mimicAppearance)return state;const {id,applied}=mimicAppearance;return {...state,items:{...state.items,[id]:applied.type==='bingo'?undefined:applied.type},ballValues:{...state.ballValues,[id]:applied.base??undefined},valueModifiers:{...state.valueModifiers,[id]:applied.modifier},itemEffects:{...state.itemEffects,[id]:applied.effects}};}
-const baseItemClass=n=>{const state=appearanceState();return state.items[n]==='jupiter'?' jupiter-item':state.items[n]==='moon'?' moon-item':state.items[n]==='mars'?' mars-item':state.items[n]==='earth'?' earth-item':state.items[n]==='doubleball'?' doubleball-item':state.items[n]==='trash'?' stamp-item trash-item':state.items[n]==='glass'?' glass-item':state.items[n]==='king'?' king-item':state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','trash','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';};
+const baseItemClass=n=>{const state=appearanceState();if(['tornado','prism','phoenix','anchor'].includes(state.items[n]))return ` ${state.items[n]}-item`;return state.items[n]==='jupiter'?' jupiter-item':state.items[n]==='moon'?' moon-item':state.items[n]==='mars'?' mars-item':state.items[n]==='earth'?' earth-item':state.items[n]==='doubleball'?' doubleball-item':state.items[n]==='trash'?' stamp-item trash-item':state.items[n]==='glass'?' glass-item':state.items[n]==='king'?' king-item':state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','trash','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';};
 const itemClass=n=>{const state=appearanceState();return (isPotion(state,n)?` potion-item ${state.items[n]}-item`:baseItemClass(n))+((state.itemEffects?.[n]||[]).includes('potion20')?' potion-gold':'')+((state.itemEffects?.[n]||[]).includes('potion2')?' potion-striped':'');};
 const potionFace=type=>({potion20:'+20',potion2:'×2',potionCopy:'COPY',potionMelt:'×',potionSticky:'◆'})[type];
 const pieceLabel=n=>{const state=appearanceState();return state.items[n]?`${ITEM_TYPES[state.items[n]].name}${ballValue(state,n)!==null?` (${ballValue(state,n)})`:''}`:`${BINGO_TOKEN.name} (${ballValue(state,n)??0})`;};
@@ -329,6 +329,10 @@ async function activateSpaces(result){
         activePattern=activation.pattern.map(n=>$(`cell-${n}`));
         activePattern.forEach(c=>{c.style.setProperty('--scoring-color',color);c.classList.add('pattern-active','score-pending');});
         $('score-line-label').textContent=`${activation.type.toUpperCase()}${result.scoringGroups.length>1?` ${lineIndex}/${result.scoringGroups.length}`:''}`;
+        if(activation.prism!==undefined){
+          const prism=$(`cell-${activation.prism}`);$('score-line-label').textContent='PRISM · AGAIN';
+          await animate(prism,[{filter:'brightness(1)',transform:'scale(1)'},{filter:'brightness(2)',transform:'scale(1.2)',offset:.4},{filter:'brightness(1)',transform:'scale(1)'}],{duration:420});
+        }
         if(['mars','moon','jupiter'].includes(activation.type)){
           const source=$(`cell-${activation.source}`);source.classList.add('mars-awake');
           await animate(source,[{transform:'scale(1)'},{transform:'scale(1.18) rotate(-7deg)',offset:.4},{transform:'scale(1)'}],{duration:360});
@@ -400,6 +404,7 @@ async function activateSpaces(result){
         await animate(cell,[{opacity:1},{opacity:.25,transform:'scale(.8)'},{opacity:1,transform:'scale(1)'}],{duration:280});
         cell.className='cell paint-grey inked';face.textContent='';
       }
+      if(activation.rebirth)await animateRebirth(activation.rebirth);
       if(activation.glassGrowth)await animateGlass(cell,activation.glassGrowth);
       if(activation.groupEnd){
         const g=activation.groupEnd;
@@ -432,7 +437,7 @@ async function activateSpaces(result){
 async function explodeBomb(result){
   const center=$(`cell-${result.tile}`),frame=document.querySelector('.board-frame'),r=center.getBoundingClientRect();
   const row=Math.floor((result.tile-1)/5),col=(result.tile-1)%5;
-  const affected=Array.from({length:25},(_,i)=>i+1).filter(t=>Math.abs(Math.floor((t-1)/5)-row)<=1&&Math.abs((t-1)%5-col)<=1).map(t=>$(`cell-${t}`));
+  const affected=Array.from({length:25},(_,i)=>i+1).filter(t=>Math.abs(Math.floor((t-1)/5)-row)+Math.abs((t-1)%5-col)<=1).map(t=>$(`cell-${t}`));
   frame.classList.add('bomb-exploding');affected.forEach(c=>c.classList.add('blast-zone'));center.classList.add('bomb-armed');
   await animate(center,reduced?[{opacity:.6},{opacity:1}]:[{transform:'scale(1)'},{transform:'scale(.9)',offset:.25},{transform:'scale(1.13)',offset:.65},{transform:'scale(.96)'}],{duration:360,easing:'cubic-bezier(.5,0,.7,1)'});
   const fragments=[];
@@ -453,7 +458,7 @@ async function explodeBomb(result){
   await animate(frame,reduced?[{opacity:.8},{opacity:1}]:[{transform:'translate(0,0)'},{transform:'translate(-4px,3px)',offset:.15},{transform:'translate(4px,-2px)',offset:.3},{transform:'translate(-2px,1px)',offset:.5},{transform:'translate(0,0)'}],{duration:320});
   await Promise.all(fragments);await wait(100);
   affected.forEach(c=>c.classList.remove('blast-zone'));center.classList.remove('bomb-armed');frame.classList.remove('bomb-exploding');
-  $('announcer').textContent=`Bomb exploded. ${result.destroyed.length} items permanently removed from this run.`;
+  $('announcer').textContent=`Bomb exploded. ${result.destroyed.length} items hit.`;
 }
 // Shared number-change language: source pulse → travel → old value out → new
 // value snaps in. This phase always finishes before any scoring card activates.
@@ -509,6 +514,12 @@ async function rollDie(cell,value){
     await wait(180);
   }finally{cell.classList.remove('die-rolling','die-settled');face.textContent=value;}
 }
+async function animateRebirth(rebirth){
+  const cell=$(`cell-${rebirth.tile}`),r=cell.getBoundingClientRect(),tag=document.createElement('span');
+  tag.className='activation-point';tag.innerHTML=`+10 ${star}`;tag.style.left=`${r.left+r.width/2}px`;tag.style.top=`${r.top}px`;$('effects').append(tag);
+  await animate(tag,[{opacity:0,transform:'translate(-50%,0) scale(.5)'},{opacity:1,transform:'translate(-50%,-70%) scale(1.2)',offset:.4},{opacity:0,transform:'translate(-50%,-100%)'}],{duration:500});tag.remove();
+  await animateCopy({...rebirth,potion:true});$('announcer').textContent=`Phoenix returned to the bag with ${rebirth.after} stars.`;
+}
 async function animateCopy(copy){
   const cell=$(`cell-${copy.tile}`),ink=cell.querySelector('.board-ink'),r=cell.getBoundingClientRect(),to=$('bag').getBoundingClientRect();
   await animate(copy.potion?cell:ink,[{opacity:.5},{opacity:1,transform:'scale(1.4)',offset:.5},{opacity:.7,transform:'scale(1)'}],{duration:250});
@@ -531,25 +542,26 @@ async function animateGravity(phase){
     const ghost=ball(move.id),size=a.width*.88;
     ghost.classList.add('drag-ghost','gravity-item');ghost.style.setProperty('--size',`${size}px`);ghost.setAttribute('aria-hidden','true');
     if(move.value!==null)ghost.querySelector('.face').textContent=move.value;
-    const x=a.left+(a.width-size)/2,y=a.top+(a.height-size)/2,end=b.top+(b.height-size)/2;
+    const x=a.left+(a.width-size)/2,y=a.top+(a.height-size)/2,end=b.top+(b.height-size)/2,endX=b.left+(b.width-size)/2;
     ghost.style.transform=`translate(${x}px,${y}px)`;document.body.append(ghost);
     source.classList.remove('stamped');source.querySelector('span').textContent='';
-    return {ghost,x,y,end,move};
+    return {ghost,x,y,end,endX,move};
   });
   try{
-    await Promise.all(ghosts.map(async({ghost,x,y,end,move})=>{
+    await Promise.all(ghosts.map(async({ghost,x,y,end,endX,move})=>{
+      if(phase.kind==='tornado'){await animate(ghost,[{transform:`translate(${x}px,${y}px)`},{transform:`translate(${(x+endX)/2+25}px,${(y+end)/2-30}px) rotate(180deg) scale(.7)`,offset:.5},{transform:`translate(${endX}px,${end}px) rotate(360deg)`}],{duration:850,easing:'ease-in-out'});return;}
       await animate(ghost,[{transform:`translate(${x}px,${y}px)`},{transform:`translate(${x}px,${end}px) scale(1.08,.88)`,offset:.8},{transform:`translate(${x}px,${end-3}px) scale(.97,1.03)`,offset:.92},{transform:`translate(${x}px,${end}px)`}],{duration:650+(move.to-move.from)*10,easing:'cubic-bezier(.4,0,.8,1)'});
     }));
   }finally{ghosts.forEach(({ghost})=>ghost.remove());render(phase.after);renderScore(phase.scoreBefore);}
-  $('announcer').textContent='Earth: all items settled downward.';
+  $('announcer').textContent=phase.kind==='tornado'?'Tornado shuffled the board.':'Earth: all items settled downward.';
 }
 async function animateBlockedKing(phase){
   render(phase.board);renderScore(phase.scoreBefore);
   const cell=$(`cell-${phase.tile}`),r=cell.getBoundingClientRect(),cue=document.createElement('div');
-  cue.className='king-blocked-cue';cue.textContent=phase.reason==='sticky'?'Stuck':'No move';
+  cue.className='king-blocked-cue';cue.textContent=phase.reason==='sticky'?'Stuck':phase.reason==='anchor'?'Anchored':'No move';
   cue.style.left=`${r.left+r.width/2}px`;cue.style.top=`${r.top+4}px`;
   document.body.append(cue);cell.classList.add('king-blocked');
-  $('announcer').textContent=phase.reason==='sticky'?'King is stuck to the board.':'King cannot move: no empty adjacent space.';
+  $('announcer').textContent=phase.reason==='sticky'?'King is stuck to the board.':phase.reason==='anchor'?'Anchor prevents this King from moving.':'King cannot move: no empty adjacent space.';
   try{
     await Promise.all([
       animate(cell,[{transform:'translateX(0)'},{transform:'translateX(-3px)',offset:.2},{transform:'translateX(3px)',offset:.4},{transform:'translateX(-2px)',offset:.6},{transform:'translateX(0)'}],{duration:650,easing:'ease-in-out'}),
@@ -600,15 +612,16 @@ async function play(n,b,ghost,tile=state.destinations[n]){
   pulseBackground();navigator.vibrate?.(18);burst(r);
   await animate(document.querySelector('.board-frame'),[{transform:'translateY(0)'},{transform:'translateY(3px)'},{transform:'translate(-1px,-1px)'},{transform:'translate(0,0)'}],{duration:190});
   await wait(180);
-  render(result.effectBoard||result.scoringBoard||state);if(result.roll!==null)cell.querySelector('span').textContent='?';renderCalls(result.callsBeforeBonuses);renderScore(state.score-result.points);
+  render(result.effectBoard||result.timeline.find(p=>p.kind==='tornado')?.before||result.scoringBoard||state);if(result.roll!==null)cell.querySelector('span').textContent='?';renderCalls(result.callsBeforeBonuses);renderScore(state.score-result.points);
   if(result.roll!==null)await rollDie(cell,result.roll);
   for(const copy of result.copies||[])await animateCopy(copy);
   if(result.stampApplied){const ink=cell.querySelector('.board-ink');await animate(ink,[{transform:'scale(2) rotate(-12deg)',opacity:0},{transform:'scale(.9)',opacity:1,offset:.6},{transform:'scale(1)',opacity:.65}],{duration:400});}
   if(result.valueChanges.length)await animateValueChanges(result);
   $('announcer').textContent=`${pieceLabel(n)} played.${result.roll!==null?` Rolled ${result.roll}.`:''} ${result.playCost===0?'No play used.':'One play used.'}`;
   if(result.destroyed.length){await explodeBomb(result);render(result.scoringBoard||state);renderScore(state.score-result.points);}
+  for(const rebirth of result.rebirths||[])await animateRebirth(rebirth);
   for(const phase of result.timeline){
-    if(phase.kind==='gravity')await animateGravity(phase);
+    if(phase.kind==='gravity'||phase.kind==='tornado')await animateGravity(phase);
     else if(phase.kind==='blocked')await animateBlockedKing(phase);
     else if(phase.kind==='move')await animateKings({kingMoves:[phase.move],scoreBefore:phase.scoreBefore});
     else{render(phase.scoringBoard);renderScore(phase.scoreBefore);await activateSpaces(phase);}
@@ -683,11 +696,11 @@ for(const dialog of document.querySelectorAll('#bag-dialog,#stage-dialog,#patter
 function pointCopy(text){
   return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/([+×−]\d+|x[23]|1–20|\d+(?= ★))/g,'<em class="point-text">$1</em>')
-    .replace(/destroy(?:s)?/gi,'<em class="destroy-text">$&</em>')
-    .replace(/(When played:|When scored:|Each play:|Each turn:|While on board:)/g,'<b class="effect-trigger">$1</b>')
+    .replace(/(When played:|When scored:|When destroyed:|Each play:|Each turn:|While on board:)/g,'<b class="effect-trigger">$1</b>')
+    .replace(/\bdestroy(?:s|ed)?\b/gi,'<em class="destroy-text">$&</em>')
     .replace(/★/g,star);
 }
-function itemArt(type){if(ITEM_TYPES[type]?.kind==='potion')return `<i class="potion-art ${type}-art" aria-hidden="true">${potionFace(type)}</i>`;return type==='king'?'<i class=king-art aria-hidden=true>0</i>':type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='doubleball'?'×2':type==='question'?'?':type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'COPY':type==='d20'?'?':['seed','glass'].includes(type)?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;}
+function itemArt(type){if(ITEM_TYPES[type]?.kind==='potion')return `<i class="potion-art ${type}-art" aria-hidden="true">${potionFace(type)}</i>`;return type==='king'?'<i class=king-art aria-hidden=true>0</i>':type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='phoenix'?'10':type==='doubleball'?'×2':type==='question'?'?':type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'COPY':type==='d20'?'?':['seed','glass'].includes(type)?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;}
 function showCatalog(){
   if(busy)return;hideTooltip();
   $('catalog-grid').replaceChildren(...shopItemTypes().map(type=>{const item=ITEM_TYPES[type];

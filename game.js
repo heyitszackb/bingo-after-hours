@@ -20,7 +20,7 @@ function adjacentPatterns(length,type){
   }).filter(Boolean));
 }
 export const MARS_PATTERNS=adjacentPatterns(3,'mars');
-export const MOON_PATTERNS=adjacentPatterns(2,'moon');
+export const MOON_PATTERNS=adjacentPatterns(2,'moon').filter(p=>p.id.startsWith('moon-h-')||p.id.startsWith('moon-v-'));
 export const JUPITER_PATTERNS=adjacentPatterns(3,'jupiter');
 export const BINGO_TOKEN={name:'Bingo Token',text:'Scores its value in ★'};
 export const isBingoToken=(state,id)=>id!=null&&(!state.items?.[id]||state.items[id]==='bingo');
@@ -41,6 +41,10 @@ export const isRuleCard=id=>Object.hasOwn(RULE_CARDS,id);
 export const CARD_TYPES={square:{name:'Square',text:'Score each completed 2×2 block of four items. Each block scores once per round.',icon:'▦',short:'Score 2×2 blocks'},corners:{name:'Four Corners',text:'When all four corners are filled, score every occupied tile on the board. Once per round.',icon:'⌗',short:'4 corners → score all'},crowd:{name:'Crowd',text:'Each scored tile earns +1 point for every item on the board. Tile stamps do not count.',icon:'•••',short:'+1 per board item'},'silver-lining':{name:'Silver Lining',text:'Scored negative numbers earn +30 extra points. Their negative value still applies.',icon:'+30',short:'Negative → +30'},'full-sweep':{name:'Full Sweep',text:'Activate once per round to score every occupied tile using your point cards. Costs no play.',icon:'▦',short:'USE · Score all',active:true},encore:{name:'Encore',text:'Retrigger the card immediately to the right. No effect without a card to its right.',icon:'↻',short:'Retrigger right →'},'high-five':{name:'High Five',text:'Play a 1–5, including a die roll, to score it and its occupied orthogonal neighbors.',icon:'✚',short:'Play 1–5: score ✚'}};
 export const BALL_UPGRADES={};
 export const ITEM_TYPES={
+  tornado:{name:'Tornado',text:'When played: randomize every other item’s position',startingValue:0,price:0},
+  prism:{name:'Prism',text:'While on board: diagonal bingos score twice',startingValue:0,price:0},
+  phoenix:{name:'Phoenix',text:'When destroyed: return to the bag with +10 ★',startingValue:10,price:0},
+  anchor:{name:'Anchor',text:'While on board: adjacent items cannot move',startingValue:0,price:0},
   potion20:{name:'+20 Potion',text:'When played: give an item +20 ★ permanently',kind:'potion',startingValue:null,price:0},
   potion2:{name:'×2 Potion',text:'When played: x2 to total when scoring',kind:'potion',startingValue:null,price:0},
   potionCopy:{name:'Copy Potion',text:'When played: copy an item and all its effects into the bag',kind:'potion',startingValue:null,price:0},
@@ -111,7 +115,7 @@ export const normalizeJokers=jokers=>{
     return CARD_TYPES[cardType(id)]&&cardDetails(id)&&purchased++<5;
   });
 };
-export const ballValue=(state,number)=>number==null||isPotion(state,number)||state.items?.[number]==='doubleball'||state.items?.[number]==='question'||isBomb(state,number)||isDie(state,number)||isStamp(state,number)?null:((state.ballValues?.[number]??(state.items?.[number]==='hundred'?50:['seed','glass'].includes(state.items?.[number])?1:['earth','mars','moon','jupiter','king'].includes(state.items?.[number])?0:number))+(state.valueModifiers?.[number]||0));
+export const ballValue=(state,number)=>number==null||isPotion(state,number)||state.items?.[number]==='doubleball'||state.items?.[number]==='question'||isBomb(state,number)||isDie(state,number)||isStamp(state,number)?null:((state.ballValues?.[number]??(state.items?.[number]==='phoenix'?10:state.items?.[number]==='hundred'?50:['seed','glass'].includes(state.items?.[number])?1:['earth','mars','moon','jupiter','king','tornado','prism','anchor'].includes(state.items?.[number])?0:number))+(state.valueModifiers?.[number]||0));
 const boardSnapshot=state=>({stamps:new Set(state.stamps),stampBalls:{...state.stampBalls},stampValues:{...state.stampValues}});
 export const orthogonalNeighbors=tile=>[tile-5,tile+1,tile+5,tile-1].filter(t=>t>=1&&t<=25&&Math.abs(Math.floor((t-1)/5)-Math.floor((tile-1)/5))+Math.abs((t-1)%5-(tile-1)%5)===1);
 // Effects produce a common before/after event for the UI, independent of scoring.
@@ -173,11 +177,18 @@ function copyOnTile(state,number,tile){
   return tileStampList(state,tile).filter(type=>type==='copier').map(()=>cloneItem(state,number,tile));
 }
 function destroyItem(state,id,tile){
-  state.collection=state.collection.filter(n=>n!==id);state.bag.delete(id);
   if(tile!=null){state.stamps.delete(tile);delete state.stampBalls[tile];delete state.stampValues[tile];}
+  if(state.items[id]==='phoenix'){
+    const before=ballValue(state,id);state.valueModifiers??={};state.valueModifiers[id]=(state.valueModifiers[id]||0)+10;state.bag.add(id);
+    return {id,tile,before,after:ballValue(state,id)};
+  }
+  state.collection=state.collection.filter(n=>n!==id);state.bag.delete(id);
   for(const map of ['ballValues','valueModifiers','upgrades','itemEffects'])if(state[map])delete state[map][id];
+  return null;
 }
-export const kingNeighbors=tile=>Array.from({length:25},(_,i)=>i+1).filter(t=>t!==tile&&Math.abs(Math.floor((t-1)/5)-Math.floor((tile-1)/5))<=1&&Math.abs((t-1)%5-(tile-1)%5)<=1);
+export const kingNeighbors=tile=>orthogonalNeighbors(tile).sort((a,b)=>a-b);
+export const isAnchored=(state,tile)=>orthogonalNeighbors(tile).some(t=>state.stamps.has(t)&&state.items[state.stampBalls[t]]==='anchor');
+const cannotMove=(state,tile)=>isSticky(state,state.stampBalls[tile])||isAnchored(state,tile);
 export function itemBlueprint(state,id){return {type:state.items[id]||'bingo',base:state.ballValues[id]??(isBingoToken(state,id)?id:null),modifier:state.valueModifiers[id]||0,effects:structuredClone(state.itemEffects?.[id]||[])};}
 function applyBlueprint(state,id,blueprint){
   if(blueprint.type==='bingo')delete state.items[id];else state.items[id]=blueprint.type;
@@ -200,7 +211,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   if(mimic){if(mimic.original.effects.includes('potionSticky')&&!mimic.applied.effects.includes('potionSticky'))mimic.applied.effects.push('potionSticky');applyBlueprint(state,number,mimic.applied);}
   state.lastPlayed=itemBlueprint(state,number);
   const refillSlot=state.offer.indexOf(number);
-  const copies=[],copied=null;
+  const copies=[],rebirths=[],copied=null;
   let roll=isDie(state,number)?1+Math.floor(random()*20)+(state.valueModifiers?.[number]||0):null;
   const playCost=1;
   let potionApplied=null;
@@ -210,7 +221,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
     state.itemEffects??={};
     if(type==='potion20'||type==='potion2'||type==='potionSticky')(state.itemEffects[target]??=[]).push(type);
     if(type==='potionCopy')copies.push({...cloneItem(state,target,tile),potion:true});
-    if(type==='potionMelt')destroyItem(state,target,tile);
+    if(type==='potionMelt'){const rebirth=destroyItem(state,target,tile);if(rebirth)rebirths.push(rebirth);}
     destroyItem(state,number);
   }else{state.stamps.add(tile);state.stampBalls[tile]=number;state.stampValues[tile]=roll??ballValue(state,number);state.bag.delete(number);}
   state.played[number]=(state.played[number]||0)+1;state.calls-=playCost;
@@ -231,12 +242,9 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   for(const seed of seeds){const change=changeTileValue(state,seed,1,tile);if(change)valueChanges.push(change);}
   const destroyed=[];
   if(isBomb(state,effectNumber)){
-    const row=Math.floor((tile-1)/5),col=(tile-1)%5;
-    for(const occupied of [...state.stamps]){
-      if(Math.abs(Math.floor((occupied-1)/5)-row)>1||Math.abs((occupied-1)%5-col)>1)continue;
+    for(const occupied of [tile,...orthogonalNeighbors(tile)].filter(t=>state.stamps.has(t))){
       const id=state.stampBalls[occupied];destroyed.push({tile:occupied,id,value:state.stampValues[occupied]});
-      state.collection=state.collection.filter(n=>n!==id);state.bag.delete(id);
-      state.stamps.delete(occupied);delete state.stampBalls[occupied];delete state.stampValues[occupied];delete state.ballValues[id];delete state.valueModifiers[id];delete state.upgrades[id];if(state.itemEffects)delete state.itemEffects[id];
+      const rebirth=destroyItem(state,id,occupied);if(rebirth)rebirths.push(rebirth);
     }
   }
 
@@ -284,16 +292,24 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
     }
     return phase;
   }
+  if(state.items[effectNumber]==='tornado'){
+    const before=boardSnapshot(state),fixed=new Set([...state.stamps].filter(t=>t===tile||cannotMove(state,t))),moves=[];
+    const locations=shuffled(Array.from({length:25},(_,i)=>i+1).filter(t=>!fixed.has(t)),random);
+    const movable=[...state.stamps].filter(t=>!fixed.has(t));
+    for(const from of movable){state.stamps.delete(from);delete state.stampBalls[from];delete state.stampValues[from];}
+    movable.forEach((from,i)=>{const to=locations[i],id=before.stampBalls[from],value=before.stampValues[from];state.stamps.add(to);state.stampBalls[to]=id;state.stampValues[to]=value;if(from!==to)moves.push({id,from,to,value});});
+    timeline.push({kind:'tornado',before,after:boardSnapshot(state),moves,scoreBefore:state.score});
+  }
   // Score placement first, then each King's destination before the next King moves.
-  const initial=evaluateAt(new Set([tile]),true);
+  const initial=evaluateAt(new Set(state.items[effectNumber]==='tornado'?[...state.stamps]:[tile]),true);
   if(state.items[effectNumber]==='earth'){
-    const before=boardSnapshot(state),moves=[];
+    const before=boardSnapshot(state),moves=[],fixed=new Set([...state.stamps].filter(t=>cannotMove(state,t)));
     state.stamps=new Set();state.stampBalls={};state.stampValues={};
     for(let col=1;col<=5;col++){
       let to=col+20;
       for(let from=col+20;from>=col;from-=5)if(before.stamps.has(from)){
         const id=before.stampBalls[from],value=before.stampValues[from];
-        if(isSticky(state,id))to=from;
+        if(fixed.has(from))to=from;
         state.stamps.add(to);state.stampBalls[to]=id;state.stampValues[to]=value;
         if(from!==to)moves.push({id,from,to,value});to-=5;
       }
@@ -305,8 +321,8 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   const movementBoard=boardSnapshot(state);
   for(const {from,id} of kings){
     if(state.stampBalls[from]!==id)continue; // A scoring Trash stamp may have destroyed it.
-    const available=isSticky(state,id)?[]:kingNeighbors(from).filter(t=>!state.stamps.has(t));
-    if(!available.length){timeline.push({kind:'blocked',reason:isSticky(state,id)?'sticky':'occupied',tile:from,id,board:boardSnapshot(state),scoreBefore:state.score});continue;}
+    const available=cannotMove(state,from)?[]:kingNeighbors(from).filter(t=>!state.stamps.has(t));
+    if(!available.length){timeline.push({kind:'blocked',reason:isSticky(state,id)?'sticky':isAnchored(state,from)?'anchor':'occupied',tile:from,id,board:boardSnapshot(state),scoreBefore:state.score});continue;}
     const to=available[Math.floor(random()*available.length)],value=state.stampValues[from],before=boardSnapshot(state),scoreBefore=state.score;
     state.stamps.delete(from);delete state.stampBalls[from];delete state.stampValues[from];
     state.stamps.add(to);state.stampBalls[to]=id;state.stampValues[to]=value;
@@ -328,7 +344,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
   if(state.status==='playing')deal(state,random,3,number);
   else{state.offer=[];state.destinations={};delete state.refillSlot;}
-  return {mimic,potionApplied,timeline,tile,swap,playedNumber:swap?.to??number,movementBoard,kingMoves,scoringBoard,copied,copies,stampApplied,playCost,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
+  return {rebirths,mimic,potionApplied,timeline,tile,swap,playedNumber:swap?.to??number,movementBoard,kingMoves,scoringBoard,copied,copies,stampApplied,playCost,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
 }
 function cardEvents(state){
   if(state.plainRules)return [{joker:'bingo',retriggers:[]},{joker:'face-value',retriggers:[]}];
@@ -344,6 +360,10 @@ function cardEvents(state){
 function scoreGroups(state,scoringGroups,events=cardEvents(state),random=Math.random){
   const scoringBoard=boardSnapshot(state);
   const activations=scoringGroups.flatMap(group=>{
+    const prism=group.type==='diagonal'?[...state.stamps].find(t=>state.items[state.stampBalls[t]]==='prism'):undefined;
+    return prism===undefined?[group]:[group,{...group,prism}];
+  }).flatMap(group=>{
+    if(group.prism!==undefined&&state.items[state.stampBalls[group.prism]]!=='prism')return [];
     const tiles=group.tiles.filter(tile=>state.stamps.has(tile));
     const sources=tiles.flatMap(tile=>Array((state.items[state.stampBalls[tile]]==='doubleball'?1:0)+(state.itemEffects?.[state.stampBalls[tile]]||[]).filter(e=>e==='potion2').length).fill(tile));
     const factor=2**sources.length;
@@ -358,18 +378,14 @@ function scoreGroups(state,scoringGroups,events=cardEvents(state),random=Math.ra
     const basePoints=(state.plainRules||state.jokers.includes('face-value'))?(number??0):0;
     const id=state.stampBalls[tile],copies=copyOnTile(state,id,tile);
     const trashed=tileStampList(state,tile).includes('trash')?id:null;
-    if(trashed!==null){
-      state.stamps.delete(tile);delete state.stampBalls[tile];delete state.stampValues[tile];
-      state.collection=state.collection.filter(n=>n!==id);state.bag.delete(id);
-      delete state.valueModifiers[id];delete state.ballValues[id];if(state.itemEffects)delete state.itemEffects[id];
-    }
+    const rebirth=trashed!==null?destroyItem(state,id,tile):null;
     let glassGrowth=null;
     if(trashed===null&&state.items[id]==='glass'){
       const change=changeTileValue(state,tile,number,tile);
       const broken=random()<.2;glassGrowth={...change,broken};
       if(broken)destroyItem(state,id,tile);
     }
-    return {glassGrowth,tile,reveal,copies,trashed,number,basePoints,bonuses,contributions,stampBonus,multiplier:state.tileMultipliers?.[tile]||1,points:(contributions.reduce((sum,c)=>sum+c.points,0)+stampBonus)*(state.tileMultipliers?.[tile]||1),trigger:group.trigger,retriggers:group.retriggers,type:group.type,source:group.source,pattern:j===0?tiles:null};
+    return {prism:group.prism,rebirth,glassGrowth,tile,reveal,copies,trashed,number,basePoints,bonuses,contributions,stampBonus,multiplier:state.tileMultipliers?.[tile]||1,points:(contributions.reduce((sum,c)=>sum+c.points,0)+stampBonus)*(state.tileMultipliers?.[tile]||1),trigger:group.trigger,retriggers:group.retriggers,type:group.type,source:group.source,pattern:j===0?tiles:null};
     });
     if(entries.length){const flatBonus=group.flatBonus||0,subtotal=entries.reduce((sum,a)=>sum+a.points,0)+flatBonus;entries.at(-1).groupEnd={subtotal,factor,total:subtotal*factor,sources,...(flatBonus?{flatBonus,source:group.source}:{})};entries.at(-1).groupBonus=flatBonus+subtotal*(factor-1);}
     return entries;
