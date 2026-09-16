@@ -21,9 +21,11 @@ function adjacentPatterns(length,type){
 }
 export const MARS_PATTERNS=adjacentPatterns(3,'mars');
 export const MOON_PATTERNS=adjacentPatterns(2,'moon');
+export const JUPITER_PATTERNS=adjacentPatterns(3,'jupiter');
+export const BINGO_TOKEN={name:'Bingo Token',text:'Scores its value in ★'};
+export const isBingoToken=(state,id)=>id!=null&&(!state.items?.[id]||state.items[id]==='bingo');
 export const planetPairMatches=(state,[a,b])=>{
-  const first=state.items[state.stampBalls[a]],second=state.items[state.stampBalls[b]];
-  return first||second?!!first&&first===second:Number.isFinite(state.stampValues[a])&&state.stampValues[a]===state.stampValues[b];
+  return isBingoToken(state,state.stampBalls[a])&&isBingoToken(state,state.stampBalls[b])&&Number.isFinite(state.stampValues[a])&&state.stampValues[a]===state.stampValues[b];
 };
 export const PATTERNS = PATTERN_DEFINITIONS.map(pattern=>pattern.tiles);
 export const freshPatternCounts=()=>Object.fromEntries(PATTERN_TYPES.map(({id})=>[id,0]));
@@ -39,38 +41,40 @@ export const isRuleCard=id=>Object.hasOwn(RULE_CARDS,id);
 export const CARD_TYPES={square:{name:'Square',text:'Score each completed 2×2 block of four items. Each block scores once per round.',icon:'▦',short:'Score 2×2 blocks'},corners:{name:'Four Corners',text:'When all four corners are filled, score every occupied tile on the board. Once per round.',icon:'⌗',short:'4 corners → score all'},crowd:{name:'Crowd',text:'Each scored tile earns +1 point for every item on the board. Tile stamps do not count.',icon:'•••',short:'+1 per board item'},'silver-lining':{name:'Silver Lining',text:'Scored negative numbers earn +30 extra points. Their negative value still applies.',icon:'+30',short:'Negative → +30'},'full-sweep':{name:'Full Sweep',text:'Activate once per round to score every occupied tile using your point cards. Costs no play.',icon:'▦',short:'USE · Score all',active:true},encore:{name:'Encore',text:'Retrigger the card immediately to the right. No effect without a card to its right.',icon:'↻',short:'Retrigger right →'},'high-five':{name:'High Five',text:'Play a 1–5, including a die roll, to score it and its occupied orthogonal neighbors.',icon:'✚',short:'Play 1–5: score ✚'}};
 export const BALL_UPGRADES={};
 export const ITEM_TYPES={
-  potion20:{name:'+20 Potion',text:'Give an item +20 ★ permanently',kind:'potion',startingValue:null,price:0},
-  potion2:{name:'×2 Potion',text:'Give an item x2 to total bingo score',kind:'potion',startingValue:null,price:0},
-  potionCopy:{name:'Copy Potion',text:'Copy an item and all its effects into the bag',kind:'potion',startingValue:null,price:0},
-  potionMelt:{name:'Melt Potion',text:'Permanently destroy an item',kind:'potion',startingValue:null,price:0},
+  potion20:{name:'+20 Potion',text:'When played: give an item +20 ★ permanently',kind:'potion',startingValue:null,price:0},
+  potion2:{name:'×2 Potion',text:'When played: give an item x2 to total bingo score',kind:'potion',startingValue:null,price:0},
+  potionCopy:{name:'Copy Potion',text:'When played: copy an item and all its effects into the bag',kind:'potion',startingValue:null,price:0},
+  potionMelt:{name:'Melt Potion',text:'When played: permanently destroy an item',kind:'potion',startingValue:null,price:0},
   doubleball:{name:'×2 Ball',text:'x2 to total bingo score',startingValue:0,price:0},
   trash:{name:'Destroy Item',text:'When scored: destroy item on this tile',startingValue:null,price:0},
   statue:{name:'Statue',text:'Stays here between rounds',startingValue:10,price:0},
-  king:{name:'Wandering King',text:'Each play: move to a random empty adjacent tile',startingValue:10,price:0},
-  question:{name:'Question Mark',text:'When played: swap with a random item in the bag',details:'The new item’s play effect activates. No stamps, potions, or other Question Marks.',startingValue:'?',price:0},
+  king:{name:'Wandering King',text:'Each turn: move to a random empty adjacent tile',startingValue:0,price:0},
+  question:{name:'Question Mark',text:'When played: become your last played item for this turn',details:'Reverts after the turn. No effect before your first item.',startingValue:'?',price:0},
   ...Object.fromEntries([10,50,100].map(n=>[`plus${n}`,{name:`+${n}`,text:`+${n} ★`,startingValue:null,price:0}])),
   copier:{name:'Copier',text:'When scored: copy this item into the bag',startingValue:null,price:0},
   x2:{name:'×2',text:'x2 to this tile’s score',startingValue:null,price:0},
   x3:{name:'×3',text:'x3 to this tile’s score',startingValue:null,price:0},
   seed:{name:'Seed',text:'When played: increases by 1 ★ each turn',startingValue:1,price:0},
   bomb:{name:'Bomb',text:'Permanently destroy all adjacent items',details:'Also destroys itself. Tile stamps stay.',startingValue:0,price:0},
-  d20:{name:'20-Sided Die',text:'When played: random value between 1–20 ★',startingValue:'?',price:0},
-  moon:{name:'Moon',text:'While on board: score matching neighbors, +100 ★ per pair',details:'Any direction. Match numbers by value, special items by type. Each pair once per round.',startingValue:0,price:0},
-  mars:{name:'Mars',text:'While on board: score 3 in a row, each ≤9, +100 ★',details:'Any direction. Overlaps count; each trio once per round.',startingValue:0,price:0},
+  d20:{name:'20-Sided Die',text:'Rolls a random value between 1–20 ★',startingValue:'?',price:0},
+  moon:{name:'Moon',text:'While on board: score identical adjacent bingo tokens, +100 ★',details:'Each pair once per round.',startingValue:0,price:0},
+  mars:{name:'Mars',text:'While on board: score 3 single-digit bingo tokens in a line, +100 ★',details:'Overlaps count; each trio once per round.',startingValue:0,price:0},
   earth:{name:'Earth',text:'When played: all items respond to gravity',details:'Stamps stay put. Score before and after the fall.',startingValue:0,price:0},
-  rock:{name:'Rock',text:'Free to play',startingValue:0,price:0}
+  jupiter:{name:'Jupiter',text:'While on board: score 3 non-bingo tokens in a line',details:'Each trio once per round.',startingValue:0,price:0}
 };
 export const isPotion=(state,id)=>ITEM_TYPES[state.items?.[id]]?.kind==='potion';
 export const shopItemTypes=()=>Object.keys(ITEM_TYPES).filter(type=>!isStamp({items:{1:type}},1));
 // Retire Anvils from serialized runs without losing the rest of the run or tile ink.
 export function removeRetiredItems(saved){
-  const retired=new Set(Object.keys(saved.items||{}).filter(id=>saved.items[id]==='hundred').map(Number));
+  const retired=new Set(Object.keys(saved.items||{}).filter(id=>['hundred','rock'].includes(saved.items[id])).map(Number));
   for(const key of ['collection','bag','offer'])if(Array.isArray(saved[key]))saved[key]=saved[key].filter(id=>!retired.has(id));
   for(const [tile,id] of Object.entries(saved.stampBalls||{}))if(retired.has(id)){
     saved.stamps=saved.stamps.filter(t=>t!==Number(tile));delete saved.stampBalls[tile];delete saved.stampValues[tile];
   }
-  for(const id of retired)for(const key of ['items','ballValues','valueModifiers','destinations','upgrades'])if(saved[key])delete saved[key][id];
-  if(saved.shopOffer?.items?.includes('hundred'))saved.shopOffer.items=saved.shopOffer.items.map(type=>type==='hundred'?Object.keys(ITEM_TYPES).find(t=>!saved.shopOffer.items.includes(t)):type);
+  for(const id of retired)for(const key of ['items','ballValues','valueModifiers','destinations','upgrades','itemEffects'])if(saved[key])delete saved[key][id];
+  if(saved.shopOffer?.items?.some(type=>['hundred','rock'].includes(type))){saved.shopOffer.items=saved.shopOffer.items.filter(type=>!['hundred','rock'].includes(type));for(const type of shopItemTypes())if(saved.shopOffer.items.length<3&&!saved.shopOffer.items.includes(type))saved.shopOffer.items.push(type);}
+  if(saved.lastPlayed&&['hundred','rock'].includes(saved.lastPlayed.type))saved.lastPlayed=null;
+  if(saved.kingVersion!==1){for(const [id,type] of Object.entries(saved.items||{}))if(type==='king'){if(saved.ballValues?.[id]===10)delete saved.ballValues[id];for(const [tile,occupant] of Object.entries(saved.stampBalls||{}))if(occupant===Number(id))saved.stampValues[tile]=(saved.ballValues?.[id]??0)+(saved.valueModifiers?.[id]||0);}saved.kingVersion=1;}
   if(retired.size&&saved.status==='playing'&&saved.bag?.length===0)saved.status='over';
 }
 
@@ -82,7 +86,6 @@ export function tileStampList(state,tile){
   for(const [factor,type] of [[2,'x2'],[3,'x3']])while(value>1&&value%factor===0){list.push(type);value/=factor;}
   return list;
 }
-export const isRock=(state,id)=>state.items?.[id]==='rock';
 export const isDie=(state,id)=>state.items?.[id]==='d20';
 export const isBomb=(state,id)=>state.items?.[id]==='bomb';
 export const cardType=id=>id.split(':')[0];
@@ -106,7 +109,7 @@ export const normalizeJokers=jokers=>{
     return CARD_TYPES[cardType(id)]&&cardDetails(id)&&purchased++<5;
   });
 };
-export const ballValue=(state,number)=>number==null||isPotion(state,number)||state.items?.[number]==='doubleball'||state.items?.[number]==='question'||isBomb(state,number)||isDie(state,number)||isRock(state,number)||isStamp(state,number)?null:((state.ballValues?.[number]??(['king','statue'].includes(state.items?.[number])?10:state.items?.[number]==='hundred'?50:state.items?.[number]==='seed'?1:['earth','mars','moon'].includes(state.items?.[number])?0:number))+(state.valueModifiers?.[number]||0));
+export const ballValue=(state,number)=>number==null||isPotion(state,number)||state.items?.[number]==='doubleball'||state.items?.[number]==='question'||isBomb(state,number)||isDie(state,number)||isStamp(state,number)?null:((state.ballValues?.[number]??(state.items?.[number]==='statue'?10:state.items?.[number]==='hundred'?50:state.items?.[number]==='seed'?1:['earth','mars','moon','jupiter','king'].includes(state.items?.[number])?0:number))+(state.valueModifiers?.[number]||0));
 const boardSnapshot=state=>({stamps:new Set(state.stamps),stampBalls:{...state.stampBalls},stampValues:{...state.stampValues}});
 export const orthogonalNeighbors=tile=>[tile-5,tile+1,tile+5,tile-1].filter(t=>t>=1&&t<=25&&Math.abs(Math.floor((t-1)/5)-Math.floor((tile-1)/5))+Math.abs((t-1)%5-(tile-1)%5)===1);
 // Effects produce a common before/after event for the UI, independent of scoring.
@@ -129,7 +132,7 @@ export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['b
   const fixed=Object.entries(inventory?.stampBalls||{}).filter(([,id])=>items[id]==='statue'&&collection.includes(id));
   const stampBalls=Object.fromEntries(fixed),stampValues=Object.fromEntries(fixed.map(([tile,id])=>[tile,inventory.stampValues?.[tile]??ballValue(inventory,id)]));
   const fixedIds=new Set(fixed.map(([,id])=>id));
-  return {itemEffects:structuredClone(inventory?.itemEffects||{}),tileStamps:Object.fromEntries(Array.from({length:25},(_,i)=>[i+1,[...tileStampList(inventory||{},i+1)]]).filter(([,list])=>list.length)),tileCopiers:{...inventory?.tileCopiers},tileMultipliers:{...inventory?.tileMultipliers},activeUses:{},handVersion:1,inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{...inventory?.ballValues},valueModifiers:{...inventory?.valueModifiers},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls,stampValues,destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:17,shopOffer:null,stage,target:targetFor(stage),score:0,calls:17,money,bonusPaid:false,stamps:new Set(fixed.map(([tile])=>Number(tile))),bag:new Set(collection.filter(id=>!fixedIds.has(id))),played:Array(nextItemId).fill(0),status:collection.length?'playing':'over',offer:[]};
+  return {kingVersion:1,lastPlayed:structuredClone(inventory?.lastPlayed||null),itemEffects:structuredClone(inventory?.itemEffects||{}),tileStamps:Object.fromEntries(Array.from({length:25},(_,i)=>[i+1,[...tileStampList(inventory||{},i+1)]]).filter(([,list])=>list.length)),tileCopiers:{...inventory?.tileCopiers},tileMultipliers:{...inventory?.tileMultipliers},activeUses:{},handVersion:1,inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{...inventory?.ballValues},valueModifiers:{...inventory?.valueModifiers},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls,stampValues,destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:17,shopOffer:null,stage,target:targetFor(stage),score:0,calls:17,money,bonusPaid:false,stamps:new Set(fixed.map(([tile])=>Number(tile))),bag:new Set(collection.filter(id=>!fixedIds.has(id))),played:Array(nextItemId).fill(0),status:collection.length?'playing':'over',offer:[]};
 }
 const shuffled=(values,random)=>{
   const result=[...values];for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;
@@ -142,7 +145,7 @@ export function deal(state,random=Math.random,count=3,exclude=null){
   state.offer.splice(state.refillSlot??state.offer.length,0,...additions);delete state.refillSlot;
   const previous=new Set(Object.values(state.destinations||{}));
   const empty=Array.from({length:25},(_,i)=>i+1).filter(tile=>!state.stamps.has(tile));
-  const compatible=empty.filter(tile=>!state.offer.some(n=>isStamp(state,n))||tileStampList(state,tile).length<4);
+  const compatible=empty.filter(tile=>!state.offer.some(n=>isStamp(state,n)||(state.items[n]==='question'&&isStamp({items:{[n]:state.lastPlayed?.type}},n)))||tileStampList(state,tile).length<4);
   const choices=compatible.length?compatible:empty,fresh=choices.filter(tile=>!previous.has(tile));
   const pool=fresh.length?fresh:choices,tile=pool.length?pool[Math.floor(random()*pool.length)]:null;
   state.destinations=Object.fromEntries(state.offer.map(n=>[n,tile]));
@@ -172,14 +175,25 @@ function destroyItem(state,id,tile){
   for(const map of ['ballValues','valueModifiers','upgrades','itemEffects'])if(state[map])delete state[map][id];
 }
 export const kingNeighbors=tile=>Array.from({length:25},(_,i)=>i+1).filter(t=>t!==tile&&Math.abs(Math.floor((t-1)/5)-Math.floor((tile-1)/5))<=1&&Math.abs((t-1)%5-(tile-1)%5)<=1);
+export function itemBlueprint(state,id){return {type:state.items[id]||'bingo',base:state.ballValues[id]??(isBingoToken(state,id)?id:null),modifier:state.valueModifiers[id]||0,effects:structuredClone(state.itemEffects?.[id]||[])};}
+function applyBlueprint(state,id,blueprint){
+  if(blueprint.type==='bingo')delete state.items[id];else state.items[id]=blueprint.type;
+  if(blueprint.base===null)delete state.ballValues[id];else state.ballValues[id]=blueprint.base;
+  state.valueModifiers[id]=blueprint.modifier;state.itemEffects??={};state.itemEffects[id]=structuredClone(blueprint.effects);
+}
+export const isTargetedPotion=(state,id)=>isPotion(state,id)||(state.items[id]==='question'&&ITEM_TYPES[state.lastPlayed?.type]?.kind==='potion');
 export function choose(state,number,tile=state.destinations[number],random=Math.random) {
-  const potion=isPotion(state,number);
+  const potion=isTargetedPotion(state,number);
   if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||tile<1||tile>25||(potion?!state.stamps.has(tile):(!Object.values(state.destinations).includes(tile)||state.stamps.has(tile))))return null;
-  if(isStamp(state,number)&&tileStampList(state,tile).length>=4)return null;
+  const mimic=state.items[number]==='question'&&state.lastPlayed&&state.lastPlayed.type!=='question'?{id:number,original:itemBlueprint(state,number),applied:structuredClone(state.lastPlayed)}:null;
+  const validation=mimic?{items:{[number]:mimic.applied.type}}:state;
+  if(isStamp(validation,number)&&tileStampList(state,tile).length>=4)return null;
+  if(mimic)applyBlueprint(state,number,mimic.applied);
+  state.lastPlayed=itemBlueprint(state,number);
   const refillSlot=state.offer.indexOf(number);
   const copies=[],copied=null;
   let roll=isDie(state,number)?1+Math.floor(random()*20)+(state.valueModifiers?.[number]||0):null;
-  const playCost=isRock(state,number)?0:1;
+  const playCost=1;
   let potionApplied=null;
   if(potion){
     const target=state.stampBalls[tile],type=state.items[number];
@@ -191,18 +205,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
     destroyItem(state,number);
   }else{state.stamps.add(tile);state.stampBalls[tile]=number;state.stampValues[tile]=roll??ballValue(state,number);state.bag.delete(number);}
   state.played[number]=(state.played[number]||0)+1;state.calls-=playCost;
-  let swap=null;
-  if(state.items[number]==='question'){
-    const available=[...state.bag].filter(id=>state.items[id]!=='question'&&!isStamp(state,id)&&!isPotion(state,id)&&!state.offer.includes(id));
-    if(available.length){
-      const id=available[Math.floor(random()*available.length)];
-      state.bag.delete(id);state.bag.add(number);state.stampBalls[tile]=id;state.played[id]=(state.played[id]||0)+1;
-      state.stampValues[tile]=isDie(state,id)?1+Math.floor(random()*20)+(state.valueModifiers[id]||0):ballValue(state,id);
-      if(isDie(state,id))roll=state.stampValues[tile];
-      swap={from:number,to:id,value:state.stampValues[tile]};
-    }
-  }
-  const effectNumber=swap?.to??number;
+  const swap=null,effectNumber=number;
   const factor=stampFactor(state,number),stampApplied=isStamp(state,number)?{tile,factor,before:state.tileMultipliers?.[tile]||1}:null;
   if(stampApplied){
     const previous=tileStampList(state,tile);state.tileStamps??={};state.tileStamps[tile]=[...previous,state.items[number]];
@@ -254,12 +257,13 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
     if(scored.activations.length)timeline.push(phase);
     // Planets enable board-wide conditions: placing it can activate trios already
     // present. Recheck its presence and each trio after destructive scoring ink.
-    for(const pattern of [...MARS_PATTERNS,...MOON_PATTERNS]){
+    for(const pattern of [...MARS_PATTERNS,...MOON_PATTERNS,...JUPITER_PATTERNS]){
       const source=[...state.stamps].find(t=>state.items[state.stampBalls[t]]===pattern.type);
       if(source===undefined)continue;
       if(state.scoredLines.includes(pattern.id)||!pattern.tiles.every(t=>state.stamps.has(t)))continue;
-      if(pattern.type==='mars'?!pattern.tiles.every(t=>Number.isFinite(state.stampValues[t])&&state.stampValues[t]<=9):!planetPairMatches(state,pattern.tiles))continue;
-      const group={trigger:pattern.type,retriggers:[],type:pattern.type,tiles:pattern.tiles,flatBonus:100,source};
+      const eligible=pattern.type==='mars'?pattern.tiles.every(t=>isBingoToken(state,state.stampBalls[t])&&Number.isFinite(state.stampValues[t])&&state.stampValues[t]>=0&&state.stampValues[t]<=9):pattern.type==='moon'?planetPairMatches(state,pattern.tiles):pattern.tiles.every(t=>!isBingoToken(state,state.stampBalls[t]));
+      if(!eligible)continue;
+      const group={trigger:pattern.type,retriggers:[],type:pattern.type,tiles:pattern.tiles,flatBonus:pattern.type==='jupiter'?0:100,source};
       const before=state.score,mars=scoreGroups(state,[group],events,random);
       state.scoredLines.push(pattern.id);
       timeline.push({kind:'score',...mars,scoreBefore:before,callsBeforeBonuses,patterns:[pattern.tiles],scoredPatterns:[pattern],scoringGroups:[group]});
@@ -299,12 +303,17 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   const patterns=phases.flatMap(p=>p.patterns),scoredPatterns=phases.flatMap(p=>p.scoredPatterns),scoringGroups=phases.flatMap(p=>p.scoringGroups),activations=phases.flatMap(p=>p.activations);
   const points=phases.reduce((sum,p)=>sum+p.points,0),scoringBoard=initial.scoringBoard;
 
+  if(mimic){
+    // Keep the Question Mark identity, even if its borrowed effect consumed it.
+    if(state.collection.includes(number)){applyBlueprint(state,number,mimic.original);for(const [location,id] of Object.entries(state.stampBalls))if(id===number)state.stampValues[location]=ballValue(state,number);}
+    else state.items[number]='question';
+  }
   state.offer=state.offer.filter(n=>n!==number&&state.bag.has(n));state.refillSlot=refillSlot;
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
   if(state.status==='playing')deal(state,random,3,number);
   else{state.offer=[];state.destinations={};delete state.refillSlot;}
-  return {potionApplied,timeline,tile,swap,playedNumber:swap?.to??number,movementBoard,kingMoves,scoringBoard,copied,copies,stampApplied,playCost,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
+  return {mimic,potionApplied,timeline,tile,swap,playedNumber:swap?.to??number,movementBoard,kingMoves,scoringBoard,copied,copies,stampApplied,playCost,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
 }
 function cardEvents(state){
   if(state.plainRules)return [{joker:'bingo',retriggers:[]},{joker:'face-value',retriggers:[]}];
@@ -391,7 +400,7 @@ export function openShop(state,random=Math.random){
 // remain usable for fixtures and tools; all player selections go through this gate.
 export function openRewardShop(state,random=Math.random){
   if(state.status!=='passed'||!state.bonusPaid)return false;
-  if(state.shopOffer?.rewardVersion===2&&state.shopOffer.items.every(type=>shopItemTypes().includes(type)))return true;
+  if(state.shopOffer?.rewardVersion===2&&state.shopOffer.items.length===3&&state.shopOffer.items.every(type=>shopItemTypes().includes(type)))return true;
   const claimed=state.shopOffer?.claimed===true;
   state.shopOffer={rewardVersion:2,cards:[],items:shuffled(shopItemTypes(),random).slice(0,3),balls:[null,null],claimed};
   return true;
