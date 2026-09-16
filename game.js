@@ -26,11 +26,15 @@ export const isRuleCard=id=>Object.hasOwn(RULE_CARDS,id);
 export const CARD_TYPES={square:{name:'Square',text:'Score each completed 2×2 block of four items. Each block scores once per round.',icon:'▦',short:'Score 2×2 blocks'},corners:{name:'Four Corners',text:'When all four corners are filled, score every occupied tile on the board. Once per round.',icon:'⌗',short:'4 corners → score all'},crowd:{name:'Crowd',text:'Each scored tile earns +1 point for every item on the board. Tile stamps do not count.',icon:'•••',short:'+1 per board item'},'silver-lining':{name:'Silver Lining',text:'Scored negative numbers earn +30 extra points. Their negative value still applies.',icon:'+30',short:'Negative → +30'},'full-sweep':{name:'Full Sweep',text:'Activate once per round to score every occupied tile using your point cards. Costs no play.',icon:'▦',short:'USE · Score all',active:true},encore:{name:'Encore',text:'Retrigger the card immediately to the right. No effect without a card to its right.',icon:'↻',short:'Retrigger right →'},'high-five':{name:'High Five',text:'Play a 1–5, including a die roll, to score it and its occupied orthogonal neighbors.',icon:'✚',short:'Play 1–5: score ✚'}};
 export const BALL_UPGRADES={};
 export const ITEM_TYPES={
+  potion20:{name:'+20 Potion',text:'Give an item +20 ★ permanently',kind:'potion',startingValue:null,price:0},
+  potion2:{name:'×2 Potion',text:'Give an item x2 to total bingo score',kind:'potion',startingValue:null,price:0},
+  potionCopy:{name:'Copy Potion',text:'Copy an item and all its effects into the bag',kind:'potion',startingValue:null,price:0},
+  potionMelt:{name:'Melt Potion',text:'Permanently destroy an item',kind:'potion',startingValue:null,price:0},
   doubleball:{name:'×2 Ball',text:'x2 to total bingo score',startingValue:0,price:0},
   trash:{name:'Destroy Item',text:'When scored: destroy item on this tile',startingValue:null,price:0},
   statue:{name:'Statue',text:'Stays here between rounds',startingValue:10,price:0},
   king:{name:'Wandering King',text:'Each play: move to a random empty adjacent tile',startingValue:10,price:0},
-  question:{name:'Question Mark',text:'When played: swap with a random item in the bag',details:'No stamps or other Question Marks. The new item’s play effect does not trigger.',startingValue:'?',price:0},
+  question:{name:'Question Mark',text:'When played: swap with a random item in the bag',details:'The new item’s play effect activates. No stamps, potions, or other Question Marks.',startingValue:'?',price:0},
   ...Object.fromEntries([10,50,100].map(n=>[`plus${n}`,{name:`+${n}`,text:`+${n} ★`,startingValue:null,price:0}])),
   copier:{name:'Copier',text:'When scored: copy this item into the bag',startingValue:null,price:0},
   x2:{name:'×2',text:'x2 to this tile’s score',startingValue:null,price:0},
@@ -41,6 +45,8 @@ export const ITEM_TYPES={
   earth:{name:'Earth',text:'When played: all items respond to gravity',details:'Stamps stay put. Score before and after the fall.',startingValue:0,price:0},
   rock:{name:'Rock',text:'Free to play',startingValue:0,price:0}
 };
+export const isPotion=(state,id)=>ITEM_TYPES[state.items?.[id]]?.kind==='potion';
+export const shopItemTypes=()=>Object.keys(ITEM_TYPES).filter(type=>!isStamp({items:{1:type}},1));
 // Retire Anvils from serialized runs without losing the rest of the run or tile ink.
 export function removeRetiredItems(saved){
   const retired=new Set(Object.keys(saved.items||{}).filter(id=>saved.items[id]==='hundred').map(Number));
@@ -85,7 +91,7 @@ export const normalizeJokers=jokers=>{
     return CARD_TYPES[cardType(id)]&&cardDetails(id)&&purchased++<5;
   });
 };
-export const ballValue=(state,number)=>number==null||state.items?.[number]==='doubleball'||state.items?.[number]==='question'||isBomb(state,number)||isDie(state,number)||isRock(state,number)||isStamp(state,number)?null:((state.ballValues?.[number]??(['king','statue'].includes(state.items?.[number])?10:state.items?.[number]==='hundred'?50:state.items?.[number]==='seed'?1:state.items?.[number]==='earth'?0:number))+(state.valueModifiers?.[number]||0));
+export const ballValue=(state,number)=>number==null||isPotion(state,number)||state.items?.[number]==='doubleball'||state.items?.[number]==='question'||isBomb(state,number)||isDie(state,number)||isRock(state,number)||isStamp(state,number)?null:((state.ballValues?.[number]??(['king','statue'].includes(state.items?.[number])?10:state.items?.[number]==='hundred'?50:state.items?.[number]==='seed'?1:state.items?.[number]==='earth'?0:number))+(state.valueModifiers?.[number]||0));
 const boardSnapshot=state=>({stamps:new Set(state.stamps),stampBalls:{...state.stampBalls},stampValues:{...state.stampValues}});
 export const orthogonalNeighbors=tile=>[tile-5,tile+1,tile+5,tile-1].filter(t=>t>=1&&t<=25&&Math.abs(Math.floor((t-1)/5)-Math.floor((tile-1)/5))+Math.abs((t-1)%5-(tile-1)%5)===1);
 // Effects produce a common before/after event for the UI, independent of scoring.
@@ -108,7 +114,7 @@ export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['b
   const fixed=Object.entries(inventory?.stampBalls||{}).filter(([,id])=>items[id]==='statue'&&collection.includes(id));
   const stampBalls=Object.fromEntries(fixed),stampValues=Object.fromEntries(fixed.map(([tile,id])=>[tile,inventory.stampValues?.[tile]??ballValue(inventory,id)]));
   const fixedIds=new Set(fixed.map(([,id])=>id));
-  return {tileStamps:Object.fromEntries(Array.from({length:25},(_,i)=>[i+1,[...tileStampList(inventory||{},i+1)]]).filter(([,list])=>list.length)),tileCopiers:{...inventory?.tileCopiers},tileMultipliers:{...inventory?.tileMultipliers},activeUses:{},handVersion:1,inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{...inventory?.ballValues},valueModifiers:{...inventory?.valueModifiers},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls,stampValues,destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:17,shopOffer:null,stage,target:targetFor(stage),score:0,calls:17,money,bonusPaid:false,stamps:new Set(fixed.map(([tile])=>Number(tile))),bag:new Set(collection.filter(id=>!fixedIds.has(id))),played:Array(nextItemId).fill(0),status:collection.length?'playing':'over',offer:[]};
+  return {itemEffects:structuredClone(inventory?.itemEffects||{}),tileStamps:Object.fromEntries(Array.from({length:25},(_,i)=>[i+1,[...tileStampList(inventory||{},i+1)]]).filter(([,list])=>list.length)),tileCopiers:{...inventory?.tileCopiers},tileMultipliers:{...inventory?.tileMultipliers},activeUses:{},handVersion:1,inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{...inventory?.ballValues},valueModifiers:{...inventory?.valueModifiers},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls,stampValues,destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:17,shopOffer:null,stage,target:targetFor(stage),score:0,calls:17,money,bonusPaid:false,stamps:new Set(fixed.map(([tile])=>Number(tile))),bag:new Set(collection.filter(id=>!fixedIds.has(id))),played:Array(nextItemId).fill(0),status:collection.length?'playing':'over',offer:[]};
 }
 const shuffled=(values,random)=>{
   const result=[...values];for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;
@@ -132,39 +138,56 @@ export function draw(state=newStage(),random=Math.random,count=1) {
   for(let i=bag.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}
   return bag.slice(0,Math.min(count,bag.length));
 }
+function cloneItem(state,number,tile){
+  const id=state.nextItemId++,type=state.items[number];
+  if(type)state.items[id]=type;
+  if(!type||Object.hasOwn(state.ballValues,number))state.ballValues[id]=state.ballValues[number]??number;
+  if(Object.hasOwn(state.valueModifiers,number))state.valueModifiers[id]=state.valueModifiers[number];
+  if(state.upgrades[number])state.upgrades[id]=state.upgrades[number];
+  state.itemEffects??={};state.itemEffects[id]=structuredClone(state.itemEffects[number]||[]);
+  state.collection.push(id);state.bag.add(id);state.played[id]=0;
+  return {id,source:number,tile};
+}
 function copyOnTile(state,number,tile){
-  const copies=[];
-  const copyCount=tileStampList(state,tile).filter(type=>type==='copier').length;
-  for(let copyIndex=0;copyIndex<copyCount;copyIndex++){
-    const id=state.nextItemId++,type=state.items[number];
-    if(type)state.items[id]=type;
-    // Normal numbers need an explicit base value: their new ID is not their number.
-    if(!type||Object.hasOwn(state.ballValues,number))state.ballValues[id]=state.ballValues[number]??number;
-    if(Object.hasOwn(state.valueModifiers,number))state.valueModifiers[id]=state.valueModifiers[number];
-    if(state.upgrades[number])state.upgrades[id]=state.upgrades[number];
-    state.collection.push(id);state.bag.add(id);state.played[id]=0;copies.push({id,source:number,tile});
-  }
-  return copies;
+  return tileStampList(state,tile).filter(type=>type==='copier').map(()=>cloneItem(state,number,tile));
+}
+function destroyItem(state,id,tile){
+  state.collection=state.collection.filter(n=>n!==id);state.bag.delete(id);
+  if(tile!=null){state.stamps.delete(tile);delete state.stampBalls[tile];delete state.stampValues[tile];}
+  for(const map of ['ballValues','valueModifiers','upgrades','itemEffects'])if(state[map])delete state[map][id];
 }
 export const kingNeighbors=tile=>Array.from({length:25},(_,i)=>i+1).filter(t=>t!==tile&&Math.abs(Math.floor((t-1)/5)-Math.floor((tile-1)/5))<=1&&Math.abs((t-1)%5-(tile-1)%5)<=1);
 export function choose(state,number,tile=state.destinations[number],random=Math.random) {
-  if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||!Object.values(state.destinations).includes(tile)||tile<1||tile>25||state.stamps.has(tile))return null;
+  const potion=isPotion(state,number);
+  if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||tile<1||tile>25||(potion?!state.stamps.has(tile):(!Object.values(state.destinations).includes(tile)||state.stamps.has(tile))))return null;
   if(isStamp(state,number)&&tileStampList(state,tile).length>=4)return null;
   const refillSlot=state.offer.indexOf(number);
   const copies=[],copied=null;
-  const roll=isDie(state,number)?1+Math.floor(random()*20)+(state.valueModifiers?.[number]||0):null;
+  let roll=isDie(state,number)?1+Math.floor(random()*20)+(state.valueModifiers?.[number]||0):null;
   const playCost=isRock(state,number)?0:1;
-  state.stamps.add(tile);state.stampBalls[tile]=number;state.stampValues[tile]=roll??ballValue(state,number);state.bag.delete(number);state.played[number]=(state.played[number]||0)+1;state.calls-=playCost;
+  let potionApplied=null;
+  if(potion){
+    const target=state.stampBalls[tile],type=state.items[number];
+    potionApplied={type,target,tile,before:boardSnapshot(state)};
+    state.itemEffects??={};
+    if(type==='potion20'||type==='potion2')(state.itemEffects[target]??=[]).push(type);
+    if(type==='potionCopy')copies.push({...cloneItem(state,target,tile),potion:true});
+    if(type==='potionMelt')destroyItem(state,target,tile);
+    destroyItem(state,number);
+  }else{state.stamps.add(tile);state.stampBalls[tile]=number;state.stampValues[tile]=roll??ballValue(state,number);state.bag.delete(number);}
+  state.played[number]=(state.played[number]||0)+1;state.calls-=playCost;
   let swap=null;
   if(state.items[number]==='question'){
-    const available=[...state.bag].filter(id=>state.items[id]!=='question'&&!isStamp(state,id)&&!state.offer.includes(id));
+    const available=[...state.bag].filter(id=>state.items[id]!=='question'&&!isStamp(state,id)&&!isPotion(state,id)&&!state.offer.includes(id));
     if(available.length){
       const id=available[Math.floor(random()*available.length)];
       state.bag.delete(id);state.bag.add(number);state.stampBalls[tile]=id;state.played[id]=(state.played[id]||0)+1;
       state.stampValues[tile]=isDie(state,id)?1+Math.floor(random()*20)+(state.valueModifiers[id]||0):ballValue(state,id);
+      if(isDie(state,id))roll=state.stampValues[tile];
       swap={from:number,to:id,value:state.stampValues[tile]};
     }
   }
+  const effectNumber=swap?.to??number;
   const factor=stampFactor(state,number),stampApplied=isStamp(state,number)?{tile,factor,before:state.tileMultipliers?.[tile]||1}:null;
   if(stampApplied){
     const previous=tileStampList(state,tile);state.tileStamps??={};state.tileStamps[tile]=[...previous,state.items[number]];
@@ -173,20 +196,20 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
     state.stamps.delete(tile);delete state.stampBalls[tile];delete state.stampValues[tile];
     state.collection=state.collection.filter(id=>id!==number);delete state.ballValues[number];delete state.valueModifiers[number];
   }
-  const seeds=[...state.stamps].filter(t=>t!==tile&&state.items[state.stampBalls[t]]==='seed');
-  const effectBoard=(isBomb(state,number)||state.items[number]==='hundred'||seeds.length||[...state.stamps].some(t=>state.items[state.stampBalls[t]]==='king'&&state.stampBalls[t]!==number))?boardSnapshot(state):null,valueChanges=[];
-  if(state.items[number]==='hundred')for(const neighbor of orthogonalNeighbors(tile)){
+  const seeds=[...state.stamps].filter(t=>(potion||t!==tile)&&state.items[state.stampBalls[t]]==='seed');
+  const effectBoard=(isBomb(state,effectNumber)||state.items[effectNumber]==='hundred'||seeds.length||[...state.stamps].some(t=>state.items[state.stampBalls[t]]==='king'&&state.stampBalls[t]!==number))?boardSnapshot(state):null,valueChanges=[];
+  if(state.items[effectNumber]==='hundred')for(const neighbor of orthogonalNeighbors(tile)){
     const change=changeTileValue(state,neighbor,-1,tile);if(change)valueChanges.push(change);
   }
   for(const seed of seeds){const change=changeTileValue(state,seed,1,tile);if(change)valueChanges.push(change);}
   const destroyed=[];
-  if(isBomb(state,number)){
+  if(isBomb(state,effectNumber)){
     const row=Math.floor((tile-1)/5),col=(tile-1)%5;
     for(const occupied of [...state.stamps]){
       if(Math.abs(Math.floor((occupied-1)/5)-row)>1||Math.abs((occupied-1)%5-col)>1)continue;
       const id=state.stampBalls[occupied];destroyed.push({tile:occupied,id,value:state.stampValues[occupied]});
       state.collection=state.collection.filter(n=>n!==id);state.bag.delete(id);
-      state.stamps.delete(occupied);delete state.stampBalls[occupied];delete state.stampValues[occupied];delete state.ballValues[id];delete state.valueModifiers[id];delete state.upgrades[id];
+      state.stamps.delete(occupied);delete state.stampBalls[occupied];delete state.stampValues[occupied];delete state.ballValues[id];delete state.valueModifiers[id];delete state.upgrades[id];if(state.itemEffects)delete state.itemEffects[id];
     }
   }
 
@@ -218,7 +241,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   }
   // Score placement first, then each King's destination before the next King moves.
   const initial=evaluateAt(new Set([tile]),true);
-  if(state.items[number]==='earth'){
+  if(state.items[effectNumber]==='earth'){
     const before=boardSnapshot(state),moves=[];
     state.stamps=new Set();state.stampBalls={};state.stampValues={};
     for(let col=1;col<=5;col++){
@@ -254,7 +277,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
   if(state.status==='playing')deal(state,random,3,number);
   else{state.offer=[];state.destinations={};delete state.refillSlot;}
-  return {timeline,tile,swap,playedNumber:swap?.to??number,movementBoard,kingMoves,scoringBoard,copied,copies,stampApplied,playCost,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
+  return {potionApplied,timeline,tile,swap,playedNumber:swap?.to??number,movementBoard,kingMoves,scoringBoard,copied,copies,stampApplied,playCost,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
 }
 function cardEvents(state){
   if(state.plainRules)return [{joker:'bingo',retriggers:[]},{joker:'face-value',retriggers:[]}];
@@ -271,13 +294,15 @@ function scoreGroups(state,scoringGroups,events=cardEvents(state),random=Math.ra
   const scoringBoard=boardSnapshot(state);
   const activations=scoringGroups.flatMap(group=>{
     const tiles=group.tiles.filter(tile=>state.stamps.has(tile));
-    const sources=tiles.filter(tile=>state.items[state.stampBalls[tile]]==='doubleball');
+    const sources=tiles.flatMap(tile=>Array((state.items[state.stampBalls[tile]]==='doubleball'?1:0)+(state.itemEffects?.[state.stampBalls[tile]]||[]).filter(e=>e==='potion2').length).fill(tile));
     const factor=2**sources.length;
     const entries=tiles.map((tile,j)=>{
     let reveal=null;
     const current=state.stampBalls[tile];
     const number=state.stampValues[tile],bonuses=[];
     const contributions=events.flatMap(e=>cardType(e.joker)==='crowd'?[{...e,points:state.stamps.size}]:e.joker==='face-value'?[{...e,points:number??0}]:cardType(e.joker)==='silver-lining'&&Number.isFinite(number)&&number<0?[{...e,points:30}]:[]);
+    const potionBonus=(state.itemEffects?.[current]||[]).filter(e=>e==='potion20').length*20;
+    if(potionBonus)contributions.push({joker:'potion20',retriggers:[],points:potionBonus});
     const stampBonus=tileStampList(state,tile).reduce((sum,type)=>sum+(type.startsWith('plus')?Number(type.slice(4)):0),0);
     const basePoints=(state.plainRules||state.jokers.includes('face-value'))?(number??0):0;
     const id=state.stampBalls[tile],copies=copyOnTile(state,id,tile);
@@ -285,7 +310,7 @@ function scoreGroups(state,scoringGroups,events=cardEvents(state),random=Math.ra
     if(trashed!==null){
       state.stamps.delete(tile);delete state.stampBalls[tile];delete state.stampValues[tile];
       state.collection=state.collection.filter(n=>n!==id);state.bag.delete(id);
-      delete state.valueModifiers[id];delete state.ballValues[id];
+      delete state.valueModifiers[id];delete state.ballValues[id];if(state.itemEffects)delete state.itemEffects[id];
     }
     return {tile,reveal,copies,trashed,number,basePoints,bonuses,contributions,stampBonus,multiplier:state.tileMultipliers?.[tile]||1,points:(contributions.reduce((sum,c)=>sum+c.points,0)+stampBonus)*(state.tileMultipliers?.[tile]||1),trigger:group.trigger,retriggers:group.retriggers,type:group.type,pattern:j===0?tiles:null};
     });
@@ -339,9 +364,9 @@ export function openShop(state,random=Math.random){
 // remain usable for fixtures and tools; all player selections go through this gate.
 export function openRewardShop(state,random=Math.random){
   if(state.status!=='passed'||!state.bonusPaid)return false;
-  if(state.shopOffer?.rewardVersion===2)return true;
+  if(state.shopOffer?.rewardVersion===2&&state.shopOffer.items.every(type=>shopItemTypes().includes(type)))return true;
   const claimed=state.shopOffer?.claimed===true;
-  state.shopOffer={rewardVersion:2,cards:[],items:shuffled(Object.keys(ITEM_TYPES),random).slice(0,3),balls:[null,null],claimed};
+  state.shopOffer={rewardVersion:2,cards:[],items:shuffled(shopItemTypes(),random).slice(0,3),balls:[null,null],claimed};
   return true;
 }
 export function claimReward(state,type){

@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=d50998974c6f';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=dc21c587f5c9';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=f49cf1961b24';
+import {isPotion,shopItemTypes,removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=133c91377f84';
 function newStage(...args){const round=legacyNewStage(...args);round.plainRules=true;round.jokers=[];return round;}
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
@@ -39,14 +39,17 @@ function render(boardState=state){
     c.className=`cell paint-grey upgrade-${state.upgrades[number]||'plain'}${itemClass(number)}${boardState.stamps.has(tile)?' stamped':''}${offered?' offered':''}`;
     c.querySelector('span').textContent=boardState.stamps.has(tile)?(boardState.stampValues[tile]??(state.items[number]==='question'?'?':state.items[number]==='doubleball'?'×2':'')):'';
     const multiplier=state.tileMultipliers?.[tile]||1;c.querySelector('.board-ink').innerHTML=[...tileStampList(state,tile).filter(t=>t==='copier').map(()=>'<b class=copy-mark title=Copier>COPY</b>'),...tileStampList(state,tile).filter(t=>t==='trash').map(()=>'<b class=trash-mark title=Trash></b>'),...tileStampList(state,tile).filter(t=>t.startsWith('plus')).map(t=>'+'+t.slice(4)),multiplier>1?`×${multiplier}`:''].filter(Boolean).join(' ');c.classList.toggle('inked',tileStampList(state,tile).length>0);
+    if(!c.querySelector('.potion-sheen')){const sheen=document.createElement('i');sheen.className='potion-sheen';sheen.setAttribute('aria-hidden','true');c.append(sheen);}
     c.classList.toggle('large-value',String(boardState.stampValues[tile]).length>2);
     c.setAttribute('aria-label',`Row ${Math.floor((tile-1)/5)+1}, column ${(tile-1)%5+1}${boardState.stamps.has(tile)?`, stamped ${boardState.stampValues[tile]??pieceLabel(number)}`:offered?', available for any drawn ball':', empty'}. ${multiplier>1?`Tile multiplier ×${multiplier}. `:''}Complete a row, column, or diagonal to score item values and tile stamps.`);
   }}
 
-const itemClass=n=>state.items[n]==='earth'?' earth-item':state.items[n]==='doubleball'?' doubleball-item':state.items[n]==='trash'?' stamp-item trash-item':state.items[n]==='statue'?' statue-item':state.items[n]==='king'?' king-item':state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','trash','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';
+const baseItemClass=n=>state.items[n]==='earth'?' earth-item':state.items[n]==='doubleball'?' doubleball-item':state.items[n]==='trash'?' stamp-item trash-item':state.items[n]==='statue'?' statue-item':state.items[n]==='king'?' king-item':state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','trash','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';
+const itemClass=n=>(isPotion(state,n)?` potion-item ${state.items[n]}-item`:baseItemClass(n))+((state.itemEffects?.[n]||[]).includes('potion20')?' potion-gold':'')+((state.itemEffects?.[n]||[]).includes('potion2')?' potion-striped':'');
+const potionFace=type=>({potion20:'+20',potion2:'×2',potionCopy:'COPY',potionMelt:'×'})[type];
 const pieceLabel=n=>state.items[n]?`${ITEM_TYPES[state.items[n]].name}${ballValue(state,n)!==null?` (${ballValue(state,n)})`:''}`:ballValue(state,n)??'';
-const pieceFace=n=>state.items[n]==='doubleball'?'×2':state.items[n]==='trash'?'':state.items[n]==='question'?'?':state.items[n]?.startsWith('plus')?`+${state.items[n].slice(4)}`:state.items[n]==='copier'?'COPY':['x2','x3'].includes(state.items[n])?`×${state.items[n].slice(1)}`:isDie(state,n)?'?':ballValue(state,n)??'';
-function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)}`;b.classList.toggle('large-value',String(pieceFace(n)).length>2);b.dataset.number=n;b.dataset.kind=state.items[n]||'number';b.innerHTML=`<span class="face">${pieceFace(n)}</span>`;b.setAttribute('aria-label',`Inspect ${pieceLabel(n)}`);return b;}
+const pieceFace=n=>isPotion(state,n)?potionFace(state.items[n]):state.items[n]==='doubleball'?'×2':state.items[n]==='trash'?'':state.items[n]==='question'?'?':state.items[n]?.startsWith('plus')?`+${state.items[n].slice(4)}`:state.items[n]==='copier'?'COPY':['x2','x3'].includes(state.items[n])?`×${state.items[n].slice(1)}`:isDie(state,n)?'?':ballValue(state,n)??'';
+function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)}`;b.classList.toggle('large-value',String(pieceFace(n)).length>2);b.dataset.number=n;b.dataset.kind=state.items[n]||'number';b.innerHTML=`<span class="face">${pieceFace(n)}</span><i class="potion-sheen" aria-hidden="true"></i>`;b.setAttribute('aria-label',`Inspect ${pieceLabel(n)}`);return b;}
 function hideTooltip(){
   const tip=$('inspect-tooltip');
   if(tip.matches(':popover-open'))tip.hidePopover();
@@ -83,8 +86,8 @@ function showTooltip(n,anchor,space=false,catalogType=null){
   const value=catalogType?item.startingValue:space&&occupied?state.stampValues[tile]:ballValue(state,n);
   $('tooltip-number').textContent=occupied?(item?.name||'Ball'):'Nothing here';
   $('tooltip-value').hidden=!occupied;
-  $('tooltip-value').innerHTML=item?.startingValue===null?'<span class=stamp-tag>STAMP</span>':`${value??(item?.startingValue==='?'?'?':0)} ${star}`;
-  $('tooltip-effect').textContent=item?[item.text,item.details].filter(Boolean).join('. '):upgrade?BALL_UPGRADES[upgrade].text:'';
+  $('tooltip-value').innerHTML=item?.startingValue===null?`<span class=stamp-tag>${item.kind==='potion'?'POTION':'STAMP'}</span>`:`${value??(item?.startingValue==='?'?'?':0)} ${star}`;
+  $('tooltip-effect').textContent=item?[item.text,item.details,item.kind==='potion'?'Drag onto an item. One use · 1 play':null].filter(Boolean).join('. '):upgrade?BALL_UPGRADES[upgrade].text:'';
   const stamps=space?tileStampList(state,tile):[];
   $('tooltip-stamps').replaceChildren(...[...new Set(stamps)].map(type=>{
     const count=stamps.filter(stamp=>stamp===type).length;
@@ -97,6 +100,10 @@ function showTooltip(n,anchor,space=false,catalogType=null){
 
   $('tooltip-effect').innerHTML=pointCopy($('tooltip-effect').textContent);
   $('tooltip-effect').hidden=!$('tooltip-effect').textContent.trim();
+  let effects=$('tooltip-potions');if(!effects){effects=document.createElement('div');effects.id='tooltip-potions';$('tooltip-effect').after(effects);}
+  const applied=!catalogType&&occupied?(state.itemEffects?.[n]||[]):[];
+  effects.innerHTML=[...new Set(applied)].map(type=>{const count=applied.filter(e=>e===type).length;return `<div class="potion-effect ${type}">${type==='potion20'?pointCopy('+20 ★'):pointCopy('x2 to total bingo score')}${count>1?` <small>×${count}</small>`:''}</div>`;}).join('');effects.hidden=!applied.length;
+
   tip.classList.toggle('space-tooltip',space);
   tooltipAnchor=anchor;
   anchor.setAttribute('aria-describedby','inspect-tooltip');
@@ -136,10 +143,10 @@ function debugRows(){
     const line=document.createElement('div');line.className='debug-row';
     const select=document.createElement('select');select.setAttribute('aria-label',`Piece ${index+1} type`);
     for(const [type,name] of [['number','Number'],...Object.entries(ITEM_TYPES).map(([type,item])=>[type,item.name])]){const option=document.createElement('option');option.value=type;option.textContent=name;select.append(option);}select.value=row.type;
-    const value=document.createElement('input');value.type='number';value.step='1';value.inputMode='text';value.value=row.value??'';value.disabled=['doubleball','question','bomb','rock','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type);value.setAttribute('aria-label',`Piece ${index+1} ${row.type==='d20'?'roll modifier':'value'}`);
+    const value=document.createElement('input');value.type='number';value.step='1';value.inputMode='text';value.value=row.value??'';value.disabled=['potion20','potion2','potionCopy','potionMelt','doubleball','question','bomb','rock','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type);value.setAttribute('aria-label',`Piece ${index+1} ${row.type==='d20'?'roll modifier':'value'}`);
     const count=document.createElement('input');count.type='number';count.step='1';count.min='1';count.max='500';count.inputMode='numeric';count.value=row.count;count.setAttribute('aria-label',`Piece ${index+1} copies`);
     const remove=document.createElement('button');remove.textContent='×';remove.setAttribute('aria-label',`Remove piece ${index+1}`);
-    select.onchange=()=>{row.type=select.value;row.value=['doubleball','question','bomb','rock','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type)?null:['d20','earth'].includes(row.type)?0:row.type==='hundred'?50:['king','statue'].includes(row.type)?10:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
+    select.onchange=()=>{row.type=select.value;row.value=['potion20','potion2','potionCopy','potionMelt','doubleball','question','bomb','rock','x2','x3','copier','trash','plus10','plus50','plus100'].includes(row.type)?null:['d20','earth'].includes(row.type)?0:row.type==='hundred'?50:['king','statue'].includes(row.type)?10:1;debugRows();$('debug-rows').children[index].querySelector('select').focus();};
     value.oninput=()=>{row.value=value.value===''?null:value.valueAsNumber;validateDebugDraft();};count.oninput=()=>{row.count=count.value===''?null:count.valueAsNumber;validateDebugDraft();};
     remove.onclick=()=>{debugDraft.splice(index,1);debugRows();const next=$('debug-rows').children[Math.min(index,debugDraft.length-1)];(next?.querySelector('select')||$('debug-add')).focus();};
     line.append(select,value,count,remove);list.append(line);
@@ -194,6 +201,7 @@ function previewOrder(d,order){
 }
 function isOnBoard(x,y){const r=$('board').getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;}
 function nearestDestination(x,y,number){
+  if(isPotion(state,number))return [...state.stamps].find(tile=>{const r=$(`cell-${tile}`).getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;})??null;
   let nearest=null,distance=Infinity;
   for(const tile of Object.values(state.destinations)){
     if(state.stamps.has(tile))continue;
@@ -225,7 +233,8 @@ function moveDrag(e){
   document.querySelector('.board-frame').classList.toggle('drag-over',over);
   $('balls').classList.toggle('reordering',onTrack);
   document.querySelectorAll('.cell.destination').forEach(c=>c.classList.remove('destination'));
-  if(over){d.tile=isOnBoard(e.clientX,e.clientY)?nearestDestination(e.clientX,e.clientY,d.n):state.destinations[d.n];$(`cell-${d.tile}`)?.classList.add('destination');}
+  if(isPotion(state,d.n))$('gesture-hint').textContent='DROP ON AN ITEM';
+  if(over){d.tile=isOnBoard(e.clientX,e.clientY)?nearestDestination(e.clientX,e.clientY,d.n):isPotion(state,d.n)?null:state.destinations[d.n];$(`cell-${d.tile}`)?.classList.add('destination');}
   if(onTrack){
     const x=e.clientX+$('balls').scrollLeft-d.scrollLeft;
     let index=0;
@@ -249,7 +258,7 @@ async function endDrag(e){
   const action=swipeAction(d,e);
   if(action==='pass'&&!isOnBoard(e.clientX,e.clientY)){cleanDrag(d);commitOrder(d);await passTurn(d.ghost);return;}
   if(isOnBoard(e.clientX,e.clientY)||action==='play'){
-    d.tile=isOnBoard(e.clientX,e.clientY)?nearestDestination(e.clientX,e.clientY,d.n):state.destinations[d.n];cleanDrag(d);commitOrder(d);await play(d.n,d.b,d.ghost,d.tile);return;
+    d.tile=isOnBoard(e.clientX,e.clientY)?nearestDestination(e.clientX,e.clientY,d.n):isPotion(state,d.n)?null:state.destinations[d.n];cleanDrag(d);commitOrder(d);await play(d.n,d.b,d.ghost,d.tile);return;
   }
   busy=true;
   const reordered=isOnTrack(e.clientX,e.clientY);
@@ -486,7 +495,7 @@ async function rollDie(cell,value){
 }
 async function animateCopy(copy){
   const cell=$(`cell-${copy.tile}`),ink=cell.querySelector('.board-ink'),r=cell.getBoundingClientRect(),to=$('bag').getBoundingClientRect();
-  await animate(ink,[{opacity:.5},{opacity:1,transform:'scale(1.4)',offset:.5},{opacity:.7,transform:'scale(1)'}],{duration:250});
+  await animate(copy.potion?cell:ink,[{opacity:.5},{opacity:1,transform:'scale(1.4)',offset:.5},{opacity:.7,transform:'scale(1)'}],{duration:250});
   const ghost=ball(copy.id);ghost.classList.add('drag-ghost');ghost.setAttribute('aria-hidden','true');ghost.style.setProperty('--size','48px');document.body.append(ghost);
   await animate(ghost,[{transform:`translate(${r.left+r.width/2-24}px,${r.top}px) scale(.8)`,opacity:0},{transform:`translate(${r.left+r.width/2-24}px,${r.top-20}px) scale(1.1)`,opacity:1,offset:.3},{transform:`translate(${to.left+to.width/2-24}px,${to.top}px) scale(.25)`,opacity:0}],{duration:650,easing:'cubic-bezier(.3,.7,.3,1)'});
   ghost.remove();await animate($('bag'),[{transform:'scale(1)'},{transform:'scale(1.15)',offset:.4},{transform:'scale(1)'}],{duration:200});
@@ -548,11 +557,17 @@ async function play(n,b,ghost,tile=state.destinations[n]){
   if(busy){ghost?.remove();return;}lock();const result=choose(state,n,tile);if(!result){ghost?.remove();unlock();return;}
   saveRun();renderCalls(result.callsBeforeBonuses);$('bag-count').textContent=state.bag.size;
   const cell=$(`cell-${tile}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';
+  if(result.potionApplied){
+    const before=result.potionApplied.before;render(before);renderCalls(result.callsBeforeBonuses);
+    if(ghost){await animate(ghost,[{transform:ghost.style.transform,opacity:1},{transform:`translate(${r.left}px,${r.top}px) rotate(-65deg) scale(.6)`,opacity:1,offset:.65},{transform:`translate(${r.left}px,${r.top+12}px) rotate(-65deg) scale(.2)`,opacity:0}],{duration:650});ghost.remove();ghost=null;}
+    burst(r);await animate(cell,[{filter:'brightness(1)'},{filter:'brightness(1.8)',transform:'scale(1.08)',offset:.4},{filter:'brightness(1)',transform:'scale(1)'}],{duration:420});
+    if(result.potionApplied.type==='potionMelt'){const melted=ball(result.potionApplied.target);melted.classList.add('drag-ghost');melted.style.setProperty('--size',`${r.width*.85}px`);document.body.append(melted);cell.classList.remove('stamped');cell.querySelector('span').textContent='';await animate(melted,[{transform:`translate(${r.left}px,${r.top}px)`,opacity:1},{transform:`translate(${r.left}px,${r.bottom-10}px) scale(1.2,.05)`,opacity:0}],{duration:500});melted.remove();}
+  }
   if(ghost&&state.items[n]==='hundred'){ghost.remove();ghost=null;}
   if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}
   document.querySelectorAll('.cell.offered').forEach(c=>{c.className='cell paint-grey';c.querySelector('span').textContent='';});
   // Board stamps leave ink, never a temporary occupied ball face.
-  if(!result.stampApplied){
+  if(!result.stampApplied&&!result.potionApplied){
   cell.className=`cell paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)} stamped just-stamped`;cell.querySelector('span').textContent=pieceFace(n);cell.classList.toggle('large-value',String(pieceFace(n)).length>2);
   }
   if(result.swap){
@@ -650,10 +665,10 @@ function pointCopy(text){
     .replace(/(When played:|When scored:|Each play:)/g,'<b class="effect-trigger">$1</b>')
     .replace(/★/g,star);
 }
-function itemArt(type){return type==='statue'?'<i class=statue-art aria-hidden=true>10</i>':type==='king'?'<i class=king-art aria-hidden=true>10</i>':type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='doubleball'?'×2':type==='question'?'?':type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'COPY':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;}
+function itemArt(type){if(ITEM_TYPES[type]?.kind==='potion')return `<i class="potion-art ${type}-art" aria-hidden="true">${potionFace(type)}</i>`;return type==='statue'?'<i class=statue-art aria-hidden=true>10</i>':type==='king'?'<i class=king-art aria-hidden=true>10</i>':type==='hundred'?'<i class="hundred-art" aria-hidden="true">50</i>':`<i class="${type==='d20'?'die-art':`${type}-art`}" aria-hidden="true">${type==='doubleball'?'×2':type==='question'?'?':type.startsWith('plus')?`+${type.slice(4)}`:type==='copier'?'COPY':type==='d20'?'?':type==='seed'?'1':['x2','x3'].includes(type)?`×${type.slice(1)}`:''}</i>`;}
 function showCatalog(){
   if(busy)return;hideTooltip();
-  $('catalog-grid').replaceChildren(...Object.entries(ITEM_TYPES).map(([type,item])=>{
+  $('catalog-grid').replaceChildren(...shopItemTypes().map(type=>{const item=ITEM_TYPES[type];
     const owned=state.collection.filter(id=>state.items[id]===type).length,button=document.createElement('button');
     button.className=`catalog-item${owned?' owned':''}`;button.dataset.type=type;
     button.setAttribute('aria-label',`${item.name}. ${owned?'In your bag':'Not in your bag'}. Inspect effect.`);
@@ -671,9 +686,9 @@ function renderShop(){
   for(const type of state.shopOffer.items.filter(Boolean)){
     const item=ITEM_TYPES[type],card=document.createElement('button');card.id=`shop-${type}`;card.className='shop-product';
     const owned=state.collection.filter(id=>state.items[id]===type).length;
-    const action='CHOOSE';card.disabled=busy;card.setAttribute('aria-label',`${item.name}. ${item.startingValue===null?'Stamp.':`Starting stars: ${item.startingValue}.`} ${item.text} ${owned} owned.`);
+    const action='CHOOSE';card.disabled=busy;card.setAttribute('aria-label',`${item.name}. ${item.startingValue===null?(item.kind==='potion'?'Potion.':'Stamp.'):`Starting stars: ${item.startingValue}.`} ${item.text} ${owned} owned.`);
     const art=itemArt(type);
-    const badge=item.startingValue===null?'<span class="stamp-tag shop-stamp-tag" title="One-use item. Permanently marks a tile.">STAMP</span>':`<span class="starting-points" aria-label="Starting stars: ${item.startingValue}">${item.startingValue} ${star}</span>`;
+    const badge=item.startingValue===null?`<span class="stamp-tag shop-stamp-tag">${item.kind==='potion'?'POTION':'STAMP'}</span>`:`<span class="starting-points" aria-label="Starting stars: ${item.startingValue}">${item.startingValue} ${star}</span>`;
     card.innerHTML=`<span class="product-art-well">${art}</span><span class="product-body"><span class="product-top"><strong class="product-name">${pointCopy(item.name.toUpperCase())}</strong>${badge}</span><span class="product-description">${pointCopy(item.text)}</span></span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span>`;
     card.onclick=async()=>{
       if(busy)return;
@@ -775,6 +790,8 @@ function loadRun(){
     if(typeof saved.tileCopiers!=='object'||Array.isArray(saved.tileCopiers)||!Object.entries(saved.tileCopiers).every(([tile,value])=>Number.isInteger(Number(tile))&&Number(tile)>=1&&Number(tile)<=25&&value===true))throw new Error('Invalid copier tiles');
     saved.tileMultipliers??={};
     if(typeof saved.tileMultipliers!=='object'||Array.isArray(saved.tileMultipliers)||!Object.entries(saved.tileMultipliers).every(([tile,value])=>Number.isInteger(Number(tile))&&Number(tile)>=1&&Number(tile)<=25&&Number.isSafeInteger(value)&&value>=1))throw new Error('Invalid tile multipliers');
+    saved.itemEffects??={};
+    if(typeof saved.itemEffects!=='object'||Array.isArray(saved.itemEffects)||!Object.entries(saved.itemEffects).every(([id,effects])=>saved.collection.includes(Number(id))&&Array.isArray(effects)&&effects.every(e=>['potion20','potion2'].includes(e))))throw new Error('Invalid item effects');
     saved.valueModifiers??={};
     if(typeof saved.valueModifiers!=='object'||Array.isArray(saved.valueModifiers)||!Object.entries(saved.valueModifiers).every(([id,value])=>saved.collection.includes(Number(id))&&Number.isSafeInteger(value)))throw new Error('Invalid value modifiers');
     saved.ballValues??={};

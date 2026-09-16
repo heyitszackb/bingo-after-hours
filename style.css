@@ -719,3 +719,29 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .gravity-item{z-index:100}
 @media(max-width:360px){#catalog-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.cabinet.shopping .shop-heading{gap:8px}.cabinet.shopping .shop-heading:before,.cabinet.shopping .shop-heading:after{width:12px}}
 .catalog-item:not(.owned) .point-text{color:#a29b78}.catalog-item:not(.owned) .destroy-text{color:#ad8178}
+
+/* Consumables and persistent item treatments. */
+.ball.potion-item{background:transparent var(--potion-art) center/contain no-repeat!important;border:0;box-shadow:none;border-radius:0}
+.ball.potion-item:before,.ball.potion-item:after{display:none}
+.ball.potion-item .face,.cabinet:not(.shopping)>.draw-area .ball.potion-item .face{background:none;border:0;box-shadow:none;font-size:calc(var(--size)*.18);color:#273935;transform:translateY(20%)}
+.potion-art{background:var(--potion-art) center/contain no-repeat;padding-top:20%;color:#273935;font-size:15px;font-style:normal}
+.potion20-item,.potion20-art{--potion-art:url('assets/potion20.svg?v=52c3ec79276b')}
+.potion2-item,.potion2-art{--potion-art:url('assets/potion2.svg?v=0752685363fa')}
+.potionCopy-item,.potionCopy-art{--potion-art:url('assets/potionCopy.svg?v=e27eec6716a4')}
+.potionMelt-item,.potionMelt-art{--potion-art:url('assets/potionMelt.svg?v=7bed2f85e0a8')}
+.potion-sheen{display:none;pointer-events:none;position:absolute;inset:12%;border-radius:50%;z-index:2}
+.potion-gold>.potion-sheen{display:block;background:rgba(255,211,67,.28);box-shadow:inset 0 0 0 2px #e6bf6266;mix-blend-mode:multiply}
+.potion-striped>.potion-sheen{display:block;background:repeating-linear-gradient(135deg,transparent 0 7px,#da364b66 7px 11px);mix-blend-mode:multiply}
+.potion-gold.potion-striped>.potion-sheen{background:repeating-linear-gradient(135deg,#f6d45e44 0 7px,#da364b77 7px 11px)}
+.potion-effect{padding:7px 0;border-top:1px solid #80ad9555;color:#f4ce65}
+.potion-effect.potion2{border-left:3px solid #c7505c;padding-left:7px}
+#tooltip-potions{margin-top:8px}
+
+.cell:not(.stamped)>.potion-sheen{display:none}
+.earth-item>.potion-sheen{inset:4%;border-radius:0;mask:url("assets/earth.svg") center/contain no-repeat;-webkit-mask:url("assets/earth.svg") center/contain no-repeat}
+.king-item>.potion-sheen{inset:4%;border-radius:0;mask:url("assets/king.svg") center/contain no-repeat;-webkit-mask:url("assets/king.svg") center/contain no-repeat}
+.statue-item>.potion-sheen{inset:4%;border-radius:0;mask:url("assets/statue.svg") center/contain no-repeat;-webkit-mask:url("assets/statue.svg") center/contain no-repeat}
+.seed-item>.potion-sheen{inset:4%;border-radius:0;mask:url("assets/seed.svg") center/contain no-repeat;-webkit-mask:url("assets/seed.svg") center/contain no-repeat}
+.die-item>.potion-sheen{inset:4%;border-radius:0;mask:url("assets/d20.svg") center/contain no-repeat;-webkit-mask:url("assets/d20.svg") center/contain no-repeat}
+.bomb-item>.potion-sheen{inset:4%;border-radius:0;mask:url("assets/bomb.svg") center/contain no-repeat;-webkit-mask:url("assets/bomb.svg") center/contain no-repeat}
+.rock-item>.potion-sheen{inset:4%;border-radius:0;mask:url("assets/rock.svg") center/contain no-repeat;-webkit-mask:url("assets/rock.svg") center/contain no-repeat}
