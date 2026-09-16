@@ -1,6 +1,6 @@
-import {baseBagRecipe,buildDebugBag} from './debug-bag.js?v=3f65c6e68b26';
+import {baseBagRecipe,buildDebugBag} from './debug-bag.js?v=a87b98501d8a';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {MARS_PATTERNS,MOON_PATTERNS,JUPITER_PATTERNS,isTargetedPotion,BINGO_TOKEN,isPotion,shopItemTypes,removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=fdaf9df0ff68';
+import {CONDITION_PATTERNS,PERSISTENT_POTIONS,NUMBER_POTIONS,canPotionTarget,shopCategory,isTargetedPotion,BINGO_TOKEN,isPotion,shopItemTypes,removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=9a7f8df2dd9b';
 function newStage(...args){const round=legacyNewStage(...args);round.plainRules=true;round.jokers=[];return round;}
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
@@ -47,15 +47,16 @@ function render(boardState=state){
 
 let mimicAppearance=null;
 function appearanceState(){if(!mimicAppearance)return state;const {id,applied}=mimicAppearance;return {...state,items:{...state.items,[id]:applied.type==='bingo'?undefined:applied.type},ballValues:{...state.ballValues,[id]:applied.base??undefined},valueModifiers:{...state.valueModifiers,[id]:applied.modifier},itemEffects:{...state.itemEffects,[id]:applied.effects}};}
-const baseItemClass=n=>{const state=appearanceState();if(['tornado','prism','phoenix','anchor'].includes(state.items[n]))return ` ${state.items[n]}-item`;return state.items[n]==='jupiter'?' jupiter-item':state.items[n]==='moon'?' moon-item':state.items[n]==='mars'?' mars-item':state.items[n]==='earth'?' earth-item':state.items[n]==='doubleball'?' doubleball-item':state.items[n]==='trash'?' stamp-item trash-item':state.items[n]==='glass'?' glass-item':state.items[n]==='king'?' king-item':state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','trash','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';};
+const baseItemClass=n=>{const state=appearanceState();if(['tornado','prism','phoenix','anchor','blackjack','feather','oddball','sun','crown','valley'].includes(state.items[n]))return ` ${state.items[n]}-item`;return state.items[n]==='jupiter'?' jupiter-item':state.items[n]==='moon'?' moon-item':state.items[n]==='mars'?' mars-item':state.items[n]==='earth'?' earth-item':state.items[n]==='doubleball'?' doubleball-item':state.items[n]==='trash'?' stamp-item trash-item':state.items[n]==='glass'?' glass-item':state.items[n]==='king'?' king-item':state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','trash','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';};
 const itemClass=n=>{const state=appearanceState();return (isPotion(state,n)?` potion-item ${state.items[n]}-item`:baseItemClass(n))+((state.itemEffects?.[n]||[]).includes('potion20')?' potion-gold':'')+((state.itemEffects?.[n]||[]).includes('potion2')?' potion-striped':'');};
-const potionFace=type=>({potion20:'+20',potion2:'×2',potionCopy:'COPY',potionMelt:'×',potionSticky:'◆'})[type];
+const potionFace=type=>({potion20:'+20',potion2:'×2',potionCopy:'COPY',potionMelt:'×',potionSticky:'◆',potionGravity:'↓',potionTiny:'1',potionGiant:'×2',potionPolish:'+1',potionChisel:'−1'})[type];
 const pieceLabel=n=>{const state=appearanceState();return state.items[n]?`${ITEM_TYPES[state.items[n]].name}${ballValue(state,n)!==null?` (${ballValue(state,n)})`:''}`:`${BINGO_TOKEN.name} (${ballValue(state,n)??0})`;};
 const pieceFace=n=>{const state=appearanceState();return isPotion(state,n)?potionFace(state.items[n]):state.items[n]==='doubleball'?'×2':state.items[n]==='trash'?'':state.items[n]==='question'?'?':state.items[n]?.startsWith('plus')?`+${state.items[n].slice(4)}`:state.items[n]==='copier'?'COPY':['x2','x3'].includes(state.items[n])?`×${state.items[n].slice(1)}`:isDie(state,n)?'?':ballValue(state,n)??'';};
 function potionBadges(n){
   const state=appearanceState();
   const effects=state.itemEffects?.[n]||[],double=effects.filter(e=>e==='potion2').length,gold=effects.filter(e=>e==='potion20').length;
-  return `${effects.includes('potionSticky')?'<b class="potion-badge sticky" aria-label="Stuck to the board">◆</b>':''}${gold?`<b class="potion-badge gold" aria-label="${gold} plus-20 potions">+${gold*20}<small>${gold>1?`${gold}`:''}</small></b>`:''}${double?`<b class="potion-badge red" aria-label="${double} doubling potions, times ${2**double}">×${2**double}<small>${double>1?`${double}`:''}</small></b>`:''}`;
+  const extra=[...new Set(effects.filter(e=>['potionGravity',...NUMBER_POTIONS].includes(e)))].map(e=>`<b class="potion-badge" aria-label="${ITEM_TYPES[e].name}">${potionFace(e)}<small>${effects.filter(t=>t===e).length>1?effects.filter(t=>t===e).length:''}</small></b>`).join('');
+  return `${extra}${effects.includes('potionSticky')?'<b class="potion-badge sticky" aria-label="Stuck to the board">◆</b>':''}${gold?`<b class="potion-badge gold" aria-label="${gold} plus-20 potions">+${gold*20}<small>${gold>1?`${gold}`:''}</small></b>`:''}${double?`<b class="potion-badge red" aria-label="${double} doubling potions, times ${2**double}">×${2**double}<small>${double>1?`${double}`:''}</small></b>`:''}`;
 }
 function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)}`;b.classList.toggle('large-value',String(pieceFace(n)).length>2);b.dataset.number=n;b.dataset.kind=state.items[n]||'number';b.innerHTML=`<span class="face">${pieceFace(n)}</span><i class="potion-sheen" aria-hidden="true"></i><div class="potion-badges">${potionBadges(n)}</div>`;b.setAttribute('aria-label',`Inspect ${pieceLabel(n)}`);return b;}
 function hideTooltip(){
@@ -110,7 +111,7 @@ function showTooltip(n,anchor,space=false,catalogType=null){
   $('tooltip-effect').hidden=!$('tooltip-effect').textContent.trim();
   let effects=$('tooltip-potions');if(!effects){effects=document.createElement('div');effects.id='tooltip-potions';$('tooltip-effect').after(effects);}
   const applied=!catalogType&&occupied?(state.itemEffects?.[n]||[]):[];
-  effects.innerHTML=[...new Set(applied)].map(type=>{const count=applied.filter(e=>e===type).length;return `<div class="potion-effect ${type}">${type==='potionSticky'?'Stuck to the board · −1 play each round':type==='potion20'?pointCopy(`+${count*20} ★`):pointCopy(`×${2**count} to total when scoring`)}<small class="potion-count">${count} ${count===1?'potion':'potions'}${count>1&&type!=='potionSticky'?type==='potion20'?` · ${count} × +20`:` · ${Array(count).fill('×2').join(' ')}`:''}</small></div>`;}).join('');effects.hidden=!applied.length;
+  effects.innerHTML=[...new Set(applied)].map(type=>{const count=applied.filter(e=>e===type).length;const text=type==='potionSticky'?'Stuck to the board · −1 play each round':type==='potionGravity'?'Falls into empty tiles below':type==='potion20'?`+${count*20} ★`:type==='potion2'?`×${2**count} to total when scoring`:({potionTiny:'Number set to 1',potionGiant:'Number doubled',potionPolish:'+1 to number',potionChisel:'−1 to number'})[type];return `<div class="potion-effect ${type}">${pointCopy(text)}<small class="potion-count">${count} ${count===1?'potion':'potions'}</small></div>`;}).join('');effects.hidden=!applied.length;
 
   tip.classList.toggle('space-tooltip',space);
   tooltipAnchor=anchor;
@@ -190,7 +191,7 @@ function previewOrder(d,order){
 }
 function isOnBoard(x,y){const r=$('board').getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;}
 function nearestDestination(x,y,number){
-  if(isTargetedPotion(state,number))return [...state.stamps].find(tile=>{const r=$(`cell-${tile}`).getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;})??null;
+  if(isTargetedPotion(state,number))return [...state.stamps].filter(tile=>canPotionTarget(state,number,tile)).find(tile=>{const r=$(`cell-${tile}`).getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;})??null;
   let nearest=null,distance=Infinity;
   for(const tile of Object.values(state.destinations)){
     if(state.stamps.has(tile))continue;
@@ -222,7 +223,7 @@ function moveDrag(e){
   document.querySelector('.board-frame').classList.toggle('drag-over',over);
   $('balls').classList.toggle('reordering',onTrack);
   document.querySelectorAll('.cell.destination').forEach(c=>c.classList.remove('destination'));
-  if(isTargetedPotion(state,d.n))$('gesture-hint').textContent='DROP ON AN ITEM';
+  if(isTargetedPotion(state,d.n))$('gesture-hint').textContent=NUMBER_POTIONS.includes(state.items[d.n]==='question'?state.lastPlayed?.type:state.items[d.n])?'DROP ON A BINGO TOKEN':'DROP ON AN ITEM';
   if(over){d.tile=isOnBoard(e.clientX,e.clientY)?nearestDestination(e.clientX,e.clientY,d.n):isTargetedPotion(state,d.n)?null:state.destinations[d.n];$(`cell-${d.tile}`)?.classList.add('destination');}
   if(onTrack){
     const x=e.clientX+$('balls').scrollLeft-d.scrollLeft;
@@ -315,7 +316,7 @@ async function activateSpaces(result){
   let displayedScore=result.scoreBefore??state.score-result.points,displayedCalls=result.callsBeforeBonuses,total=0,lineIndex=0;
   let activePattern=[],groupSubtotal=0;
   const board=$('board'),area=document.querySelector('.draw-area'),readout=$('score-meter');
-  const colors=Object.fromEntries(['square','corners','row','column','diagonal','cross','all','mars','moon','jupiter'].map(type=>[type,'#f6d36b']));
+  const colors=Object.fromEntries(['square','corners','row','column','diagonal','cross','all','blackjack','moon','jupiter','feather','crown','valley'].map(type=>[type,'#f6d36b']));
   const allTiles=[...new Set(result.activations.map(a=>a.tile))].map(n=>$(`cell-${n}`));
   board.classList.add('scoring-board');area.classList.add('scoring-draw');
   readout.classList.add('scoring-total');$('score-line-label').hidden=false;renderScore(displayedScore);
@@ -329,11 +330,15 @@ async function activateSpaces(result){
         activePattern=activation.pattern.map(n=>$(`cell-${n}`));
         activePattern.forEach(c=>{c.style.setProperty('--scoring-color',color);c.classList.add('pattern-active','score-pending');});
         $('score-line-label').textContent=`${activation.type.toUpperCase()}${result.scoringGroups.length>1?` ${lineIndex}/${result.scoringGroups.length}`:''}`;
+        if(activation.oddball!==undefined){
+          const source=$(`cell-${activation.oddball}`);$('score-line-label').textContent='ODD BALL · AGAIN';
+          await animate(source,[{transform:'scale(1)'},{transform:'scale(1.2) rotate(8deg)',offset:.5},{transform:'scale(1)'}],{duration:400});
+        }
         if(activation.prism!==undefined){
           const prism=$(`cell-${activation.prism}`);$('score-line-label').textContent='PRISM · AGAIN';
           await animate(prism,[{filter:'brightness(1)',transform:'scale(1)'},{filter:'brightness(2)',transform:'scale(1.2)',offset:.4},{filter:'brightness(1)',transform:'scale(1)'}],{duration:420});
         }
-        if(['mars','moon','jupiter'].includes(activation.type)){
+        if(CONDITION_PATTERNS.some(p=>p.type===activation.type)){
           const source=$(`cell-${activation.source}`);source.classList.add('mars-awake');
           await animate(source,[{transform:'scale(1)'},{transform:'scale(1.18) rotate(-7deg)',offset:.4},{transform:'scale(1)'}],{duration:360});
           source.classList.remove('mars-awake');
@@ -350,6 +355,7 @@ async function activateSpaces(result){
         face.textContent=activation.number??'';cell.classList.toggle('large-value',String(activation.number).length>2);
         await animate(face,[{transform:'scaleX(0)'},{transform:'scaleX(1.2)',offset:.6},{transform:'scaleX(1)'}],{duration:240});
       }
+      if(activation.sun!==undefined){const source=$(`cell-${activation.sun}`);await scoreLink(source,cell,'#f6d36b');}
       cell.classList.add('activating','charged');
       navigator.vibrate?.(12);
       const tileImpact=animate(cell,reduced?[{opacity:.75},{opacity:1}]:[
@@ -394,7 +400,7 @@ async function activateSpaces(result){
       await animate(point,[{transform:'translate(-50%,-85%) scale(1)',opacity:1},{transform:'translate(-50%,-105%) scale(1.12)',opacity:1,offset:.25},{transform:`translate(calc(-50% + ${to.left+to.width/2-r.left-r.width/2}px),calc(-50% + ${to.top+to.height/2-r.top-r.height/2}px)) scale(.5)`,opacity:0}],{duration:Math.max(180,270-index%5*18),easing:'cubic-bezier(.4,0,.7,.4)'});
       point.remove();
       displayedScore+=activation.points;total+=activation.points;groupSubtotal+=activation.points;
-      $('score-line-label').textContent=`${['mars','moon','jupiter'].includes(activation.type)?activation.type.toUpperCase():'BINGO'} +${groupSubtotal}`;
+      $('score-line-label').textContent=`${CONDITION_PATTERNS.some(p=>p.type===activation.type)?activation.type.toUpperCase():'BINGO'} +${groupSubtotal}`;
       renderScore(displayedScore);
       await animate($('score'),reduced?[{opacity:.75},{opacity:1}]:[{transform:'scale(1.22,1.08) rotate(-2deg)'},{transform:'scale(.97,1.03)',offset:.55},{transform:'scale(1)'}],{duration:130});
       for(const copy of activation.copies||[])await animateCopy(copy);
@@ -427,7 +433,7 @@ async function activateSpaces(result){
     if(total>0){pulseBackground();navigator.vibrate?.([15,25,25]);burst($('score').getBoundingClientRect(),true);}
     await animate(readout,reduced?[{opacity:.85},{opacity:1}]:[{transform:'scale(1)'},{transform:'scale(1.08) rotate(-1deg)',offset:.25},{transform:'scale(1)',offset:.65},{transform:'scale(1)'}],{duration:360});
     await wait(600);
-    const names=result.scoringGroups.map(g=>PATTERN_TYPES.find(type=>type.id===g.type)?.label||(g.type==='mars'?'Mars trio':g.type==='moon'?'Moon pair':g.type==='jupiter'?'Jupiter trio':'Bingo'));
+    const names=result.scoringGroups.map(g=>PATTERN_TYPES.find(type=>type.id===g.type)?.label||(g.type==='blackjack'?'Blackjack trio':g.type==='moon'?'Moon pair':g.type==='jupiter'?'Jupiter trio':'Bingo'));
     $('announcer').textContent=`${names.join(', ')}. ${result.activations.length} spaces activated for ${result.points} stars.`;
   }finally{
     board.classList.remove('scoring-board');area.classList.remove('scoring-draw');readout.classList.remove('scoring-total');$('score-line-label').hidden=true;
@@ -553,7 +559,7 @@ async function animateGravity(phase){
       await animate(ghost,[{transform:`translate(${x}px,${y}px)`},{transform:`translate(${x}px,${end}px) scale(1.08,.88)`,offset:.8},{transform:`translate(${x}px,${end-3}px) scale(.97,1.03)`,offset:.92},{transform:`translate(${x}px,${end}px)`}],{duration:650+(move.to-move.from)*10,easing:'cubic-bezier(.4,0,.8,1)'});
     }));
   }finally{ghosts.forEach(({ghost})=>ghost.remove());render(phase.after);renderScore(phase.scoreBefore);}
-  $('announcer').textContent=phase.kind==='tornado'?'Tornado shuffled the board.':'Earth: all items settled downward.';
+  $('announcer').textContent=phase.kind==='tornado'?'Tornado shuffled the board.':phase.personal?'Gravity Potion: items settled downward.':'Earth: all items settled downward.';
 }
 async function animateBlockedKing(phase){
   render(phase.board);renderScore(phase.scoreBefore);
@@ -588,6 +594,7 @@ async function play(n,b,ghost,tile=state.destinations[n]){
   if(result.potionApplied){
     const before=result.potionApplied.before;render(before);renderCalls(result.callsBeforeBonuses);
     if(ghost){await animate(ghost,[{transform:ghost.style.transform,opacity:1},{transform:`translate(${r.left}px,${r.top}px) rotate(-65deg) scale(.6)`,opacity:1,offset:.65},{transform:`translate(${r.left}px,${r.top+12}px) rotate(-65deg) scale(.2)`,opacity:0}],{duration:650});ghost.remove();ghost=null;}
+    if(result.potionApplied.valueChange){const change=result.potionApplied.valueChange,face=cell.querySelector('span');face.textContent=change.before;await animate(face,[{transform:'scale(1)'},{transform:'scale(.6)',opacity:0}],{duration:180});face.textContent=change.after;await animate(face,[{transform:'scale(1.4)',opacity:0},{transform:'scale(1)',opacity:1}],{duration:280});}
     if(['potion20','potion2'].includes(result.potionApplied.type)){
       const type=result.potionApplied.type,count=state.itemEffects[result.potionApplied.target].filter(e=>e===type).length,tag=document.createElement('span');tag.className='activation-point mars-bonus';tag.textContent=type==='potion2'?`×${2**(count-1)} → ×${2**count}`:`+${(count-1)*20} → +${count*20}`;tag.style.left=`${r.left+r.width/2}px`;tag.style.top=`${r.top}px`;$('effects').append(tag);
       await animate(tag,[{opacity:0,transform:'translate(-50%,0) scale(.7)'},{opacity:1,transform:'translate(-50%,-70%) scale(1.1)',offset:.3},{opacity:1,transform:'translate(-50%,-90%) scale(1)'}],{duration:650});tag.remove();
@@ -724,7 +731,7 @@ function renderShop(){
     const action='ADD';card.disabled=busy;card.setAttribute('aria-label',`${item.name}. ${item.startingValue===null?(item.kind==='potion'?'Potion.':'Stamp.'):`Starting stars: ${item.startingValue}.`} ${item.text} ${owned} owned.`);
     const art=itemArt(type);
     const badge=item.startingValue===null?`<span class="stamp-tag shop-stamp-tag">${item.kind==='potion'?'POTION':'STAMP'}</span>`:`<span class="starting-points" aria-label="Starting stars: ${item.startingValue}">${item.startingValue} ${star}</span>`;
-    card.innerHTML=`<span class="product-art-well">${art}</span><span class="product-body"><span class="product-top"><strong class="product-name">${pointCopy(item.name.toUpperCase())}</strong>${badge}</span><span class="product-description">${pointCopy(item.text)}</span></span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span>`;
+    card.innerHTML=`<span class="product-art-well">${art}</span><span class="product-body"><span class="product-top"><strong class="product-name">${pointCopy(item.name.toUpperCase())}</strong>${badge}</span><small class="product-category">${{potion:'POTION',scoring:'SCORING',item:'ITEM'}[shopCategory(type)]}</small><span class="product-description">${pointCopy(item.text)}</span></span><span class="product-owned"><span id="${type==='bomb'?'shop-item-count':`shop-${type}-count`}">${owned}</span> OWNED</span>`;
     card.onclick=async()=>{
       if(busy)return;
       const id=state.nextItemId;
@@ -825,9 +832,9 @@ function loadRun(){
     if(typeof saved.tileCopiers!=='object'||Array.isArray(saved.tileCopiers)||!Object.entries(saved.tileCopiers).every(([tile,value])=>Number.isInteger(Number(tile))&&Number(tile)>=1&&Number(tile)<=25&&value===true))throw new Error('Invalid copier tiles');
     saved.tileMultipliers??={};
     if(typeof saved.tileMultipliers!=='object'||Array.isArray(saved.tileMultipliers)||!Object.entries(saved.tileMultipliers).every(([tile,value])=>Number.isInteger(Number(tile))&&Number(tile)>=1&&Number(tile)<=25&&Number.isSafeInteger(value)&&value>=1))throw new Error('Invalid tile multipliers');
-    if(saved.lastPlayed){const p=saved.lastPlayed;if(!(p.type==='bingo'||Object.hasOwn(ITEM_TYPES,p.type))||!(p.base===null||Number.isSafeInteger(p.base))||!Number.isSafeInteger(p.modifier)||!Array.isArray(p.effects)||!p.effects.every(e=>['potion20','potion2','potionSticky'].includes(e)))saved.lastPlayed=null;}
+    if(saved.lastPlayed){const p=saved.lastPlayed;if(!(p.type==='bingo'||Object.hasOwn(ITEM_TYPES,p.type))||!(p.base===null||Number.isSafeInteger(p.base))||!Number.isSafeInteger(p.modifier)||!Array.isArray(p.effects)||!p.effects.every(e=>PERSISTENT_POTIONS.includes(e)))saved.lastPlayed=null;}
     saved.itemEffects??={};
-    if(typeof saved.itemEffects!=='object'||Array.isArray(saved.itemEffects)||!Object.entries(saved.itemEffects).every(([id,effects])=>saved.collection.includes(Number(id))&&Array.isArray(effects)&&effects.every(e=>['potion20','potion2','potionSticky'].includes(e))))throw new Error('Invalid item effects');
+    if(typeof saved.itemEffects!=='object'||Array.isArray(saved.itemEffects)||!Object.entries(saved.itemEffects).every(([id,effects])=>saved.collection.includes(Number(id))&&Array.isArray(effects)&&effects.every(e=>PERSISTENT_POTIONS.includes(e))))throw new Error('Invalid item effects');
     saved.valueModifiers??={};
     if(typeof saved.valueModifiers!=='object'||Array.isArray(saved.valueModifiers)||!Object.entries(saved.valueModifiers).every(([id,value])=>saved.collection.includes(Number(id))&&Number.isSafeInteger(value)))throw new Error('Invalid value modifiers');
     saved.ballValues??={};
@@ -836,7 +843,7 @@ function loadRun(){
     if(typeof saved.upgrades!=='object'||Array.isArray(saved.upgrades)||!Object.entries(saved.upgrades).every(([n,type])=>Number.isInteger(Number(n))&&Number(n)>=1&&Number(n)<=25&&BALL_UPGRADES[type]))throw new Error('Invalid upgrades');
     if(saved.shopOffer!=null&&(saved.status!=='passed'||!saved.bonusPaid||!Array.isArray(saved.shopOffer.items)))throw new Error('Invalid shop');
     if(saved.shopOffer?.items&&!saved.shopOffer.items.every(type=>Object.hasOwn(ITEM_TYPES,type)))throw new Error('Invalid shop items');
-    saved.scoredLines=Array.isArray(saved.scoredLines)?[...new Set(saved.scoredLines.filter(id=>typeof id==='string'&&([...MARS_PATTERNS,...MOON_PATTERNS,...JUPITER_PATTERNS].some(p=>p.id===id)||/^(row-[1-5]|column-[1-5]|diagonal-[12]|square-(?:[1-9]|1[0-6])|corners-1|mars-(?:[1-3]|[6-8]|1[1-3]|1[6-8]|2[1-3]))$/.test(id))))]:[];
+    saved.scoredLines=Array.isArray(saved.scoredLines)?[...new Set(saved.scoredLines.filter(id=>typeof id==='string'&&(CONDITION_PATTERNS.some(p=>p.id===id)||/^(row-[1-5]|column-[1-5]|diagonal-[12]|square-(?:[1-9]|1[0-6])|corners-1|mars-(?:[1-3]|[6-8]|1[1-3]|1[6-8]|2[1-3]))$/.test(id))))]:[];
     saved.jokers=[];
     saved.jokerVersion=4;saved.plainRules=true;
     saved.patternCounts=Object.fromEntries(PATTERN_TYPES.map(({id})=>[id,Number.isSafeInteger(saved.patternCounts?.[id])&&saved.patternCounts[id]>=0?saved.patternCounts[id]:0]));

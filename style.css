@@ -815,3 +815,29 @@ footer #patterns-button{min-width:48px;color:var(--cream);border-color:#7c9a85}
 .cell.stamped.anchor-item:before{background:transparent url('assets/anchor.svg?v=8107bb700644') center/contain no-repeat!important;border:0;box-shadow:none;border-radius:0;width:88%;transform:none}
 
 .phoenix-art,.phoenix-item .face,.cell.phoenix-item>span{color:#fff1b9;text-shadow:1px 2px #77331c}
+
+.ball.blackjack-item,.blackjack-art{background:transparent url('assets/blackjack.svg?v=1c07f1eec837') center/contain no-repeat;border:0;border-radius:0}
+.cell.stamped.blackjack-item:before{background:transparent url('assets/blackjack.svg?v=1c07f1eec837') center/contain no-repeat!important;border:0;box-shadow:none;border-radius:0;width:88%;transform:none}
+
+.ball.feather-item,.feather-art{background:transparent url('assets/feather.svg?v=7abd01015a59') center/contain no-repeat;border:0;border-radius:0}
+.cell.stamped.feather-item:before{background:transparent url('assets/feather.svg?v=7abd01015a59') center/contain no-repeat!important;border:0;box-shadow:none;border-radius:0;width:88%;transform:none}
+
+.ball.oddball-item,.oddball-art{background:transparent url('assets/oddball.svg?v=ac7aa5501af0') center/contain no-repeat;border:0;border-radius:0}
+.cell.stamped.oddball-item:before{background:transparent url('assets/oddball.svg?v=ac7aa5501af0') center/contain no-repeat!important;border:0;box-shadow:none;border-radius:0;width:88%;transform:none}
+
+.ball.sun-item,.sun-art{background:transparent url('assets/sun.svg?v=62455d681c67') center/contain no-repeat;border:0;border-radius:0}
+.cell.stamped.sun-item:before{background:transparent url('assets/sun.svg?v=62455d681c67') center/contain no-repeat!important;border:0;box-shadow:none;border-radius:0;width:88%;transform:none}
+
+.ball.crown-item,.crown-art{background:transparent url('assets/crown.svg?v=f41d02935920') center/contain no-repeat;border:0;border-radius:0}
+.cell.stamped.crown-item:before{background:transparent url('assets/crown.svg?v=f41d02935920') center/contain no-repeat!important;border:0;box-shadow:none;border-radius:0;width:88%;transform:none}
+
+.ball.valley-item,.valley-art{background:transparent url('assets/valley.svg?v=2ac746dadc24') center/contain no-repeat;border:0;border-radius:0}
+.cell.stamped.valley-item:before{background:transparent url('assets/valley.svg?v=2ac746dadc24') center/contain no-repeat!important;border:0;box-shadow:none;border-radius:0;width:88%;transform:none}
+
+.ball.blackjack-item .face,.cell.blackjack-item>span{visibility:hidden}
+.product-category{font-size:11px;letter-spacing:1px;color:#86b49e;display:block;margin:4px 0}
+.potionGravity-item,.potionGravity-art{--potion-art:url('assets/potionGravity.svg?v=9f53c03ce35d')}
+.potionTiny-item,.potionTiny-art{--potion-art:url('assets/potionTiny.svg?v=8ad3a1768f20')}
+.potionGiant-item,.potionGiant-art{--potion-art:url('assets/potionGiant.svg?v=f1dea41ce695')}
+.potionPolish-item,.potionPolish-art{--potion-art:url('assets/potionPolish.svg?v=9c48d58194d0')}
+.potionChisel-item,.potionChisel-art{--potion-art:url('assets/potionChisel.svg?v=f2156febd9eb')}
