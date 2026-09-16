@@ -12,8 +12,8 @@ test('die is a free independent item, including when reopening a saved Bomb-only
 test('all 20 outcomes occur evenly, only after a valid placement',()=>{
  for(let i=0;i<200;i++){const {s,id}=fixture();offer(s,id,13);let calls=0;const random=()=>{calls++;return i/200;};
  assert.equal(choose(s,id,12,random),null);assert.equal(calls,0);assert.equal(ballValue(s,id),null);
- const r=choose(s,id,13,random);assert.equal(r.roll,1+Math.floor(i/10));assert.equal(s.stampValues[13],r.roll);assert.equal(calls,1);assert.equal(s.calls,16);assert.ok(!s.bag.has(id));
- assert.equal(choose(s,id,13,random),null);assert.equal(calls,1);
+ const r=choose(s,id,13,random);assert.equal(r.roll,1+Math.floor(i/10));assert.equal(s.stampValues[13],r.roll);const afterDeal=calls;assert.ok(calls>1);assert.equal(s.calls,16);assert.ok(!s.bag.has(id));
+ assert.equal(choose(s,id,13,random),null);assert.equal(calls,afterDeal);
  }
 });
 test('passing an unknown die preserves it without setting any value',()=>{

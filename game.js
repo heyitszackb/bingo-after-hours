@@ -108,17 +108,24 @@ export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['b
   const fixed=Object.entries(inventory?.stampBalls||{}).filter(([,id])=>items[id]==='statue'&&collection.includes(id));
   const stampBalls=Object.fromEntries(fixed),stampValues=Object.fromEntries(fixed.map(([tile,id])=>[tile,inventory.stampValues?.[tile]??ballValue(inventory,id)]));
   const fixedIds=new Set(fixed.map(([,id])=>id));
-  return {tileStamps:Object.fromEntries(Array.from({length:25},(_,i)=>[i+1,[...tileStampList(inventory||{},i+1)]]).filter(([,list])=>list.length)),tileCopiers:{...inventory?.tileCopiers},tileMultipliers:{...inventory?.tileMultipliers},activeUses:{},inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{...inventory?.ballValues},valueModifiers:{...inventory?.valueModifiers},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls,stampValues,destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:17,shopOffer:null,stage,target:targetFor(stage),score:0,calls:17,money,bonusPaid:false,stamps:new Set(fixed.map(([tile])=>Number(tile))),bag:new Set(collection.filter(id=>!fixedIds.has(id))),played:Array(nextItemId).fill(0),status:collection.length?'playing':'over',offer:[]};
+  return {tileStamps:Object.fromEntries(Array.from({length:25},(_,i)=>[i+1,[...tileStampList(inventory||{},i+1)]]).filter(([,list])=>list.length)),tileCopiers:{...inventory?.tileCopiers},tileMultipliers:{...inventory?.tileMultipliers},activeUses:{},handVersion:1,inventoryVersion:1,collection,items,nextItemId,shopVersion:1,turnVersion:1,passes:10,rulesVersion:3,upgradeVersion:2,ballValues:{...inventory?.ballValues},valueModifiers:{...inventory?.valueModifiers},jokerVersion:4,scoredLines:[],jokers:normalizeJokers(jokers),patternCounts:{...freshPatternCounts(),...patternCounts},stampBalls,stampValues,destinations:{},upgrades:Object.fromEntries(Object.entries(upgrades).filter(([,type])=>Object.hasOwn(BALL_UPGRADES,type))),callCapacity:17,shopOffer:null,stage,target:targetFor(stage),score:0,calls:17,money,bonusPaid:false,stamps:new Set(fixed.map(([tile])=>Number(tile))),bag:new Set(collection.filter(id=>!fixedIds.has(id))),played:Array(nextItemId).fill(0),status:collection.length?'playing':'over',offer:[]};
 }
 const shuffled=(values,random)=>{
   const result=[...values];for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;
 };
-export function deal(state,random=Math.random,count=1){
+export function deal(state,random=Math.random,count=3,exclude=null){
+  state.offer=(state.offer||[]).filter(n=>state.bag.has(n));
+  const held=new Set(state.offer),candidates=shuffled([...state.bag].filter(n=>!held.has(n)&&n!==exclude),random);
+  if(exclude!==null&&state.bag.has(exclude)&&!held.has(exclude))candidates.push(exclude);
+  const additions=candidates.slice(0,Math.max(0,count-state.offer.length));
+  state.offer.splice(state.refillSlot??state.offer.length,0,...additions);delete state.refillSlot;
+  const previous=new Set(Object.values(state.destinations||{}));
   const empty=Array.from({length:25},(_,i)=>i+1).filter(tile=>!state.stamps.has(tile));
-  state.offer=draw(state,random,Math.min(count,empty.length));
-  for(let i=empty.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[empty[i],empty[j]]=[empty[j],empty[i]];}
-  state.destinations=Object.fromEntries(state.offer.map((number,i)=>{const available=empty.filter(t=>!isStamp(state,number)||tileStampList(state,t).length<4);return [number,available.length?available[i%available.length]:null];}));
-  return state.offer;
+  const compatible=empty.filter(tile=>!state.offer.some(n=>isStamp(state,n))||tileStampList(state,tile).length<4);
+  const choices=compatible.length?compatible:empty,fresh=choices.filter(tile=>!previous.has(tile));
+  const pool=fresh.length?fresh:choices,tile=pool.length?pool[Math.floor(random()*pool.length)]:null;
+  state.destinations=Object.fromEntries(state.offer.map(n=>[n,tile]));
+  state.handVersion=1;return state.offer;
 }
 export function draw(state=newStage(),random=Math.random,count=1) {
   const bag=[...state.bag];
@@ -143,13 +150,14 @@ export const kingNeighbors=tile=>Array.from({length:25},(_,i)=>i+1).filter(t=>t!
 export function choose(state,number,tile=state.destinations[number],random=Math.random) {
   if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||!Object.values(state.destinations).includes(tile)||tile<1||tile>25||state.stamps.has(tile))return null;
   if(isStamp(state,number)&&tileStampList(state,tile).length>=4)return null;
+  const refillSlot=state.offer.indexOf(number);
   const copies=[],copied=null;
   const roll=isDie(state,number)?1+Math.floor(random()*20)+(state.valueModifiers?.[number]||0):null;
   const playCost=isRock(state,number)?0:1;
   state.stamps.add(tile);state.stampBalls[tile]=number;state.stampValues[tile]=roll??ballValue(state,number);state.bag.delete(number);state.played[number]=(state.played[number]||0)+1;state.calls-=playCost;
   let swap=null;
   if(state.items[number]==='question'){
-    const available=[...state.bag].filter(id=>state.items[id]!=='question'&&!isStamp(state,id));
+    const available=[...state.bag].filter(id=>state.items[id]!=='question'&&!isStamp(state,id)&&!state.offer.includes(id));
     if(available.length){
       const id=available[Math.floor(random()*available.length)];
       state.bag.delete(id);state.bag.add(number);state.stampBalls[tile]=id;state.played[id]=(state.played[id]||0)+1;
@@ -241,9 +249,11 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   const patterns=phases.flatMap(p=>p.patterns),scoredPatterns=phases.flatMap(p=>p.scoredPatterns),scoringGroups=phases.flatMap(p=>p.scoringGroups),activations=phases.flatMap(p=>p.activations);
   const points=phases.reduce((sum,p)=>sum+p.points,0),scoringBoard=initial.scoringBoard;
 
-  state.offer=[];state.destinations={};
+  state.offer=state.offer.filter(n=>n!==number&&state.bag.has(n));state.refillSlot=refillSlot;
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
+  if(state.status==='playing')deal(state,random,3,number);
+  else{state.offer=[];state.destinations={};delete state.refillSlot;}
   return {timeline,tile,swap,playedNumber:swap?.to??number,movementBoard,kingMoves,scoringBoard,copied,copies,stampApplied,playCost,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
 }
 function cardEvents(state){
@@ -295,17 +305,11 @@ export function activateCard(state,id,random=Math.random){
   if(state.score>=state.target)state.status='passed';
   return {scoringBoard,scoringGroups,activations,points,callsBeforeBonuses:state.calls};
 }
-export function redraw(state,random=Math.random) {
-  if(state.status!=='playing'||state.passes<1||!state.offer.length)return false;
-  const oldBalls=new Set(state.offer),oldTiles=new Set(Object.values(state.destinations));
-  state.passes--;deal(state,random);
-  // The offered ball is still in the bag. Prefer a fresh ball and space when possible.
-  const candidates=[...state.bag].filter(n=>!oldBalls.has(n));
-  if(candidates.length)state.offer=[candidates[Math.floor(random()*candidates.length)]];
-  const empty=Array.from({length:25},(_,i)=>i+1).filter(t=>!state.stamps.has(t)&&!oldTiles.has(t));
-  const available=empty.filter(t=>!isStamp(state,state.offer[0])||tileStampList(state,t).length<4);
-  const tile=available.length?available[Math.floor(random()*available.length)]:Object.values(state.destinations)[0];
-  state.destinations=Object.fromEntries(state.offer.map(n=>[n,tile]));
+export function redraw(state,random=Math.random,number=state.offer[0]) {
+  if(state.status!=='playing'||state.passes<1||!state.offer.includes(number))return false;
+  state.passes--;state.refillSlot=state.offer.indexOf(number);
+  state.offer=state.offer.filter(n=>n!==number);
+  deal(state,random,3,number);
   return true;
 }
 

@@ -1,6 +1,6 @@
-import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=c709a7bb6514';
+import {baseBagRecipe,bagRecipe,buildDebugBag} from './debug-bag.js?v=d50998974c6f';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=8c195f64af8a';
+import {removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=f49cf1961b24';
 function newStage(...args){const round=legacyNewStage(...args);round.plainRules=true;round.jokers=[];return round;}
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
@@ -30,8 +30,8 @@ function renderScore(value=state.score){
 }
 function render(boardState=state){
   $('bag').disabled=busy;
-  const freePlay=state.items[state.offer[0]]==='rock';$('play-ball').querySelector('span').textContent=freePlay?'↑ PLAY · 0 PLAYS':'↑ PLAY';$('play-ball').classList.toggle('free-play',freePlay);
-  $('redraw').classList.toggle('exhausted',state.passes===0);$('play-ball').disabled=busy||!!drag||state.status!=='playing'||!state.offer.length;$('play-ball').setAttribute('aria-label',`Play ball ${pieceLabel(state.offer[0])} on the highlighted space. ${state.calls} plays remaining.`);
+  const freePlay=state.offer.length===1&&state.items[state.offer[0]]==='rock';$('play-ball').querySelector('span').textContent=freePlay?'↑ PLAY · 0 PLAYS':'↑ PLAY';$('play-ball').classList.toggle('free-play',freePlay);
+  $('redraw').classList.toggle('exhausted',state.passes===0);$('play-ball').disabled=busy||!!drag||state.status!=='playing'||!state.offer.length;$('play-ball').setAttribute('aria-label',`Swipe any offered ball up to play it on the highlighted space. ${state.calls} plays remaining.`);
   $('patterns-button').disabled=busy||payingOut;$('score-patterns').disabled=busy||payingOut;
   $('score-patterns').setAttribute('aria-label',`${state.score} of ${state.target} stars. View scoring patterns and run counts`);
   $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);renderScore();for(const k of ['calls','stage'])$(k).textContent=state[k];$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.max(0,Math.min(100,state.score/state.target*100))}%`;$('redraw-cost').textContent=state.passes;$('redraw').disabled=busy||state.passes<1||state.status!=='playing';$('redraw').setAttribute('aria-label',`Pass: ${state.passes} remaining. Return this ball and draw a new ball and space without spending a play.`);renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
@@ -46,7 +46,7 @@ function render(boardState=state){
 const itemClass=n=>state.items[n]==='earth'?' earth-item':state.items[n]==='doubleball'?' doubleball-item':state.items[n]==='trash'?' stamp-item trash-item':state.items[n]==='statue'?' statue-item':state.items[n]==='king'?' king-item':state.items[n]==='copier'?' stamp-item copier-item':state.items[n]==='question'?' question-item':isBomb(state,n)?' bomb-item':isDie(state,n)?' die-item':state.items[n]==='hundred'?' hundred-item':state.items[n]==='rock'?' rock-item':state.items[n]==='seed'?' seed-item':['x2','x3','copier','trash','plus10','plus50','plus100'].includes(state.items[n])?' stamp-item':'';
 const pieceLabel=n=>state.items[n]?`${ITEM_TYPES[state.items[n]].name}${ballValue(state,n)!==null?` (${ballValue(state,n)})`:''}`:ballValue(state,n)??'';
 const pieceFace=n=>state.items[n]==='doubleball'?'×2':state.items[n]==='trash'?'':state.items[n]==='question'?'?':state.items[n]?.startsWith('plus')?`+${state.items[n].slice(4)}`:state.items[n]==='copier'?'COPY':['x2','x3'].includes(state.items[n])?`×${state.items[n].slice(1)}`:isDie(state,n)?'?':ballValue(state,n)??'';
-function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)}`;b.classList.toggle('large-value',String(pieceFace(n)).length>2);b.dataset.number=n;b.innerHTML=`<span class="face">${pieceFace(n)}</span>`;b.setAttribute('aria-label',`Inspect ${pieceLabel(n)}`);return b;}
+function ball(n){const b=document.createElement('button');b.className=`ball paint-grey upgrade-${state.upgrades[n]||'plain'}${itemClass(n)}`;b.classList.toggle('large-value',String(pieceFace(n)).length>2);b.dataset.number=n;b.dataset.kind=state.items[n]||'number';b.innerHTML=`<span class="face">${pieceFace(n)}</span>`;b.setAttribute('aria-label',`Inspect ${pieceLabel(n)}`);return b;}
 function hideTooltip(){
   const tip=$('inspect-tooltip');
   if(tip.matches(':popover-open'))tip.hidePopover();
@@ -169,8 +169,8 @@ $('debug-apply').onclick=async()=>{
 };
 function lock(){hideTooltip();busy=true;render();document.querySelectorAll('#balls .ball').forEach(b=>b.disabled=true);}
 function unlock(){busy=false;saveRun();render();document.querySelectorAll('#balls .ball').forEach(b=>{b.disabled=false;b.classList.remove('enter');});}
-function showBalls(){$('balls').replaceChildren();state.offer.forEach((n,i)=>{const b=ball(n);b.classList.add('enter');b.style.setProperty('--i',i);b.disabled=true;b.setAttribute('aria-label',`Ball ${pieceLabel(n)}. Tap to inspect. Drag along the track to reorder, or onto the board to play. Keyboard: Enter to inspect, Space to play.`);b.addEventListener('pointerdown',e=>startDrag(e,n,b));b.addEventListener('pointermove',moveDrag);b.addEventListener('pointerup',endDrag);b.addEventListener('pointercancel',cancelDrag);b.addEventListener('lostpointercapture',()=>{if(drag)cancelDrag();});b.onclick=e=>{if(e.detail===0&&!busy)inspect(n,b);};b.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();if(!busy&&!drag)play(n,b);} };$('balls').append(b);});refreshBag();}
-async function nextDraw(){resetResultUI();lock();deal(state);render();showBalls();await wait(770);unlock();}
+function showBalls(){const held=new Map([...$('balls').children].map(b=>[Number(b.dataset.number),b]));const nodes=[];state.offer.forEach((n,i)=>{if(held.has(n)&&held.get(n).style.visibility!=='hidden'&&held.get(n).dataset.kind===(state.items[n]||'number')&&held.get(n).querySelector('.face').textContent===String(pieceFace(n))){const b=held.get(n);b.style.order='';b.disabled=true;nodes.push(b);return;}const b=ball(n);b.classList.add('enter');b.style.setProperty('--i',i);b.disabled=true;b.setAttribute('aria-label',`Ball ${pieceLabel(n)}. Tap to inspect. Swipe up to play, down to pass, or drag sideways to reorder. Keyboard: Enter to inspect, Space to play.`);b.addEventListener('pointerdown',e=>startDrag(e,n,b));b.addEventListener('pointermove',moveDrag);b.addEventListener('pointerup',endDrag);b.addEventListener('pointercancel',cancelDrag);b.addEventListener('lostpointercapture',()=>{if(drag)cancelDrag();});b.onclick=e=>{if(e.detail===0&&!busy)inspect(n,b);};b.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();if(!busy&&!drag)play(n,b);} };nodes.push(b);});$('balls').replaceChildren(...nodes);refreshBag();}
+async function nextDraw(){resetResultUI();lock();if(!state.offer.length)deal(state);render();showBalls();await wait(770);unlock();}
 function startDrag(e,n,b){
   if(busy||drag||e.button!==0)return;
   e.preventDefault();b.setPointerCapture(e.pointerId);
@@ -547,7 +547,7 @@ async function animateKings(result){
 async function play(n,b,ghost,tile=state.destinations[n]){
   if(busy){ghost?.remove();return;}lock();const result=choose(state,n,tile);if(!result){ghost?.remove();unlock();return;}
   saveRun();renderCalls(result.callsBeforeBonuses);$('bag-count').textContent=state.bag.size;
-  const cell=$(`cell-${tile}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';document.querySelectorAll('#balls .ball').forEach(other=>{if(other!==b)other.classList.add('leave');});
+  const cell=$(`cell-${tile}`),r=cell.getBoundingClientRect();b.style.visibility='hidden';
   if(ghost&&state.items[n]==='hundred'){ghost.remove();ghost=null;}
   if(ghost){const size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform},{transform:`translate(${r.left+(r.width-size)/2}px,${r.top+(r.height-size)/2}px) scale(.72) rotate(-12deg)`}],{duration:190,easing:'cubic-bezier(.15,.8,.25,1)'});ghost.remove();}
   document.querySelectorAll('.cell.offered').forEach(c=>{c.className='cell paint-grey';c.querySelector('span').textContent='';});
@@ -624,16 +624,16 @@ async function showResult(){
 $('continue').onclick=async()=>{if(payingOut)return;const next=state.status==='passed'?state.stage+1:1;state=newStage(next,next===1?5:state.money,next===1?{}:state.upgrades,next===1?{}:state.patternCounts,next===1?undefined:state.jokers,next===1?defaultBag():state);hasRun=true;saveRun();resetResultUI();await nextDraw();};
 function playOfferedBall(){
   if(busy||drag||state.status!=='playing'||!state.offer.length)return;
-  const n=state.offer[0],b=$('balls').querySelector(`[data-number="${n}"]`);if(!b)return;
+  const n=Number(document.activeElement?.closest('#balls .ball')?.dataset.number)||state.offer[0],b=$('balls').querySelector(`[data-number="${n}"]`);if(!b)return;
   const r=b.getBoundingClientRect(),ghost=b.cloneNode(true);ghost.className=b.className.replace(/enter|leave/g,'')+' drag-ghost';ghost.removeAttribute('data-number');ghost.setAttribute('aria-hidden','true');ghost.style.setProperty('--size',`${r.width}px`);ghost.style.transform=`translate(${r.left}px,${r.top}px)`;document.body.append(ghost);
   play(n,b,ghost);
 };
 async function passTurn(ghost=null){
   if(busy||drag||state.passes<1||state.status!=='playing'){ghost?.remove();return;}
-  const b=ghost?$('balls').querySelector(`[data-number="${ghost.dataset.number}"]`):$('balls').firstElementChild,r=b?.getBoundingClientRect();
+  const b=ghost?$('balls').querySelector(`[data-number="${ghost.dataset.number}"]`):(document.activeElement?.closest('#balls .ball')||$('balls').firstElementChild),r=b?.getBoundingClientRect();
   if(!ghost&&b){ghost=b.cloneNode(true);ghost.classList.add('drag-ghost');ghost.classList.remove('enter');ghost.setAttribute('aria-hidden','true');ghost.style.setProperty('--size',`${r.width}px`);ghost.style.transform=`translate(${r.left}px,${r.top}px)`;document.body.append(ghost);}
-  lock();if(!redraw(state)){ghost?.remove();unlock();return;}saveRun();$('redraw-cost').textContent=state.passes;if(b)b.style.visibility='hidden';
-  document.querySelectorAll('#balls .ball').forEach(ball=>ball.classList.add('leave'));
+  lock();if(!redraw(state,Math.random,Number(b.dataset.number))){ghost?.remove();unlock();return;}saveRun();$('redraw-cost').textContent=state.passes;if(b)b.style.visibility='hidden';
+
   if(ghost){const to=$('bag').getBoundingClientRect(),size=parseFloat(ghost.style.getPropertyValue('--size'));await animate(ghost,[{transform:ghost.style.transform,opacity:1},{transform:`translate(${to.left+(to.width-size)/2}px,${to.top}px) scale(.15) rotate(90deg)`,opacity:0}],{duration:330,easing:'cubic-bezier(.4,0,.8,.4)'});ghost.remove();}
   animate($('bag'),[{transform:'scale(1.15)'},{transform:'scale(1)'}],{duration:190});render();showBalls();await wait(770);unlock();$('announcer').textContent=`Passed. ${state.passes} passes and ${state.calls} plays remaining.`;
 }
@@ -727,7 +727,7 @@ async function finishShop(){
   if(shopping)await slideSurface([$('shop-screen')],false,1);
   shopping=false;$('game-screen').classList.remove('shopping');$('shop-screen').hidden=true;
   state=newStage(state.stage+1,state.money,state.upgrades,state.patternCounts,state.jokers,state);
-  resetResultUI();deal(state);render();showBalls();saveRun();
+  $('balls').replaceChildren();resetResultUI();deal(state);render();showBalls();saveRun();
   await slideSurface(playSurface(),true,-1);
   unlock();
 }
@@ -795,10 +795,11 @@ function loadRun(){
       if(!stampBalls||typeof stampBalls!=='object'||Array.isArray(stampBalls)||!destinations||typeof destinations!=='object'||Array.isArray(destinations)||!stampValues||typeof stampValues!=='object'||Array.isArray(stampValues))throw new Error('Invalid placements');
       if(Object.keys(stampBalls).length!==saved.stamps.length||!ids(Object.values(stampBalls))||!saved.stamps.every(tile=>stampBalls[tile]&&saved.collection.includes(stampBalls[tile])&&!saved.bag.includes(stampBalls[tile])))throw new Error('Invalid stamps');
       if(Object.keys(stampValues).length!==saved.stamps.length||!saved.stamps.every(tile=>stampValues[tile]===null||Number.isSafeInteger(stampValues[tile])))throw new Error('Invalid values');
-      if(Object.keys(destinations).length!==saved.offer.length||!numbers(Object.values(destinations))||!saved.offer.every(n=>destinations[n]&&!saved.stamps.includes(destinations[n])))throw new Error('Invalid destinations');
+      if(Object.keys(destinations).length!==saved.offer.length||!Object.values(destinations).every(t=>Number.isInteger(t)&&t>=1&&t<=25)||!saved.offer.every(n=>destinations[n]&&!saved.stamps.includes(destinations[n])))throw new Error('Invalid destinations');
       state={...newStage(saved.stage,saved.money),...saved,rulesVersion:3,target:targetFor(saved.stage),stamps:new Set(saved.stamps),bag:new Set(saved.bag)};
     }
     if(oldTurn&&state.status==='playing'){state.offer=[];state.destinations={};}
+    if(saved.handVersion!==1&&state.status==='playing')deal(state);
     hasRun=true;
   }catch{try{localStorage.removeItem(SAVE_KEY);}catch{}}
 }
