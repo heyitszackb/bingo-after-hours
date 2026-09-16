@@ -12,7 +12,19 @@ export const PATTERN_DEFINITIONS = [
   {id:'diagonal-2',type:'diagonal',tiles:[5,9,13,17,21]},
 ];
 export const EXTRA_PATTERNS=[...Array.from({length:16},(_,i)=>{const t=Math.floor(i/4)*5+i%4+1;return {id:`square-${i+1}`,type:'square',tiles:[t,t+1,t+5,t+6]};}),{id:'corners-1',type:'corners',tiles:[1,5,21,25]}];
-export const MARS_PATTERNS=Array.from({length:15},(_,i)=>{const start=Math.floor(i/3)*5+i%3+1;return {id:`mars-${start}`,type:'mars',tiles:[start,start+1,start+2]};});
+function adjacentPatterns(length,type){
+  return [[0,1,'h'],[1,0,'v'],[1,1,'dr'],[1,-1,'dl']].flatMap(([dr,dc,direction])=>Array.from({length:25},(_,i)=>{
+    const row=Math.floor(i/5),col=i%5,endRow=row+dr*(length-1),endCol=col+dc*(length-1);
+    if(endRow>=5||endCol<0||endCol>=5)return null;
+    return {id:type==='mars'&&direction==='h'?`mars-${i+1}`:`${type}-${direction}-${i+1}`,type,tiles:Array.from({length},(_,step)=>i+1+step*(dr*5+dc))};
+  }).filter(Boolean));
+}
+export const MARS_PATTERNS=adjacentPatterns(3,'mars');
+export const MOON_PATTERNS=adjacentPatterns(2,'moon');
+export const planetPairMatches=(state,[a,b])=>{
+  const first=state.items[state.stampBalls[a]],second=state.items[state.stampBalls[b]];
+  return first||second?!!first&&first===second:Number.isFinite(state.stampValues[a])&&state.stampValues[a]===state.stampValues[b];
+};
 export const PATTERNS = PATTERN_DEFINITIONS.map(pattern=>pattern.tiles);
 export const freshPatternCounts=()=>Object.fromEntries(PATTERN_TYPES.map(({id})=>[id,0]));
 export const completedPatterns=stamps=>PATTERN_DEFINITIONS.filter(({tiles})=>tiles.every(tile=>stamps.has(tile)));
@@ -43,7 +55,8 @@ export const ITEM_TYPES={
   seed:{name:'Seed',text:'When played: increases by 1 ★ each turn',startingValue:1,price:0},
   bomb:{name:'Bomb',text:'Permanently destroy all adjacent items',details:'Also destroys itself. Tile stamps stay.',startingValue:0,price:0},
   d20:{name:'20-Sided Die',text:'When played: random value between 1–20 ★',startingValue:'?',price:0},
-  mars:{name:'Mars',text:'While on board: score 3 in a row, each ≤9, +100 ★',details:'Horizontal. Overlaps count; each trio once per round.',startingValue:0,price:0},
+  moon:{name:'Moon',text:'While on board: score matching neighbors, +100 ★ per pair',details:'Any direction. Match numbers by value, special items by type. Each pair once per round.',startingValue:0,price:0},
+  mars:{name:'Mars',text:'While on board: score 3 in a row, each ≤9, +100 ★',details:'Any direction. Overlaps count; each trio once per round.',startingValue:0,price:0},
   earth:{name:'Earth',text:'When played: all items respond to gravity',details:'Stamps stay put. Score before and after the fall.',startingValue:0,price:0},
   rock:{name:'Rock',text:'Free to play',startingValue:0,price:0}
 };
@@ -93,7 +106,7 @@ export const normalizeJokers=jokers=>{
     return CARD_TYPES[cardType(id)]&&cardDetails(id)&&purchased++<5;
   });
 };
-export const ballValue=(state,number)=>number==null||isPotion(state,number)||state.items?.[number]==='doubleball'||state.items?.[number]==='question'||isBomb(state,number)||isDie(state,number)||isRock(state,number)||isStamp(state,number)?null:((state.ballValues?.[number]??(['king','statue'].includes(state.items?.[number])?10:state.items?.[number]==='hundred'?50:state.items?.[number]==='seed'?1:['earth','mars'].includes(state.items?.[number])?0:number))+(state.valueModifiers?.[number]||0));
+export const ballValue=(state,number)=>number==null||isPotion(state,number)||state.items?.[number]==='doubleball'||state.items?.[number]==='question'||isBomb(state,number)||isDie(state,number)||isRock(state,number)||isStamp(state,number)?null:((state.ballValues?.[number]??(['king','statue'].includes(state.items?.[number])?10:state.items?.[number]==='hundred'?50:state.items?.[number]==='seed'?1:['earth','mars','moon'].includes(state.items?.[number])?0:number))+(state.valueModifiers?.[number]||0));
 const boardSnapshot=state=>({stamps:new Set(state.stamps),stampBalls:{...state.stampBalls},stampValues:{...state.stampValues}});
 export const orthogonalNeighbors=tile=>[tile-5,tile+1,tile+5,tile-1].filter(t=>t>=1&&t<=25&&Math.abs(Math.floor((t-1)/5)-Math.floor((tile-1)/5))+Math.abs((t-1)%5-(tile-1)%5)===1);
 // Effects produce a common before/after event for the UI, independent of scoring.
@@ -239,13 +252,14 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
     const scored=scoreGroups(state,scoringGroups,events,random);
     const phase={kind:'score',...scored,scoreBefore,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups};
     if(scored.activations.length)timeline.push(phase);
-    // Mars enables a board-wide condition: placing it can activate trios already
+    // Planets enable board-wide conditions: placing it can activate trios already
     // present. Recheck its presence and each trio after destructive scoring ink.
-    for(const pattern of MARS_PATTERNS){
-      const source=[...state.stamps].find(t=>state.items[state.stampBalls[t]]==='mars');
-      if(source===undefined)break;
-      if(state.scoredLines.includes(pattern.id)||!pattern.tiles.every(t=>state.stamps.has(t)&&Number.isFinite(state.stampValues[t])&&state.stampValues[t]<=9))continue;
-      const group={trigger:'mars',retriggers:[],type:'mars',tiles:pattern.tiles,flatBonus:100,source};
+    for(const pattern of [...MARS_PATTERNS,...MOON_PATTERNS]){
+      const source=[...state.stamps].find(t=>state.items[state.stampBalls[t]]===pattern.type);
+      if(source===undefined)continue;
+      if(state.scoredLines.includes(pattern.id)||!pattern.tiles.every(t=>state.stamps.has(t)))continue;
+      if(pattern.type==='mars'?!pattern.tiles.every(t=>Number.isFinite(state.stampValues[t])&&state.stampValues[t]<=9):!planetPairMatches(state,pattern.tiles))continue;
+      const group={trigger:pattern.type,retriggers:[],type:pattern.type,tiles:pattern.tiles,flatBonus:100,source};
       const before=state.score,mars=scoreGroups(state,[group],events,random);
       state.scoredLines.push(pattern.id);
       timeline.push({kind:'score',...mars,scoreBefore:before,callsBeforeBonuses,patterns:[pattern.tiles],scoredPatterns:[pattern],scoringGroups:[group]});
