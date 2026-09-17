@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {new
 const make=()=>{const s=newStage(100);s.plainRules=true;add(s,'moon');return s;};
 function add(s,type,value){const id=s.nextItemId++;s.items[id]=type;s.collection.push(id);s.bag.add(id);s.played[id]=0;if(value!==undefined)s.ballValues[id]=value;return id;}
 const put=(s,id,tile,value=ballValue(s,id))=>{s.stamps.add(tile);s.stampBalls[tile]=id;s.stampValues[tile]=value;s.bag.delete(id);};
-const play=(s,id,tile)=>{s.offer=[id];s.destinations={[id]:tile};return choose(s,id,tile,()=>0);};
+const play=(s,id,tile)=>{s.offer=[id];s.playableSpaces=undefined;s.destinations={[id]:tile};return choose(s,id,tile,()=>0);};
 const phases=r=>r.timeline.filter(p=>p.scoringGroups?.[0]?.type==='moon');
 test('all adjacent pairs and directional trios are unique and bounded',()=>{assert.equal(MOON_PATTERNS.length,40);assert.equal(MARS_PATTERNS.length,48);for(const list of [MOON_PATTERNS,MARS_PATTERNS]){assert.equal(new Set(list.map(p=>p.tiles.join())).size,list.length);assert.ok(list.every(p=>p.tiles.every(t=>t>=1&&t<=25)));}});
 test('Moon scores matching number pairs for 112 in both orthogonal directions',()=>{for(const tiles of [[1,2],[1,6]]){const s=make();put(s,26,25);put(s,6,tiles[0]);s.ballValues[7]=6;assert.equal(play(s,7,tiles[1]).points,112);assert.equal(play(s,20,20).points,0);}});

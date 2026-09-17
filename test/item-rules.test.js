@@ -1,4 +1,4 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {newStage,choose} from '../game.js';
-const put=(s,n,t)=>{s.stamps.add(t);s.stampBalls[t]=n;s.stampValues[t]=n;s.bag.delete(n);};const play=(s,n,t)=>{s.offer=[n];s.destinations={[n]:t};return choose(s,n);};
+const put=(s,n,t)=>{s.stamps.add(t);s.stampBalls[t]=n;s.stampValues[t]=n;s.bag.delete(n);};const play=(s,n,t)=>{s.offer=[n];s.playableSpaces=undefined;s.destinations={[n]:t};return choose(s,n);};
 test('item-only rules score lines and values with no cards, and ignore all retired card effects',()=>{for(const jokers of [[],['encore:1','bingo','crowd:1','square:1','high-five:range1:1']]){const s=newStage(10,0,{}, {},jokers);s.plainRules=true;[1,2,3,4].forEach(n=>put(s,n,n));put(s,6,6);put(s,7,7);const r=play(s,5,5);assert.equal(r.points,15);assert.equal(r.scoringGroups.length,1);assert.equal(r.activations.length,5);}});
 test('four corners and squares alone cannot score in item-only mode',()=>{const s=newStage(10);s.plainRules=true;s.jokers=['corners:1','square:1'];[1,5,21].forEach(n=>put(s,n,n));assert.equal(play(s,25,25).points,0);});

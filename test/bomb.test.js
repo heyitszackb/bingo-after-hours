@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {newStage,openShop,buyItem,choose,draw,redraw,ballValue,migrateInventory} from '../game.js';
 const withBomb=()=>{const s=newStage(1,0);s.status='passed';s.bonusPaid=true;openShop(s);const id=buyItem(s,'bomb');return {s:newStage(10,s.money,s.upgrades,s.patternCounts,s.jokers,s),id};};
 const stamp=(s,id,tile)=>{s.stamps.add(tile);s.stampBalls[tile]=id;s.stampValues[tile]=ballValue(s,id);s.bag.delete(id);};
-const play=(s,id,tile)=>{s.offer=[id];s.destinations={[id]:tile};return choose(s,id,tile);};
+const play=(s,id,tile)=>{s.offer=[id];s.playableSpaces=undefined;s.destinations={[id]:tile};return choose(s,id,tile);};
 test('free repeatable Bomb additions have independent identities and survive round transitions',()=>{
  const s=newStage(1,0);assert.equal(buyItem(s,'bomb'),false);s.status='passed';s.bonusPaid=true;openShop(s);
  const a=buyItem(s,'bomb'),b=buyItem(s,'bomb');assert.equal(a,26);assert.equal(b,27);assert.equal(s.money,0);assert.equal(s.collection.length,27);assert.equal(s.bag.size,27);assert.equal(ballValue(s,a),null);
@@ -15,7 +15,7 @@ test('Bomb and numbered balls each occupy one equally selectable position in the
  assert.equal(heads,50);assert.deepEqual(new Set(draw(s,()=>.5,30)),s.bag);
 });
 test('passing a Bomb spends a pass and neither removes it nor explodes neighbors',()=>{
- const {s,id}=withBomb();stamp(s,1,1);s.offer=[id];s.destinations={[id]:7};const roster=[...s.collection];assert.ok(redraw(s,()=>.5));
+ const {s,id}=withBomb();stamp(s,1,1);s.offer=[id];s.playableSpaces=undefined;s.destinations={[id]:7};const roster=[...s.collection];assert.ok(redraw(s,()=>.5));
  assert.equal(s.calls,17);assert.equal(s.passes,9);assert.deepEqual(s.collection,roster);assert.ok(s.bag.has(id));assert.equal(s.stampBalls[1],1);
 });
 test('Bomb destroys itself and adjacent items before a newly completed line can score',()=>{

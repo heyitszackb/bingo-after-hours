@@ -7,7 +7,7 @@ const oldRun=()=>{
  const s=newStage(7,32);delete s.shopVersion;s.score=21;s.calls=7;s.passes=4;
  s.jokers.push(...retiredCards);s.upgrades=Object.fromEntries(retiredBalls.map((type,i)=>[i+1,type]));
  for(let n=1;n<=5;n++){s.stamps.add(n);s.stampBalls[n]=n;s.stampValues[n]=n===1?null:n*4;s.bag.delete(n);s.played[n]=1;}
- s.ballValues={2:8,3:12,4:16,5:20};s.plasmaActive=true;s.offer=[6,7,8];s.destinations={6:13,7:13,8:13};s.patternCounts.row=1;s.scoredLines=['row-1'];
+ s.ballValues={2:8,3:12,4:16,5:20};s.plasmaActive=true;s.offer=[6,7,8];s.playableSpaces=undefined;s.destinations={6:13,7:13,8:13};s.patternCounts.row=1;s.scoredLines=['row-1'];
  return s;
 };
 test('retired cards remain unavailable while High Five joins the catalog',()=>{
@@ -17,7 +17,7 @@ test('retired cards remain unavailable while High Five joins the catalog',()=>{
 test('retired ball powers have no placement, movement, destruction, or draw effects',()=>{
  for(const type of retiredBalls){const s=newStage(10);s.upgrades[5]=type;
   for(let n=1;n<5;n++){s.stamps.add(n);s.stampBalls[n]=n;s.stampValues[n]=n;s.bag.delete(n);}
-  s.offer=[5];s.destinations={5:5};assert.equal(choose(s,5,13),null);
+  s.offer=[5];s.playableSpaces=undefined;s.destinations={5:5};assert.equal(choose(s,5,13),null);
   const r=choose(s,5,5);assert.equal(r.points,15);assert.deepEqual([...s.stamps],[1,2,3,4,5]);assert.deepEqual(s.stampValues,{1:1,2:2,3:3,4:4,5:5});assert.equal(s.calls,16);assert.equal(s.bag.size,20);assert.equal(s.plasmaPending,undefined);
  }
 });

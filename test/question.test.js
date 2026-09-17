@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {newStage,choose,ballValue,itemBlueprint,isTargetedPotion} from '../game.js';
 const make=()=>{const s=newStage(100);s.plainRules=true;s.items[26]='question';s.collection.push(26);s.bag.add(26);s.nextItemId=27;s.played[26]=0;return s;};
 const put=(s,id,tile,value=ballValue(s,id))=>{s.stamps.add(tile);s.stampBalls[tile]=id;s.stampValues[tile]=value;s.bag.delete(id);};
-const play=(s,id,tile,random=()=>0)=>{s.offer=[id];s.destinations={[id]:tile};return choose(s,id,tile,random);};
+const play=(s,id,tile,random=()=>0)=>{s.offer=[id];s.playableSpaces=undefined;s.destinations={[id]:tile};return choose(s,id,tile,random);};
 test('Question borrows previous Bingo Token for scoring then reverts, leaving original in place',()=>{const s=make();for(let n=1;n<=3;n++)put(s,n,n);play(s,9,4);const r=play(s,26,5);assert.equal(r.points,24);assert.equal(r.mimic.applied.type,'bingo');assert.equal(r.mimic.applied.base,9);assert.equal(s.stampBalls[4],9);assert.equal(s.stampBalls[5],26);assert.equal(s.items[26],'question');assert.equal(s.stampValues[5],null);assert.equal(s.bag.has(26),false);assert.equal(s.calls,15);});
 test('first Question remains itself, and invalid plays never change last-played memory',()=>{const s=make();assert.equal(play(s,26,1).mimic,null);const before=structuredClone(s);assert.equal(choose(s,3,1),null);assert.deepEqual(s,before);});
 test('Question Bomb explodes immediately even if original Bomb has already been destroyed',()=>{const s=make();s.lastPlayed={type:'bomb',base:null,modifier:0,effects:[]};put(s,2,2);const r=play(s,26,1);assert.equal(r.destroyed.length,2);assert.ok(!s.collection.includes(26));assert.equal(s.items[26],'question');});

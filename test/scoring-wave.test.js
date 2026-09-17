@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {new
 const make=()=>{const s=newStage(1000);s.plainRules=true;return s;};
 const add=(s,type)=>{const id=s.nextItemId++;s.items[id]=type;s.collection.push(id);s.bag.add(id);return id;};
 const put=(s,id,t,v=ballValue(s,id))=>{s.stamps.add(t);s.stampBalls[t]=id;s.stampValues[t]=v;s.bag.delete(id);};
-const play=(s,id,t,r=()=>.5)=>{s.offer=[id];s.destinations={[id]:t};return choose(s,id,t,r);};
+const play=(s,id,t,r=()=>.5)=>{s.offer=[id];s.playableSpaces=undefined;s.destinations={[id]:t};return choose(s,id,t,r);};
 const phases=(r,type)=>r.timeline.filter(p=>p.scoringGroups?.[0]?.type===type);
 test('Feather scores <=25 inclusive, rejects 26 and non-Bingo items',()=>{for(const [value,special,expected] of [[7,false,25],[8,false,0],[7,true,0]]){const s=make();put(s,add(s,'feather'),25);put(s,5,1);put(s,6,2);put(s,special?add(s,'glass'):7,6,7);s.ballValues[8]=value;assert.equal(play(s,8,7).points,expected);}});
 test('Crown and Valley require all four orthogonal tokens and strict comparisons',()=>{for(const type of ['crown','valley'])for(const tie of [false,true]){const s=make();put(s,add(s,type),25);put(s,10,13,type==='crown'?10:1);put(s,2,8);put(s,3,14);put(s,4,18);s.ballValues[5]=tie?(type==='crown'?10:1):5;const r=play(s,5,12);assert.equal(phases(r,type).length,tie?0:1);assert.equal(r.points,tie?0:type==='crown'?24:15);}});

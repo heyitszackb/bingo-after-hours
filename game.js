@@ -168,18 +168,21 @@ export function newStage(stage=1,money=5,upgrades={},patternCounts={},jokers=['b
 const shuffled=(values,random)=>{
   const result=[...values];for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;
 };
+export const playableSpaces=state=>state.playableSpaces??[...new Set(Object.values(state.destinations||{}))];
 export function deal(state,random=Math.random,count=3,exclude=null){
   state.offer=(state.offer||[]).filter(n=>state.bag.has(n));
   const held=new Set(state.offer),candidates=shuffled([...state.bag].filter(n=>!held.has(n)&&n!==exclude),random);
   if(exclude!==null&&state.bag.has(exclude)&&!held.has(exclude))candidates.push(exclude);
   const additions=candidates.slice(0,Math.max(0,count-state.offer.length));
   state.offer.splice(state.refillSlot??state.offer.length,0,...additions);delete state.refillSlot;
-  const previous=new Set(Object.values(state.destinations||{}));
+  const previous=new Set(playableSpaces(state));
   const empty=Array.from({length:25},(_,i)=>i+1).filter(tile=>!state.stamps.has(tile));
   const compatible=empty.filter(tile=>!state.offer.some(n=>isStamp(state,n)||(state.items[n]==='question'&&isStamp({items:{[n]:state.lastPlayed?.type}},n)))||tileStampList(state,tile).length<4);
   const choices=compatible.length?compatible:empty,fresh=choices.filter(tile=>!previous.has(tile));
-  const pool=fresh.length?fresh:choices,tile=pool.length?pool[Math.floor(random()*pool.length)]:null;
-  state.destinations=Object.fromEntries(state.offer.map(n=>[n,tile]));
+  const locations=[...shuffled(fresh,random),...shuffled(choices.filter(t=>previous.has(t)),random)].slice(0,3);
+  state.playableSpaces=locations;state.placementVersion=2;
+  // Per-item defaults remain for keyboard play; all items share every location.
+  state.destinations=Object.fromEntries(state.offer.map((n,i)=>[n,locations[i%locations.length]??null]));
   state.handVersion=1;return state.offer;
 }
 export function draw(state=newStage(),random=Math.random,count=1) {
@@ -241,7 +244,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   state.scoredGroups??=allScoringPatterns.filter(p=>state.scoredLines.includes(p.id)).map(p=>groupKey(state,p));
   const activePlanets=new Set([...state.stamps].map(t=>state.items[state.stampBalls[t]]));
   const potion=isTargetedPotion(state,number);
-  if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||tile<1||tile>25||(potion?!canPotionTarget(state,number,tile):(!Object.values(state.destinations).includes(tile)||state.stamps.has(tile))))return null;
+  if(state.status!=='playing'||!state.offer.includes(number)||!state.bag.has(number)||!Number.isInteger(tile)||tile<1||tile>25||(potion?!canPotionTarget(state,number,tile):(!playableSpaces(state).includes(tile)||state.stamps.has(tile))))return null;
   const mimic=state.items[number]==='question'&&state.lastPlayed&&state.lastPlayed.type!=='question'?{id:number,original:itemBlueprint(state,number),applied:structuredClone(state.lastPlayed)}:null;
   const validation=mimic?{items:{[number]:mimic.applied.type}}:state;
   if(isStamp(validation,number)&&tileStampList(state,tile).length>=4)return null;
@@ -410,7 +413,7 @@ export function choose(state,number,tile=state.destinations[number],random=Math.
   if(state.score>=state.target)state.status='passed';
   else if(state.calls===0||state.bag.size===0||state.stamps.size===25)state.status='over';
   if(state.status==='playing')deal(state,random,3,number);
-  else{state.offer=[];state.destinations={};delete state.refillSlot;}
+  else{state.offer=[];state.destinations={};state.playableSpaces=[];delete state.refillSlot;}
   return {rebirths,mimic,potionApplied,timeline,tile,swap,playedNumber:swap?.to??number,movementBoard,kingMoves,scoringBoard,copied,copies,stampApplied,playCost,roll,effectBoard,valueChanges,destroyed,callsBeforeBonuses,patterns,scoredPatterns,scoringGroups,activations,points};
 }
 function cardEvents(state){

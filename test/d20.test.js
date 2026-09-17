@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {newStage,openShop,buyItem,choose,draw,redraw,ballValue} from '../game.js';
 const fixture=()=>{const shop=newStage(1,0);shop.status='passed';shop.bonusPaid=true;openShop(shop);const id=buyItem(shop,'d20');return {s:newStage(10,0,{}, {},shop.jokers,shop),id};};
 const stamp=(s,id,tile)=>{s.stamps.add(tile);s.stampBalls[tile]=id;s.stampValues[tile]=id;s.bag.delete(id);};
-const offer=(s,id,tile)=>{s.offer=[id];s.destinations={[id]:tile};};
+const offer=(s,id,tile)=>{s.offer=[id];s.playableSpaces=undefined;s.destinations={[id]:tile};};
 test('die is a free independent item, including when reopening a saved Bomb-only shop',()=>{
  const s=newStage(1,0);s.status='passed';s.bonusPaid=true;s.shopOffer={cards:[null,null],balls:[null,null],items:['bomb']};openShop(s);
  const a=buyItem(s,'d20'),b=buyItem(s,'d20');assert.equal(a,26);assert.equal(b,27);assert.equal(s.money,0);assert.equal(s.items[a],'d20');assert.equal(ballValue(s,a),null);

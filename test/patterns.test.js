@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {PATTERN_TYPES,PATTERN_DEFINITIONS,completedPatterns,newStage as startingStage,choose,removeJoker,normalizeJokers} from '../game.js';
 // These fixtures isolate line and upgrade rules from the optional Single Digits bonus.
 const newStage=(stage,money,upgrades,counts,jokers=['bingo','face-value'])=>startingStage(stage,money,upgrades,counts,jokers);
-const place=(s,n,tile)=>{s.offer=[n];s.destinations={[n]:tile};return choose(s,n,tile);};
+const place=(s,n,tile)=>{s.offer=[n];s.playableSpaces=undefined;s.destinations={[n]:tile};return choose(s,n,tile);};
 test('only five rows, five columns and two full diagonals score, each activating five tiles',()=>{
  assert.deepEqual(PATTERN_TYPES.filter(p=>p.tileCount===5).map(p=>p.id),['row','column','diagonal']);
  assert.equal(PATTERN_DEFINITIONS.length,12);

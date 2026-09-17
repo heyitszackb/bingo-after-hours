@@ -3,18 +3,18 @@ import assert from 'node:assert/strict';
 import {ITEM_TYPES,newStage as startingStage,draw,deal,choose,redraw,PATTERNS,settleStage,STAGE_TARGETS,openShop,buyCard,upgradeBall,redrawShop} from '../game.js';
 // These fixtures isolate line and value rules from the optional Single Digits bonus.
 const newStage=(stage,money,upgrades,counts,jokers=['bingo','face-value'])=>startingStage(stage,money,upgrades,counts,jokers);
-const place=(s,ball,tile)=>{s.offer=[ball];s.destinations={[ball]:tile};return choose(s,ball);};
+const place=(s,ball,tile)=>{s.offer=[ball];s.playableSpaces=undefined;s.destinations={[ball]:tile};return choose(s,ball);};
 test('new stages are blank with all balls, 17 plays and 10 passes and no permanent mappings',()=>{
  const s=newStage();assert.equal(s.stamps.size,0);assert.deepEqual(s.stampBalls,{});assert.deepEqual(s.destinations,{});assert.equal(s.bag.size,25);assert.equal(s.calls,17);assert.equal(s.money,5);assert.equal(s.board,undefined);
 });
-test('deals three unique available balls with one shared empty destination',()=>{
- const s=newStage();place(s,25,3);for(let i=0;i<100;i++){deal(s);assert.equal(s.offer.length,3);assert.equal(new Set(s.offer).size,3);assert.equal(new Set(Object.values(s.destinations)).size,1);assert.ok(!s.offer.includes(25));assert.ok(!Object.values(s.destinations).includes(3));}
+test('deals three unique available balls with three shared empty destinations',()=>{
+ const s=newStage();place(s,25,3);for(let i=0;i<100;i++){deal(s);assert.equal(s.offer.length,3);assert.equal(new Set(s.offer).size,3);assert.equal(new Set(Object.values(s.destinations)).size,3);assert.ok(!s.offer.includes(25));assert.ok(!Object.values(s.destinations).includes(3));}
 });
-test('playing replaces only the chosen ball and shares a new destination',()=>{
- const s=newStage();s.offer=[1,2,3];s.destinations={1:25,2:7,3:9};const r=choose(s,1);assert.equal(r.tile,25);assert.deepEqual([...s.stamps],[25]);assert.equal(s.stampBalls[25],1);assert.equal(s.calls,16);assert.ok(!s.bag.has(1));assert.ok(s.bag.has(2));assert.equal(s.played[1],1);assert.equal(s.offer.length,3);assert.deepEqual(s.offer.slice(1),[2,3]);assert.equal(new Set(Object.values(s.destinations)).size,1);assert.ok(!Object.values(s.destinations).includes(25));
+test('playing replaces only the chosen ball and shares three new destinations',()=>{
+ const s=newStage();s.offer=[1,2,3];s.playableSpaces=undefined;s.destinations={1:25,2:7,3:9};const r=choose(s,1);assert.equal(r.tile,25);assert.deepEqual([...s.stamps],[25]);assert.equal(s.stampBalls[25],1);assert.equal(s.calls,16);assert.ok(!s.bag.has(1));assert.ok(s.bag.has(2));assert.equal(s.played[1],1);assert.equal(s.offer.length,3);assert.deepEqual(s.offer.slice(1),[2,3]);assert.equal(new Set(Object.values(s.destinations)).size,3);assert.ok(!Object.values(s.destinations).includes(25));
 });
 test('invalid, stale and occupied destinations spend nothing',()=>{
- const s=newStage();place(s,1,7);s.offer=[2];s.destinations={2:7};assert.equal(choose(s,2),null);assert.equal(s.calls,16);assert.equal(s.bag.size,24);s.destinations={};assert.equal(choose(s,2),null);s.destinations={2:26};assert.equal(choose(s,2),null);assert.equal(choose(s,1),null);
+ const s=newStage();place(s,1,7);s.offer=[2];s.playableSpaces=undefined;s.destinations={2:7};assert.equal(choose(s,2),null);assert.equal(s.calls,16);assert.equal(s.bag.size,24);s.playableSpaces=undefined;s.destinations={};assert.equal(choose(s,2),null);s.playableSpaces=undefined;s.destinations={2:26};assert.equal(choose(s,2),null);assert.equal(choose(s,1),null);
 });
 test('every geometric pattern scores the current ball values in each line',()=>{
  for(const pattern of PATTERNS){const s=newStage(10);let r;for(let i=0;i<pattern.length;i++)r=place(s,25-i,pattern[i]);assert.equal(r.points,115);assert.deepEqual(r.activations.map(a=>a.tile),pattern);assert.deepEqual(r.activations.map(a=>a.number),pattern.map((_,i)=>25-i));assert.ok(r.activations.every(a=>a.points===a.number));assert.equal(s.stamps.size,5);assert.equal(Object.keys(s.stampBalls).length,5);assert.equal(s.bag.size,25-pattern.length);}

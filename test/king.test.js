@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {newStage,choose,ballValue,kingNeighbors,activateCard} from '../game.js';
 const make=()=>{const s=newStage(10);s.target=10000;s.collection.push(26,27);s.bag.add(26);s.bag.add(27);s.items[26]='king';s.items[27]='king';s.nextItemId=28;return s;};
 const put=(s,id,t)=>{s.bag.delete(id);s.stamps.add(t);s.stampBalls[t]=id;s.stampValues[t]=ballValue(s,id);};
-const play=(s,id,t,r=()=>0)=>{s.offer=[id];s.destinations={[id]:t};return choose(s,id,t,r);};
+const play=(s,id,t,r=()=>0)=>{s.offer=[id];s.playableSpaces=undefined;s.destinations={[id]:t};return choose(s,id,t,r);};
 test('King starts at zero, stays on its own placement, and chooses all four empty neighbors without preference',()=>{assert.deepEqual(kingNeighbors(1),[2,6]);for(let i=0;i<4;i++){const s=make();assert.equal(play(s,26,13).kingMoves.length,0);const r=play(s,25,25,()=>i/4+.001);assert.equal(r.kingMoves[0].to,kingNeighbors(13)[i]);assert.equal(s.stampValues[r.kingMoves[0].to],0);}});
 test('Kings move once in starting row-major order and later Kings can enter newly vacated squares',()=>{const s=make();put(s,27,2);put(s,26,1);const r=play(s,25,25);assert.deepEqual(r.kingMoves.map(m=>[m.id,m.from,m.to]),[[26,1,6],[27,2,1]]);});
 test('blocked King stays and scoring does not move it',()=>{const s=make();put(s,26,1);[2,6,7].forEach(t=>put(s,t,t));assert.deepEqual(play(s,25,25).kingMoves,[]);s.jokers.push('full-sweep:1');activateCard(s,'full-sweep:1');assert.equal(s.stampBalls[1],26);});

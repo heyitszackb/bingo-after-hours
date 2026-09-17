@@ -1,6 +1,6 @@
-import {baseBagRecipe,buildDebugBag} from './debug-bag.js?v=a87b98501d8a';
+import {baseBagRecipe,buildDebugBag} from './debug-bag.js?v=ea0a2566abff';
 import {pulseBackground} from './background.js?v=64709a33df06';
-import {CONDITION_PATTERNS,PERSISTENT_POTIONS,NUMBER_POTIONS,canPotionTarget,shopCategory,isTargetedPotion,BINGO_TOKEN,isPotion,shopItemTypes,removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=9a7f8df2dd9b';
+import {playableSpaces,CONDITION_PATTERNS,PERSISTENT_POTIONS,NUMBER_POTIONS,canPotionTarget,shopCategory,isTargetedPotion,BINGO_TOKEN,isPotion,shopItemTypes,removeRetiredItems,defaultBag,newStage as legacyNewStage,deal,choose,tileStampList,migrateShop,migrateInventory,isBomb,isDie,ITEM_TYPES,redraw,openRewardShop as openShop,claimReward,BALL_UPGRADES,ballValue,targetFor,PATTERN_TYPES} from './game.js?v=b6982f04c981';
 function newStage(...args){const round=legacyNewStage(...args);round.plainRules=true;round.jokers=[];return round;}
 const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state=newStage(1,5,{}, {},undefined,defaultBag()),busy=false,drag=null,tooltipAnchor=null,payingOut=false,hasRun=false,inMenu=true,shopping=false;
@@ -31,11 +31,11 @@ function renderScore(value=state.score){
 function render(boardState=state){
   $('bag').disabled=busy;
   const freePlay=false;$('play-ball').querySelector('span').textContent=freePlay?'↑ PLAY · 0 PLAYS':'↑ PLAY';$('play-ball').classList.toggle('free-play',freePlay);
-  $('redraw').classList.toggle('exhausted',state.passes===0);$('play-ball').disabled=busy||!!drag||state.status!=='playing'||!state.offer.length;$('play-ball').setAttribute('aria-label',`Swipe any offered ball up to play it on the highlighted space. ${state.calls} plays remaining.`);
+  $('redraw').classList.toggle('exhausted',state.passes===0);$('play-ball').disabled=busy||!!drag||state.status!=='playing'||!state.offer.length;$('play-ball').setAttribute('aria-label',`Drag any offered ball to one of the highlighted spaces. ${state.calls} plays remaining.`);
   $('patterns-button').disabled=busy||payingOut;$('score-patterns').disabled=busy||payingOut;
   $('score-patterns').setAttribute('aria-label',`${state.score} of ${state.target} stars. View scoring patterns and run counts`);
-  $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);renderScore();for(const k of ['calls','stage'])$(k).textContent=state[k];$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.max(0,Math.min(100,state.score/state.target*100))}%`;$('redraw-cost').textContent=state.passes;$('redraw').disabled=busy||state.passes<1||state.status!=='playing';$('redraw').setAttribute('aria-label',`Pass: ${state.passes} remaining. Return this ball and draw a new ball and space without spending a play.`);renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
-    const c=$(`cell-${tile}`),offered=Object.values(state.destinations).includes(tile),number=boardState.stampBalls[tile];
+  $('pause-button').disabled=busy||payingOut||state.status!=='playing';document.querySelector('.score-panel').classList.toggle('large-score',state.target>=1000);renderScore();for(const k of ['calls','stage'])$(k).textContent=state[k];$('bag-count').textContent=state.bag.size;$('bag').setAttribute('aria-label',`Inspect bag, ${state.bag.size} balls remaining`);$('progress').style.width=`${Math.max(0,Math.min(100,state.score/state.target*100))}%`;$('redraw-cost').textContent=state.passes;$('redraw').disabled=busy||state.passes<1||state.status!=='playing';$('redraw').setAttribute('aria-label',`Pass: ${state.passes} remaining. Return this ball and draw a new ball and three spaces without spending a play.`);renderCalls(state.calls);for(let tile=1;tile<=25;tile++){
+    const c=$(`cell-${tile}`),offered=playableSpaces(state).includes(tile),number=boardState.stampBalls[tile];
     c.className=`cell paint-grey upgrade-${state.upgrades[number]||'plain'}${itemClass(number)}${boardState.stamps.has(tile)?' stamped':''}${offered?' offered':''}`;
     c.querySelector('span').textContent=boardState.stamps.has(tile)?(boardState.stampValues[tile]??pieceFace(number)):'';
     const multiplier=state.tileMultipliers?.[tile]||1;c.querySelector('.board-ink').innerHTML=[...tileStampList(state,tile).filter(t=>t==='copier').map(()=>'<b class=copy-mark title=Copier>COPY</b>'),...tileStampList(state,tile).filter(t=>t==='trash').map(()=>'<b class=trash-mark title=Trash></b>'),...tileStampList(state,tile).filter(t=>t.startsWith('plus')).map(t=>'+'+t.slice(4)),multiplier>1?`×${multiplier}`:''].filter(Boolean).join(' ');c.classList.toggle('inked',tileStampList(state,tile).length>0);
@@ -166,7 +166,7 @@ $('builder-start').onclick=()=>{
 };
 function lock(){hideTooltip();busy=true;render();document.querySelectorAll('#balls .ball').forEach(b=>b.disabled=true);}
 function unlock(){busy=false;saveRun();render();document.querySelectorAll('#balls .ball').forEach(b=>{b.disabled=false;b.classList.remove('enter');});}
-function showBalls(){const held=new Map([...$('balls').children].map(b=>[Number(b.dataset.number),b]));const nodes=[];state.offer.forEach((n,i)=>{if(held.has(n)&&held.get(n).style.visibility!=='hidden'&&held.get(n).dataset.kind===(state.items[n]||'number')&&held.get(n).querySelector('.face').textContent===String(pieceFace(n))){const b=held.get(n);b.style.order='';b.disabled=true;nodes.push(b);return;}const b=ball(n);b.classList.add('enter');b.style.setProperty('--i',i);b.disabled=true;b.setAttribute('aria-label',`${pieceLabel(n)}. Tap to inspect. Swipe up to play, down to pass, or drag sideways to reorder. Keyboard: Enter to inspect, Space to play.`);b.addEventListener('pointerdown',e=>startDrag(e,n,b));b.addEventListener('pointermove',moveDrag);b.addEventListener('pointerup',endDrag);b.addEventListener('pointercancel',cancelDrag);b.addEventListener('lostpointercapture',()=>{if(drag)cancelDrag();});b.onclick=e=>{if(e.detail===0&&!busy)inspect(n,b);};b.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();if(!busy&&!drag)play(n,b);} };nodes.push(b);});$('balls').replaceChildren(...nodes);refreshBag();}
+function showBalls(){const held=new Map([...$('balls').children].map(b=>[Number(b.dataset.number),b]));const nodes=[];state.offer.forEach((n,i)=>{if(held.has(n)&&held.get(n).style.visibility!=='hidden'&&held.get(n).dataset.kind===(state.items[n]||'number')&&held.get(n).querySelector('.face').textContent===String(pieceFace(n))){const b=held.get(n);b.style.order='';b.disabled=true;nodes.push(b);return;}const b=ball(n);b.classList.add('enter');b.style.setProperty('--i',i);b.disabled=true;b.setAttribute('aria-label',`${pieceLabel(n)}. Tap to inspect. Drag to the board to choose the closest highlighted space, down to pass, or sideways to reorder. Keyboard: Enter to inspect, Space to play.`);b.addEventListener('pointerdown',e=>startDrag(e,n,b));b.addEventListener('pointermove',moveDrag);b.addEventListener('pointerup',endDrag);b.addEventListener('pointercancel',cancelDrag);b.addEventListener('lostpointercapture',()=>{if(drag)cancelDrag();});b.onclick=e=>{if(e.detail===0&&!busy)inspect(n,b);};b.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();if(!busy&&!drag)play(n,b);} };nodes.push(b);});$('balls').replaceChildren(...nodes);refreshBag();}
 async function nextDraw(){resetResultUI();lock();if(!state.offer.length)deal(state);render();showBalls();await wait(770);unlock();}
 function startDrag(e,n,b){
   if(busy||drag||e.button!==0)return;
@@ -193,7 +193,7 @@ function isOnBoard(x,y){const r=$('board').getBoundingClientRect();return x>=r.l
 function nearestDestination(x,y,number){
   if(isTargetedPotion(state,number))return [...state.stamps].filter(tile=>canPotionTarget(state,number,tile)).find(tile=>{const r=$(`cell-${tile}`).getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;})??null;
   let nearest=null,distance=Infinity;
-  for(const tile of Object.values(state.destinations)){
+  for(const tile of playableSpaces(state)){
     if(state.stamps.has(tile))continue;
     const r=$(`cell-${tile}`).getBoundingClientRect(),d=Math.hypot(x-r.left-r.width/2,y-r.top-r.height/2);
     if(d<distance){nearest=tile;distance=d;}
@@ -224,7 +224,7 @@ function moveDrag(e){
   $('balls').classList.toggle('reordering',onTrack);
   document.querySelectorAll('.cell.destination').forEach(c=>c.classList.remove('destination'));
   if(isTargetedPotion(state,d.n))$('gesture-hint').textContent=NUMBER_POTIONS.includes(state.items[d.n]==='question'?state.lastPlayed?.type:state.items[d.n])?'DROP ON A BINGO TOKEN':'DROP ON AN ITEM';
-  if(over){d.tile=isOnBoard(e.clientX,e.clientY)?nearestDestination(e.clientX,e.clientY,d.n):isTargetedPotion(state,d.n)?null:state.destinations[d.n];$(`cell-${d.tile}`)?.classList.add('destination');}
+  if(over){d.tile=nearestDestination(e.clientX,e.clientY,d.n);$(`cell-${d.tile}`)?.classList.add('destination');}
   if(onTrack){
     const x=e.clientX+$('balls').scrollLeft-d.scrollLeft;
     let index=0;
@@ -248,7 +248,7 @@ async function endDrag(e){
   const action=swipeAction(d,e);
   if(action==='pass'&&!isOnBoard(e.clientX,e.clientY)){cleanDrag(d);commitOrder(d);await passTurn(d.ghost);return;}
   if(isOnBoard(e.clientX,e.clientY)||action==='play'){
-    d.tile=isOnBoard(e.clientX,e.clientY)?nearestDestination(e.clientX,e.clientY,d.n):isTargetedPotion(state,d.n)?null:state.destinations[d.n];cleanDrag(d);commitOrder(d);await play(d.n,d.b,d.ghost,d.tile);return;
+    d.tile=nearestDestination(e.clientX,e.clientY,d.n);cleanDrag(d);commitOrder(d);await play(d.n,d.b,d.ghost,d.tile);return;
   }
   busy=true;
   const reordered=isOnTrack(e.clientX,e.clientY);
@@ -859,7 +859,8 @@ function loadRun(){
       state={...newStage(saved.stage,saved.money),...saved,rulesVersion:3,target:targetFor(saved.stage),stamps:new Set(saved.stamps),bag:new Set(saved.bag)};
     }
     if(oldTurn&&state.status==='playing'){state.offer=[];state.destinations={};}
-    if(saved.handVersion!==1&&state.status==='playing')deal(state);
+    const validSpaces=saved.placementVersion===2&&Array.isArray(saved.playableSpaces)&&saved.playableSpaces.length>0&&saved.playableSpaces.length<=3&&new Set(saved.playableSpaces).size===saved.playableSpaces.length&&saved.playableSpaces.every(t=>Number.isInteger(t)&&t>=1&&t<=25&&!state.stamps.has(t))&&Object.values(state.destinations).every(t=>saved.playableSpaces.includes(t));
+    if(state.status==='playing'&&(saved.handVersion!==1||!validSpaces)){delete state.playableSpaces;deal(state);}
     hasRun=true;
   }catch{try{localStorage.removeItem(SAVE_KEY);}catch{}}
 }

@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {newStage,choose,ballValue,defaultBag,shopItemTypes} from '../game.js';import {buildDebugBag,bagRecipe} from '../debug-bag.js';
 const make=()=>{const s=newStage(100);s.plainRules=true;s.items[26]='blackjack';s.collection.push(26);s.bag.add(26);s.nextItemId=27;s.played[26]=0;return s;};
 const put=(s,id,tile,value=ballValue(s,id))=>{s.stamps.add(tile);s.stampBalls[tile]=id;s.stampValues[tile]=value;s.bag.delete(id);};
-const play=(s,id,tile,random=()=>0)=>{s.offer=[id];s.destinations={[id]:tile};return choose(s,id,tile,random);};
+const play=(s,id,tile,random=()=>0)=>{s.offer=[id];s.playableSpaces=undefined;s.destinations={[id]:tile};return choose(s,id,tile,random);};
 const marsPhases=r=>r.timeline.filter(p=>p.scoringGroups?.[0]?.type==='blackjack');
 test('Blackjack scores 2,4,9 for 15, then only newly completed 4,9,8 for 21',()=>{const s=make();put(s,26,25);put(s,2,1);put(s,4,2);const a=play(s,9,3);assert.equal(a.points,15);assert.deepEqual(a.activations.map(a=>a.points),[2,4,9]);assert.equal(a.activations.at(-1).groupEnd.flatBonus,undefined);assert.equal(play(s,8,4).points,21);assert.equal(play(s,20,20).points,0);assert.deepEqual(s.scoredLines,['blackjack-h-1','blackjack-h-2']);});
 test('filling 3,4,_,5,6 with 9 creates three separate overlapping trios plus the normal bingo',()=>{const s=make();put(s,26,25);for(const [id,tile] of [[3,1],[4,2],[5,4],[6,5]])put(s,id,tile);const r=play(s,9,3);assert.deepEqual(marsPhases(r).map(p=>p.points),[16,18,20]);assert.equal(r.points,81);assert.deepEqual(marsPhases(r).map(p=>p.patterns[0]),[[1,2,3],[2,3,4],[3,4,5]]);});

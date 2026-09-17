@@ -4,7 +4,7 @@ import {newStage,choose,openShop,buyCard,buyItem,normalizeJokers,removeJoker} fr
 const joker='high-five:1';
 const make=(jokers=['bingo','face-value',joker])=>newStage(10,0,{}, {},jokers);
 const stamp=(s,n,t)=>{s.stamps.add(t);s.stampBalls[t]=n;s.stampValues[t]=n;s.bag.delete(n);};
-const play=(s,n,t,random)=>{s.offer=[n];s.destinations={[n]:t};return choose(s,n,t,random);};
+const play=(s,n,t,random)=>{s.offer=[n];s.playableSpaces=undefined;s.destinations={[n]:t};return choose(s,n,t,random);};
 test('High Five scores itself and occupied orthogonal neighbors, without diagonals or recursive triggers',()=>{
  const s=make();[[2,8],[3,14],[4,18],[5,12],[20,7]].forEach(([n,t])=>stamp(s,n,t));const r=play(s,1,13);
  assert.deepEqual(r.scoringGroups,[{trigger:joker,retriggers:[],type:'cross',tiles:[13,8,14,18,12]}]);assert.equal(r.points,15);assert.equal(r.activations.length,5);assert.equal(s.calls,16);assert.equal(s.stamps.size,6);assert.deepEqual(s.scoredLines,[]);

@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {new
 const make=()=>{const s=newStage(1000);s.plainRules=true;return s;};
 const add=(s,type)=>{const id=s.nextItemId++;s.collection.push(id);s.items[id]=type;s.bag.add(id);return id;};
 const put=(s,id,t)=>{s.stamps.add(t);s.stampBalls[t]=id;s.stampValues[t]=ballValue(s,id);s.bag.delete(id);};
-const play=(s,id,t)=>{s.offer=[id];s.destinations={[id]:t};return choose(s,id,t,()=>.5);};
+const play=(s,id,t)=>{s.offer=[id];s.playableSpaces=undefined;s.destinations={[id]:t};return choose(s,id,t,()=>.5);};
 test('new items have intended values and all appear in the shop',()=>{const s=make();for(const [type,value] of [['tornado',0],['prism',0],['phoenix',10],['anchor',0]]){assert.equal(ballValue(s,add(s,type)),value);assert.ok(shopItemTypes().includes(type));}});
 test('Phoenix returns from bomb and melt repeatedly, retaining effects and identity',()=>{const s=make(),p=add(s,'phoenix');s.itemEffects[p]=['potion2','potion20'];put(s,p,13);let r=play(s,add(s,'bomb'),14);assert.equal(r.rebirths[0].after,20);assert.ok(s.bag.has(p));assert.ok(s.collection.includes(p));assert.equal(s.stamps.has(13),false);play(s,p,13);r=play(s,add(s,'potionMelt'),13);assert.equal(r.rebirths[0].after,30);assert.equal(ballValue(s,p),30);assert.deepEqual(s.itemEffects[p],['potion2','potion20']);assert.equal(s.collection.filter(id=>id===p).length,1);});
 test('Phoenix returns from trash after awarding its current value',()=>{const s=make(),p=add(s,'phoenix');put(s,p,1);s.tileStamps[1]=['trash'];for(let n=2;n<=4;n++)put(s,n,n);const r=play(s,5,5);assert.equal(r.points,24);assert.equal(r.activations[0].rebirth.after,20);assert.ok(s.bag.has(p));assert.equal(s.stamps.has(1),false);});

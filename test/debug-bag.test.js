@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {baseBagRecipe,bagRecipe,buildDebugBag} from '../debug-bag.js';import {newStage,choose,deal,ballValue} from '../game.js';
 const make=rows=>newStage(10,12,{}, {},['bingo','face-value','high-five:1'],buildDebugBag(rows));
-const play=(s,id,tile)=>{s.offer=[id];s.destinations={[id]:tile};return choose(s,id,tile,()=>0);};
+const play=(s,id,tile)=>{s.offer=[id];s.playableSpaces=undefined;s.destinations={[id]:tile};return choose(s,id,tile,()=>0);};
 test('base preset exactly recreates the original 1–25 collection',()=>{
  const inventory=buildDebugBag(baseBagRecipe()),s=make(baseBagRecipe());assert.deepEqual(inventory.collection,Array.from({length:25},(_,i)=>i+1));assert.equal(inventory.nextItemId,26);assert.deepEqual(inventory.items,{});assert.deepEqual(bagRecipe(s),baseBagRecipe());assert.equal(s.calls,17);assert.equal(s.passes,10);
 });

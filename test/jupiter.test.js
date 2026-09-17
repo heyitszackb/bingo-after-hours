@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {new
 const make=()=>{const s=newStage(100);s.plainRules=true;return s;};
 const add=(s,type)=>{const id=s.nextItemId++;s.items[id]=type;s.collection.push(id);s.bag.add(id);s.played[id]=0;return id;};
 const put=(s,id,tile,value=ballValue(s,id))=>{s.stamps.add(tile);s.stampBalls[tile]=id;s.stampValues[tile]=value;s.bag.delete(id);};
-const play=(s,id,tile)=>{s.offer=[id];s.destinations={[id]:tile};return choose(s,id,tile,()=>0);};
+const play=(s,id,tile)=>{s.offer=[id];s.playableSpaces=undefined;s.destinations={[id]:tile};return choose(s,id,tile,()=>0);};
 test('Jupiter scores three mixed special items in every direction with the 100-star bonus',()=>{assert.equal(JUPITER_PATTERNS.length,48);for(const tiles of [[1,2,3],[1,6,11],[1,7,13],[5,9,13]]){const s=make(),j=add(s,'jupiter');put(s,j,25);for(const [i,type] of ['moon','d20','question'].entries())put(s,add(s,type),tiles[i],i===0?10:i===1?7:null);assert.equal(play(s,20,20).points,117);assert.equal(play(s,19,19).timeline.filter(p=>p.scoringGroups?.[0]?.type==='jupiter').length,0);}});
 test('a Bingo Token interrupts Jupiter; stamps alone do not count as items',()=>{const s=make(),j=add(s,'jupiter');put(s,add(s,'moon'),1);put(s,7,2);put(s,add(s,'d20'),3,4);s.tileStamps[4]=['x2'];assert.equal(play(s,j,25).points,0);});
 test('Bingo Tokens remain their type when copied or modified, special items never count as Bingo Tokens',()=>{const s=make();s.ballValues[2]=-20;assert.ok(isBingoToken(s,2));const copied=add(s,undefined);delete s.items[copied];s.ballValues[copied]=6;assert.ok(isBingoToken(s,copied));for(const type of ['king','seed','d20','blackjack','moon','jupiter'])assert.equal(isBingoToken(s,add(s,type)),false);});

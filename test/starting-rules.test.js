@@ -4,7 +4,7 @@ import {newStage,choose,removeJoker,normalizeJokers} from '../game.js';
 const finish=(jokers,values=[5,19,23,1,4])=>{
  const s=newStage(10,5,{}, {},jokers);s.calls=1;
  values.slice(0,4).forEach((n,i)=>{s.stamps.add(i+1);s.stampBalls[i+1]=n;s.stampValues[i+1]=n;s.bag.delete(n);});
- const n=values[4];s.offer=[n];s.destinations={[n]:5};return {s,r:choose(s,n,5)};
+ const n=values[4];s.offer=[n];s.playableSpaces=undefined;s.destinations={[n]:5};return {s,r:choose(s,n,5)};
 };
 test('default rules explain every awarded point with ordered card contributions',()=>{
  const {s,r}=finish();assert.deepEqual(s.jokers,['bingo','face-value']);assert.equal(r.points,52);
